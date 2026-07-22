@@ -8,7 +8,7 @@ import subprocess
 # SECURITY ISSUES
 # ==========================
 
-API_KEY = "sk-test-123456789"      # Hardcoded secret
+API_KEY = os.getenv("API_KEY")
 DB_PASSWORD = "admin123"           # Hardcoded password
 
 # SQL Injection
