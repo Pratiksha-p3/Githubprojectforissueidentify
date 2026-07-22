@@ -1,6 +1,6 @@
 from agents.syntax_agent import SyntaxAgent
-from agents.Runtime_agent import RuntimeAgent
-from agents.Logic_agent import LogicAgent
+from agents.runtime_agent import RuntimeAgent
+from agents.logic_agent import LogicAgent
 
 
 class CodeIntelMCP:
@@ -12,18 +12,13 @@ class CodeIntelMCP:
 
     def scan(self, pr_file):
 
-        findings = []
+        syntax = self.syntax.scan(pr_file)
+        runtime = self.runtime.scan(pr_file)
+        logic = self.logic.scan(pr_file)
 
-        findings.extend(
-            self.syntax.scan(pr_file)
-        )
-
-        findings.extend(
-            self.runtime.scan(pr_file)
-        )
-
-        findings.extend(
-            self.logic.scan(pr_file)
-        )
-
-        return findings
+        return {
+            "syntax": syntax,
+            "runtime": runtime,
+            "logic": logic,
+            "all": syntax + runtime + logic,
+        }
