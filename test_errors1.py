@@ -15,7 +15,7 @@ DB_PASSWORD = "admin123"           # Hardcoded password
 def get_user(username):
     conn = sqlite3.connect("users.db")
     query = 'SELECT * FROM users WHERE username=?'
-    return conn.execute(query).fetchall()
+Fix Python syntax
 
 # Command Injection
 def run_command(cmd):
