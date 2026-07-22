@@ -26,15 +26,6 @@ import requests
 from dataclasses import dataclass
 from config import cfg
 
-# NOTE: "logic-factorial" and "logic-adult" patterns from the original file
-# have been removed. They matched ANY "return 0" or "return False" statement
-# anywhere in a file and blindly flipped it to "return 1" / "return True".
-# That's not a fix rule, it's a coin flip — it would happily "fix" completely
-# unrelated, correct code (auth checks, feature flags, loop guards, etc.)
-# and post it as a one-click-apply GitHub suggestion. If you need to catch
-# specific known-buggy functions (e.g. a factorial that returns 0 at n=0),
-# that needs a real AST-based check scoped to that function, not a blanket
-# regex on `return` statements. Left out until that exists.
 FIXABLE_PATTERNS = [
     {"id": "hardcoded-secret", "pattern": r'(password|passwd|pwd|secret|api_key|apikey|token|db_pass)\s*=\s*["\'][^"\']+["\']', "flags": re.IGNORECASE, "fix_type": "env_var"},
     {"id": "sql-fstring",      "pattern": r'\.execute\s*\(\s*f["\']',                        "flags": 0, "fix_type": "parameterized_query"},
@@ -84,12 +75,21 @@ class AutoFixEngine:
         file_map = {pf.filename: pf for pf in pr_files}
         results = []
         unfixed = []
+        already_fixed_locations = set()  # (file, line) already generated+posted a fix for — FIX 2
 
         targets = [f for f in findings if f.get("severity") in ("critical", "warning")]
         print(f"\n[autofix-engine] Processing {len(targets)} findings...")
 
         for finding in targets:
             target_file = finding.get("file", "")
+            line_key = (target_file, finding.get("line", 0))
+
+            if line_key in already_fixed_locations:
+                print(f"  ↩️  SKIP (already fixed this line): {target_file}:L{finding.get('line', 0)}")
+                results.append(FixResult(finding=finding, fixable=True, fix_applied=True,
+                                          error="Duplicate location — fix already suggested above"))
+                continue
+
             pf = file_map.get(target_file)
             fixable, fix_type = self._is_fixable(finding, pf)
 
@@ -112,6 +112,8 @@ class AutoFixEngine:
 
             posted = self._post_suggestion(loader, repo, pr_number, head_sha,
                                             finding, fix_code, explanation, pf)
+            if posted:
+                already_fixed_locations.add(line_key)  # FIX 2
             results.append(FixResult(finding=finding, fixable=True, fix_applied=posted,
                                       fix_code=fix_code, fix_explanation=explanation,
                                       fix_type=fix_type))
@@ -254,6 +256,13 @@ Return exactly: {{"fixed_line": "<corrected single line>", "explanation": "<one 
     # ── GitHub suggestion posting ─────────────────────────
 
     def _post_suggestion(self, loader, repo, pr_number, head_sha, finding, fix_code, explanation, pf=None):
+        # FIX 1: MockGitHubLoader has no .auth — skip cleanly instead of
+        # throwing three different exceptions per finding during --mock runs.
+        if not hasattr(loader, "auth"):
+            print(f"[autofix] Skipping post (loader has no GitHub auth — likely mock mode): "
+                  f"{finding.get('file','')}:{finding.get('line',0)}")
+            return False
+
         sev = finding.get("severity", "warning").upper()
         line_num = finding.get("line", 0)
         target_file = finding.get("file", "")

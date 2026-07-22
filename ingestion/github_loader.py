@@ -7,11 +7,8 @@ from __future__ import annotations
 import base64, os, time, json
 from dataclasses import dataclass, field
 from pathlib import Path
-from weakref import ref
-from numpy import fix
-from numpy import fix
+
 import jwt, requests
-from sympy import rf
 from config import cfg
 
 
@@ -126,11 +123,9 @@ class GitHubLoader:
             patch = rf.get("patch", "")
 
             if not content:
-                print(
-                f"  [loader] Using patch fallback "
-                f"for {fname}"
-            )
-                content = requests.patch
+                print(f"  [loader] Using patch fallback for {fname}")
+                content = patch
+               
 
             ctx.files.append(
                         PRFile(
@@ -143,7 +138,8 @@ class GitHubLoader:
         language=detect_language(fname),
     )
 )
-            
+        print(f"[loader] Loaded: {fname}")
+        print(f"[loader] Content length: {len(str(content))}")    
         print(f"  [loader] PR #{pr_number}: {len(ctx.files)} files loaded")
         return ctx
 

@@ -9,12 +9,7 @@ from typing import Any
 
 
 from config import cfg
-
-try:
-    from prompt.prompt import SYSTEM_PROMPT, build_prompt, build_summary_prompt
-except ImportError:  # pragma: no cover - fallback for package-relative execution
-    from ..prompt.prompt import SYSTEM_PROMPT, build_prompt, build_summary_prompt
-
+from prompts.prompts import SYSTEM_PROMPT, build_prompt, build_summary_prompt,build_fix_prompt,build_security_prompt
 from rag.retriever import Retriever
 from ingestion.github_loader import PRFile
 from agents.security_agent import SecurityAgent, merge_findings
