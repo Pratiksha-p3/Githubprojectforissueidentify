@@ -208,7 +208,13 @@ def run_review(
             repo_name=repo,
             since_commit=getattr(pr_ctx, "base_sha", None),
         )
-        secret_findings = [f.to_dict() for f in scan_report.findings]
+        all_secret_findings = [f.to_dict() for f in scan_report.findings]
+
+        pr_filenames = {pf.filename for pf in files}
+        secret_findings = [f for f in all_secret_findings if f.get("file") in pr_filenames]
+        skipped_count = len(all_secret_findings) - len(secret_findings)
+        if skipped_count:
+            print(f"[app] Secret scan: {skipped_count} finding(s) outside this PR's files — excluded from report")
 
         report.setdefault("findings", [])
         report["findings"].extend(secret_findings)
