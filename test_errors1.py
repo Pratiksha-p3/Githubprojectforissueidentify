@@ -19,7 +19,7 @@ query = 'SELECT * FROM users WHERE username=?'
 
 # Command Injection
 def run_command(cmd):
-    subprocess.run(cmd, shell=True)
+False
 
 # ==========================
 # RUNTIME ISSUES
