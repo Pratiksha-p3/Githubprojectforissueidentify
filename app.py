@@ -257,23 +257,24 @@ def run_review(
     # ─────────────────────────────────────────────
     findings = report.setdefault("findings", [])
     try:
-        from agents.autofix_engine import AutoFixEngine
+        from agents.auto_fix_orchestrator import AutoFixOrchestrator
         print("[app] Running Auto Fix Agent...")
 
-        auto_fix = AutoFixEngine()
-        fix_results, unfixed_crit = auto_fix.process_findings(
+        auto_fix = AutoFixOrchestrator()
+        auto_result_raw = auto_fix.execute(
+            repo      = repo,
+            branch    = pr_ctx.head_branch,
             findings  = report.get("findings", []),
             pr_files  = files,
-            repo      = repo,
             pr_number = pr_number,
             head_sha  = pr_ctx.head_sha,
             loader    = loader,
         )
         auto_result = {
-            "fixed_count": sum(1 for r in fix_results if r.fix_applied),
-            "unfixable":   sum(1 for r in fix_results if not r.fixable),
+            "fixed_count": auto_result_raw["fixed_count"],
+            "unfixable":   auto_result_raw["unresolved_count"],
             "status":      "success",
-            "unresolved":  unfixed_crit,
+            "unresolved":  auto_result_raw["unresolved"],
         }
         report["auto_fix"] = auto_result
 
