@@ -1,0 +1,136 @@
+{
+  "overall_score": 0.3,
+  "total_findings": 2,
+  "critical_count": 2,
+  "warning_count": 0,
+  "findings": [
+    {
+      "file": "demo1.py",
+      "line": 6,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-secret-key",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2009-3035",
+        "CVE-2010-0557",
+        "CVE-2010-2966"
+      ],
+      "cvss_score": 7.8,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+      ],
+      "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+    },
+    {
+      "file": "demo1.py",
+      "line": 59,
+      "severity": "critical",
+      "category": "security",
+      "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-var",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2000-1233",
+        "CVE-2000-1236",
+        "CVE-2001-1348"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+        "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+      ],
+      "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+    }
+  ],
+  "files": [
+    {
+      "file": "demo1.py",
+      "focus": "security",
+      "review": {
+        "findings": [
+          {
+            "file": "demo1.py",
+            "line": 6,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-secret-key",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2009-3035",
+              "CVE-2010-0557",
+              "CVE-2010-2966"
+            ],
+            "cvss_score": 7.8,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+            ],
+            "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+          },
+          {
+            "file": "demo1.py",
+            "line": 59,
+            "severity": "critical",
+            "category": "security",
+            "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-var",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1348"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          }
+        ],
+        "summary": "[RATE LIMITED] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98704, Requested 8369. Please try again in 1h41m51.072s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.3,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "fixes": {},
+  "executive_summary": {},
+  "approved": true,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 12,
+  "pr_title": "Implement error demonstration functions in demo1.py",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-21T06:32:07.998852Z",
+  "pipeline": "advanced-langgraph-v2",
+  "head_sha": "7cdd69dd5a8425f774e5c3c513bc47323b56e70f",
+  "auto_fix": {
+    "fixed_count": 2,
+    "unfixable": 0,
+    "status": "success",
+    "unresolved": []
+  },
+  "remaining_critical": 0,
+  "remaining_warning": 0,
+  "gate_decision": "APPROVE"
+}

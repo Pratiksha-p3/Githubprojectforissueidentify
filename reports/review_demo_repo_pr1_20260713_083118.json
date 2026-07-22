@@ -1,0 +1,141 @@
+{
+  "overall_score": 0.2,
+  "total_findings": 5,
+  "critical_count": 3,
+  "warning_count": 2,
+  "findings": [
+    {
+      "line": 15,
+      "severity": "critical",
+      "category": "security",
+      "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+      "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 11,
+      "severity": "critical",
+      "category": "security",
+      "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+      "fix": "SECRET_KEY = os.environ.get('SECRET_KEY') or raise ValueError('SECRET_KEY not set')",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 14,
+      "severity": "warning",
+      "category": "bug",
+      "message": "conn = sqlite3.connect('users.db')",
+      "fix": "conn = sqlite3.connect('users.db'); conn.close() should be called when done, consider using a context manager",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 17,
+      "severity": "warning",
+      "category": "bug",
+      "message": "return result.fetchone()",
+      "fix": "password verification is missing, add a check for the provided password against the stored hash",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "return hashlib.md5(password.encode()).hexdigest()",
+      "fix": "return hashlib.pbkdf2_hmac('sha256', password.encode(), b'salt', 100000).hex()",
+      "file": "src/utils/hash.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "src/auth/login.py",
+      "review": {
+        "findings": [
+          {
+            "line": 15,
+            "severity": "critical",
+            "category": "security",
+            "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+            "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 11,
+            "severity": "critical",
+            "category": "security",
+            "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+            "fix": "SECRET_KEY = os.environ.get('SECRET_KEY') or raise ValueError('SECRET_KEY not set')",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 14,
+            "severity": "warning",
+            "category": "bug",
+            "message": "conn = sqlite3.connect('users.db')",
+            "fix": "conn = sqlite3.connect('users.db'); conn.close() should be called when done, consider using a context manager",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 17,
+            "severity": "warning",
+            "category": "bug",
+            "message": "return result.fetchone()",
+            "fix": "password verification is missing, add a check for the provided password against the stored hash",
+            "file": "src/auth/login.py"
+          }
+        ],
+        "summary": "The code has critical security issues, including a hardcoded secret key and a SQL injection vulnerability. Additionally, there are bugs related to connection handling and password verification. These issues should be addressed to ensure the security and reliability of the authentication system.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test case for successful login with valid credentials",
+          "Test case for failed login with invalid credentials",
+          "Test case for SQL injection attack"
+        ]
+      }
+    },
+    {
+      "file": "src/utils/hash.py",
+      "review": {
+        "findings": [
+          {
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "return hashlib.md5(password.encode()).hexdigest()",
+            "fix": "return hashlib.pbkdf2_hmac('sha256', password.encode(), b'salt', 100000).hex()",
+            "file": "src/utils/hash.py"
+          }
+        ],
+        "summary": "The current implementation uses MD5 for password hashing, which is insecure. A more secure approach like PBKDF2 should be used instead. This change will significantly improve the security of the authentication system.",
+        "overall_score": 0.7,
+        "test_coverage_gaps": [
+          "Test case for hash_password function with different input types",
+          "Test case for hash_password function with edge cases like empty string or very long string"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "Reviewed 2 file(s), found 5 issue(s). Critical security issues require immediate attention before merge.",
+    "top_risks": [
+      "src/auth/login.py:15 \u2014 query = f\"SELECT * FROM users WHERE name='{username}'\"",
+      "src/auth/login.py:11 \u2014 SECRET_KEY = 'hardcoded-secret-abc123'",
+      "src/utils/hash.py:3 \u2014 return hashlib.md5(password.encode()).hexdigest()"
+    ],
+    "recommended_actions": [
+      "Fix all critical findings before merging"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "demo/repo",
+  "pr_number": 1,
+  "head_sha": "mock-sha-abc123",
+  "pr_title": "Add authentication",
+  "reviewed_at": "2026-07-13T08:31:18.112399Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 0,
+    "unresolved": []
+  }
+}

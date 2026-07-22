@@ -1,0 +1,48 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 0,
+  "critical_count": 0,
+  "warning_count": 0,
+  "findings": [],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [],
+        "summary": "[RATE LIMITED \u2014 LLM did not run] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 96678, Requested 6644. Please try again in 47m50.208s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.5,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "2e499d62a5500138e890797deee6b6974ebbab19",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-06T12:33:37.596696Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "status": "failed",
+    "error": "AutoFixRunner.run() missing 5 required positional arguments: 'pr_files', 'repo', 'pr_number', 'head_sha', and 'loader'"
+  },
+  "gate": {
+    "blocked": false,
+    "reason": "All 8 issue(s) resolved \u2014 PR approved! \ud83c\udf89",
+    "resolved_issues": [
+      "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variabl",
+      "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern",
+      "'DB_PASSWORD = \"admin123\"'",
+      "'self.conn = sqlite3.connect(\"users.db\")'",
+      "'return total / count'",
+      "'os.system(\"ping \" + host)'",
+      "'self.age = age'",
+      "'for i in range(1000): cursor.execute(\"SELECT * FROM users\")'"
+    ],
+    "new_issues": [],
+    "still_present": [],
+    "score_before": 0.2,
+    "score_after": 0.5
+  }
+}

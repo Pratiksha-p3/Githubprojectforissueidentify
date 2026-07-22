@@ -1,0 +1,188 @@
+{
+  "overall_score": 0.3,
+  "total_findings": 8,
+  "critical_count": 2,
+  "warning_count": 2,
+  "findings": [
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The code uses a fixed font size and line height, consider using relative units for better accessibility",
+      "fix": "Use relative units such as 'em' or 'rem' for font size and line height",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The code uses a generic 'Arial, sans-serif' font family, consider using a more specific font family for better consistency",
+      "fix": "Use a more specific font family such as 'Helvetica, Arial, sans-serif'",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 104,
+      "severity": "warning",
+      "category": "bug",
+      "message": "The table is not properly closed, missing '</table>' tag",
+      "fix": "Add '</table>' tag after the table content",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 112,
+      "severity": "info",
+      "category": "style",
+      "message": "The table headers and cells do not have any padding or border, consider adding some styling for better readability",
+      "fix": "Add padding and border to table headers and cells using CSS",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "line": 172,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-password",
+      "confidence": 0.95
+    },
+    {
+      "line": 44,
+      "severity": "warning",
+      "category": "style",
+      "message": "<div class=\"containers\">",
+      "fix": "<div class=\"container\">",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 112,
+      "severity": "info",
+      "category": "style",
+      "message": "<td>Definitions</td>",
+      "fix": "<td>Definition</td>",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 169,
+      "severity": "critical",
+      "category": "security",
+      "message": "password = \"test123\"",
+      "fix": "Remove hardcoded password or replace with a secure method of storing and retrieving sensitive information",
+      "file": "generate_ai_ml_dl_html.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "ai_ml_dl.html",
+      "review": {
+        "findings": [
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The code uses a fixed font size and line height, consider using relative units for better accessibility",
+            "fix": "Use relative units such as 'em' or 'rem' for font size and line height",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The code uses a generic 'Arial, sans-serif' font family, consider using a more specific font family for better consistency",
+            "fix": "Use a more specific font family such as 'Helvetica, Arial, sans-serif'",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 104,
+            "severity": "warning",
+            "category": "bug",
+            "message": "The table is not properly closed, missing '</table>' tag",
+            "fix": "Add '</table>' tag after the table content",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 112,
+            "severity": "info",
+            "category": "style",
+            "message": "The table headers and cells do not have any padding or border, consider adding some styling for better readability",
+            "fix": "Add padding and border to table headers and cells using CSS",
+            "file": "ai_ml_dl.html"
+          }
+        ],
+        "summary": "The code has some minor styling issues and a missing table closure tag. It is recommended to use relative units for font size and line height, and add padding and border to table headers and cells for better readability. Additionally, the table closure tag is missing and should be added.",
+        "overall_score": 0.9,
+        "test_coverage_gaps": [
+          "Test case for table rendering",
+          "Test case for font size and line height responsiveness"
+        ]
+      }
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "review": {
+        "findings": [
+          {
+            "file": "generate_ai_ml_dl_html.py",
+            "line": 172,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-password",
+            "confidence": 0.95
+          },
+          {
+            "line": 44,
+            "severity": "warning",
+            "category": "style",
+            "message": "<div class=\"containers\">",
+            "fix": "<div class=\"container\">",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 112,
+            "severity": "info",
+            "category": "style",
+            "message": "<td>Definitions</td>",
+            "fix": "<td>Definition</td>",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 169,
+            "severity": "critical",
+            "category": "security",
+            "message": "password = \"test123\"",
+            "fix": "Remove hardcoded password or replace with a secure method of storing and retrieving sensitive information",
+            "file": "generate_ai_ml_dl_html.py"
+          }
+        ],
+        "summary": "This diff contains a critical security issue with a hardcoded password, a style issue with an incorrect class name, and a minor style issue with a pluralized definition. These issues should be addressed to improve the security and maintainability of the code.",
+        "overall_score": 0.3,
+        "test_coverage_gaps": [
+          "Test case for password handling",
+          "Test case for HTML generation with correct class names"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request contains a mix of minor styling issues and a critical security vulnerability. The most significant concern is a hardcoded password in the generate_ai_ml_dl_html.py file, which poses a significant security risk. The ai_ml_dl.html file has some minor styling issues and a missing table closure tag. Overall, the code quality is compromised by the security issue. The pull request requires significant revisions before it can be approved.",
+    "top_risks": [
+      "Hardcoded password in generate_ai_ml_dl_html.py",
+      "Security vulnerability due to insecure coding practices"
+    ],
+    "recommended_actions": [
+      "Remove the hardcoded password and replace it with a secure authentication mechanism",
+      "Address all findings and re-submit the pull request for review"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 1,
+  "head_sha": "3860baf48660b2e442c9bd160f7bf7f49ed3413f",
+  "pr_title": "test PR for AI reviw",
+  "reviewed_at": "2026-07-01T04:03:43.408323Z"
+}

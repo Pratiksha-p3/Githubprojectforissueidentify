@@ -1,0 +1,118 @@
+{
+  "overall_score": 0.2,
+  "total_findings": 4,
+  "critical_count": 3,
+  "warning_count": 1,
+  "findings": [
+    {
+      "line": 11,
+      "severity": "critical",
+      "category": "security",
+      "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+      "fix": "Use environment variables or a secure secrets management system to store sensitive keys.",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 15,
+      "severity": "critical",
+      "category": "security",
+      "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+      "fix": "Use parameterized queries to prevent SQL injection attacks, e.g., query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 13,
+      "severity": "warning",
+      "category": "bug",
+      "message": "def login(username, password):",
+      "fix": "The password parameter is not used in the function. Consider adding password verification using a secure hashing algorithm.",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "return hashlib.md5(password.encode()).hexdigest()",
+      "fix": "return hashlib.pbkdf2_hmac('sha256', password.encode(), b'salt', 100000).hex()",
+      "file": "src/utils/hash.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "src/auth/login.py",
+      "review": {
+        "findings": [
+          {
+            "line": 11,
+            "severity": "critical",
+            "category": "security",
+            "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+            "fix": "Use environment variables or a secure secrets management system to store sensitive keys.",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 15,
+            "severity": "critical",
+            "category": "security",
+            "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+            "fix": "Use parameterized queries to prevent SQL injection attacks, e.g., query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 13,
+            "severity": "warning",
+            "category": "bug",
+            "message": "def login(username, password):",
+            "fix": "The password parameter is not used in the function. Consider adding password verification using a secure hashing algorithm.",
+            "file": "src/auth/login.py"
+          }
+        ],
+        "summary": "The code has critical security vulnerabilities, including a hardcoded secret key and a SQL injection vulnerability. Additionally, the login function does not verify the password. These issues should be addressed to ensure the security and integrity of the application.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test case for login function with valid and invalid credentials",
+          "Test case for SQL injection attack"
+        ]
+      }
+    },
+    {
+      "file": "src/utils/hash.py",
+      "review": {
+        "findings": [
+          {
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "return hashlib.md5(password.encode()).hexdigest()",
+            "fix": "return hashlib.pbkdf2_hmac('sha256', password.encode(), b'salt', 100000).hex()",
+            "file": "src/utils/hash.py"
+          }
+        ],
+        "summary": "The added code uses MD5 for password hashing, which is insecure. A more secure approach like PBKDF2 should be used instead. The current implementation is vulnerable to brute-force attacks and rainbow table attacks.",
+        "overall_score": 0.7,
+        "test_coverage_gaps": [
+          "Test case for hash_password function with different input types",
+          "Test case for hash_password function with edge cases like empty string or very long string"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request to add authentication has significant security concerns, including critical vulnerabilities in the login functionality and insecure password hashing. The current implementation poses risks to the application's security and integrity. The use of hardcoded secret keys, SQL injection vulnerabilities, and insecure hashing algorithms are major issues that need to be addressed. Overall, the code requires substantial improvements to ensure security and reliability.",
+    "top_risks": [
+      "Hardcoded secret key and SQL injection vulnerability in login functionality",
+      "Insecure password hashing using MD5"
+    ],
+    "recommended_actions": [
+      "Implement secure password hashing using PBKDF2 or a similar algorithm",
+      "Address critical security vulnerabilities in the login functionality, including removing hardcoded secret keys and preventing SQL injection"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "demo/repo",
+  "pr_number": 1,
+  "head_sha": "mock-sha-abc123",
+  "pr_title": "Add authentication",
+  "reviewed_at": "2026-06-29T05:01:31.354511Z"
+}

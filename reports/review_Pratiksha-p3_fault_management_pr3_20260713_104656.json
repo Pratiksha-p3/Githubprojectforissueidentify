@@ -1,0 +1,135 @@
+{
+  "overall_score": 0.7,
+  "total_findings": 5,
+  "critical_count": 0,
+  "warning_count": 3,
+  "findings": [
+    {
+      "line": 7,
+      "severity": "warning",
+      "category": "security",
+      "message": "'API_KEY = os.getenv(\"API_KEY\")'",
+      "fix": "Consider using a secure method to store and retrieve API keys, such as using a secrets manager or environment variables with restricted access.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 8,
+      "severity": "warning",
+      "category": "security",
+      "message": "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+      "fix": "Consider using a secure method to store and retrieve database passwords, such as using a secrets manager or environment variables with restricted access.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 19,
+      "severity": "warning",
+      "category": "bug",
+      "message": "'self.conn = sqlite3.connect(db_path)'",
+      "fix": "Consider adding error handling for database connection failures, such as try-except blocks to catch and handle potential exceptions.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 26,
+      "severity": "info",
+      "category": "style",
+      "message": "'cursor.execute(query, (username,))'",
+      "fix": "Consider using a context manager to ensure the cursor is properly closed after use, such as 'with self.conn.cursor() as cursor:'",
+      "file": "user_service.py"
+    },
+    {
+      "line": 47,
+      "severity": "info",
+      "category": "style",
+      "message": "'subprocess.run(['ping', host], check=False, shell=False)'",
+      "fix": "Consider using the 'check' parameter to handle potential errors, such as 'subprocess.run(['ping', host], check=True, shell=False)'",
+      "file": "user_service.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [
+          {
+            "line": 7,
+            "severity": "warning",
+            "category": "security",
+            "message": "'API_KEY = os.getenv(\"API_KEY\")'",
+            "fix": "Consider using a secure method to store and retrieve API keys, such as using a secrets manager or environment variables with restricted access.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 8,
+            "severity": "warning",
+            "category": "security",
+            "message": "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+            "fix": "Consider using a secure method to store and retrieve database passwords, such as using a secrets manager or environment variables with restricted access.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 19,
+            "severity": "warning",
+            "category": "bug",
+            "message": "'self.conn = sqlite3.connect(db_path)'",
+            "fix": "Consider adding error handling for database connection failures, such as try-except blocks to catch and handle potential exceptions.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 26,
+            "severity": "info",
+            "category": "style",
+            "message": "'cursor.execute(query, (username,))'",
+            "fix": "Consider using a context manager to ensure the cursor is properly closed after use, such as 'with self.conn.cursor() as cursor:'",
+            "file": "user_service.py"
+          },
+          {
+            "line": 47,
+            "severity": "info",
+            "category": "style",
+            "message": "'subprocess.run(['ping', host], check=False, shell=False)'",
+            "fix": "Consider using the 'check' parameter to handle potential errors, such as 'subprocess.run(['ping', host], check=True, shell=False)'",
+            "file": "user_service.py"
+          }
+        ],
+        "summary": "The code has some security concerns, such as storing API keys and database passwords in environment variables, and some potential bugs, such as not handling database connection failures. Additionally, there are some style improvements that can be made, such as using context managers and handling potential errors in subprocess calls.",
+        "overall_score": 0.7,
+        "test_coverage_gaps": [
+          "Test case for database connection failure",
+          "Test case for invalid API key or database password",
+          "Test case for subprocess call errors"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "Reviewed 1 file(s), found 5 issue(s). No critical issues found.",
+    "top_risks": [],
+    "recommended_actions": [],
+    "approve": true
+  },
+  "approved": true,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "6757c22204ce4a7b6b013ff99bad0cad67a6e6f9",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-13T10:46:52.348448Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 0,
+    "unresolved": []
+  },
+  "gate": {
+    "blocked": false,
+    "reason": "No critical issues \u2014 PR approved",
+    "resolved_issues": [],
+    "new_issues": [],
+    "still_present": [
+      "'API_KEY = os.getenv(\"API_KEY\")'",
+      "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+      "'self.conn = sqlite3.connect(db_path)'"
+    ],
+    "score_before": 0.7,
+    "score_after": 0.7
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 4,
+  "critical_count": 1,
+  "warning_count": 0,
+  "findings": [
+    {
+      "line": 148,
+      "severity": "info",
+      "category": "style",
+      "message": "'Deep Learnin' should be 'Deep Learning'",
+      "fix": "Deep Learning",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 169,
+      "severity": "critical",
+      "category": "security",
+      "message": "password = \"test123\"",
+      "fix": "Remove hardcoded password or replace with a secure method of storing and retrieving sensitive information, such as environment variables or a secrets manager.",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 44,
+      "severity": "info",
+      "category": "style",
+      "message": "<div class=\"containers\">",
+      "fix": "<div class=\"container\"> (to maintain consistency with the CSS class definition)",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 112,
+      "severity": "info",
+      "category": "style",
+      "message": "<td>Definitions</td>",
+      "fix": "<td>Definition</td> (to maintain consistency with the singular form used in the table header)",
+      "file": "generate_ai_ml_dl_html.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "ai_ml_dl.html",
+      "review": {
+        "findings": [
+          {
+            "line": 148,
+            "severity": "info",
+            "category": "style",
+            "message": "'Deep Learnin' should be 'Deep Learning'",
+            "fix": "Deep Learning",
+            "file": "ai_ml_dl.html"
+          }
+        ],
+        "summary": "The code provided is a basic HTML page with information about AI, ML, and DL. There is a minor typo in the hierarchy section. The overall code quality is good, but there are no tests or error handling.",
+        "overall_score": 0.95,
+        "test_coverage_gaps": [
+          "No tests for the HTML structure",
+          "No tests for the CSS styles",
+          "No tests for the content accuracy"
+        ]
+      }
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "review": {
+        "findings": [
+          {
+            "line": 169,
+            "severity": "critical",
+            "category": "security",
+            "message": "password = \"test123\"",
+            "fix": "Remove hardcoded password or replace with a secure method of storing and retrieving sensitive information, such as environment variables or a secrets manager.",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 44,
+            "severity": "info",
+            "category": "style",
+            "message": "<div class=\"containers\">",
+            "fix": "<div class=\"container\"> (to maintain consistency with the CSS class definition)",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 112,
+            "severity": "info",
+            "category": "style",
+            "message": "<td>Definitions</td>",
+            "fix": "<td>Definition</td> (to maintain consistency with the singular form used in the table header)",
+            "file": "generate_ai_ml_dl_html.py"
+          }
+        ],
+        "summary": "This diff introduces a critical security issue with a hardcoded password, as well as some minor style inconsistencies. The password should be removed or replaced with a secure method of storage and retrieval. Additionally, the CSS class name and table cell text should be updated for consistency.",
+        "overall_score": 0.5,
+        "test_coverage_gaps": [
+          "Test case for password handling",
+          "Test case for CSS class name consistency",
+          "Test case for table cell text consistency"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request introduces a critical security issue with a hardcoded password in the generate_ai_ml_dl_html.py file. Additionally, there are minor style inconsistencies and a lack of tests or error handling. The overall code quality is good in the ai_ml_dl.html file, but the security issue in the Python file is a major concern. The code requires significant improvements before it can be approved.",
+    "top_risks": [
+      "Hardcoded password in generate_ai_ml_dl_html.py",
+      "Lack of tests or error handling"
+    ],
+    "recommended_actions": [
+      "Remove or replace the hardcoded password with a secure method of storage and retrieval",
+      "Add tests and error handling to the code"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 1,
+  "head_sha": "3860baf48660b2e442c9bd160f7bf7f49ed3413f",
+  "pr_title": "test PR for AI reviw",
+  "reviewed_at": "2026-06-30T09:19:24.064983Z"
+}

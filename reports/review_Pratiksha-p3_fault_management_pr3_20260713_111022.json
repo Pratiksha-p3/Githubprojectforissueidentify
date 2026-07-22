@@ -1,0 +1,173 @@
+{
+  "overall_score": 0.7,
+  "total_findings": 7,
+  "critical_count": 0,
+  "warning_count": 3,
+  "findings": [
+    {
+      "line": 7,
+      "severity": "warning",
+      "category": "security",
+      "message": "'API_KEY = os.getenv(\"API_KEY\")'",
+      "fix": "Consider using a secure method to store and retrieve API keys, such as using a secrets manager or environment variables with restricted access.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 8,
+      "severity": "warning",
+      "category": "security",
+      "message": "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+      "fix": "Consider using a secure method to store and retrieve database passwords, such as using a secrets manager or environment variables with restricted access.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 19,
+      "severity": "warning",
+      "category": "bug",
+      "message": "'self.conn = sqlite3.connect(db_path)'",
+      "fix": "Consider adding error handling for database connection failures, such as try-except blocks to catch and handle potential exceptions.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 26,
+      "severity": "info",
+      "category": "style",
+      "message": "'cursor.execute(query, (username,))'",
+      "fix": "Consider using a context manager to ensure the cursor is properly closed after use, such as 'with self.conn.cursor() as cursor:'",
+      "file": "user_service.py"
+    },
+    {
+      "line": 31,
+      "severity": "info",
+      "category": "style",
+      "message": "'if count <= 0:'",
+      "fix": "Consider using a more descriptive variable name instead of 'count', such as 'num_values' to improve code readability.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 48,
+      "severity": "info",
+      "category": "style",
+      "message": "'subprocess.run(['ping', host], check=False, shell=False)'",
+      "fix": "Consider using a more specific and secure way to ping the server, such as using the 'ping3' library or a similar approach to avoid potential security vulnerabilities.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 55,
+      "severity": "info",
+      "category": "style",
+      "message": "'if not isinstance(age, int):'",
+      "fix": "Consider using a more descriptive variable name instead of 'age', such as 'user_age' to improve code readability.",
+      "file": "user_service.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [
+          {
+            "line": 7,
+            "severity": "warning",
+            "category": "security",
+            "message": "'API_KEY = os.getenv(\"API_KEY\")'",
+            "fix": "Consider using a secure method to store and retrieve API keys, such as using a secrets manager or environment variables with restricted access.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 8,
+            "severity": "warning",
+            "category": "security",
+            "message": "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+            "fix": "Consider using a secure method to store and retrieve database passwords, such as using a secrets manager or environment variables with restricted access.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 19,
+            "severity": "warning",
+            "category": "bug",
+            "message": "'self.conn = sqlite3.connect(db_path)'",
+            "fix": "Consider adding error handling for database connection failures, such as try-except blocks to catch and handle potential exceptions.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 26,
+            "severity": "info",
+            "category": "style",
+            "message": "'cursor.execute(query, (username,))'",
+            "fix": "Consider using a context manager to ensure the cursor is properly closed after use, such as 'with self.conn.cursor() as cursor:'",
+            "file": "user_service.py"
+          },
+          {
+            "line": 31,
+            "severity": "info",
+            "category": "style",
+            "message": "'if count <= 0:'",
+            "fix": "Consider using a more descriptive variable name instead of 'count', such as 'num_values' to improve code readability.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 48,
+            "severity": "info",
+            "category": "style",
+            "message": "'subprocess.run(['ping', host], check=False, shell=False)'",
+            "fix": "Consider using a more specific and secure way to ping the server, such as using the 'ping3' library or a similar approach to avoid potential security vulnerabilities.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 55,
+            "severity": "info",
+            "category": "style",
+            "message": "'if not isinstance(age, int):'",
+            "fix": "Consider using a more descriptive variable name instead of 'age', such as 'user_age' to improve code readability.",
+            "file": "user_service.py"
+          }
+        ],
+        "summary": "The provided code has some security concerns, such as storing API keys and database passwords in environment variables, and potential bugs, such as not handling database connection failures. Additionally, there are some style improvements that can be made to improve code readability and maintainability.",
+        "overall_score": 0.7,
+        "test_coverage_gaps": [
+          "Test case for database connection failure",
+          "Test case for invalid API key or database password",
+          "Test case for division by zero in calculate_average method"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The provided code for the UserService has several issues, including security concerns and potential bugs. The code stores sensitive information such as API keys and database passwords in environment variables, which is not secure. Additionally, it lacks proper error handling for database connections. Overall, the code requires significant improvements to ensure security, reliability, and maintainability.",
+    "top_risks": [
+      "Security vulnerabilities due to insecure storage of sensitive information",
+      "Database connection failures due to lack of error handling"
+    ],
+    "recommended_actions": [
+      "Implement secure storage for sensitive information, such as using a secrets manager",
+      "Add proper error handling for database connections and other potential failure points"
+    ],
+    "approve": false
+  },
+  "approved": true,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "6757c22204ce4a7b6b013ff99bad0cad67a6e6f9",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-13T11:10:18.250032Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 0,
+    "unresolved": []
+  },
+  "gate": {
+    "blocked": false,
+    "reason": "No critical issues \u2014 PR approved",
+    "resolved_issues": [],
+    "new_issues": [],
+    "still_present": [
+      "'API_KEY = os.getenv(\"API_KEY\")'",
+      "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+      "'self.conn = sqlite3.connect(db_path)'"
+    ],
+    "score_before": 0.7,
+    "score_after": 0.7
+  }
+}

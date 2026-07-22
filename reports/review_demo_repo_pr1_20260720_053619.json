@@ -1,0 +1,780 @@
+{
+  "overall_score": 0.2,
+  "total_findings": 28,
+  "critical_count": 5,
+  "warning_count": 19,
+  "findings": [
+    {
+      "file": "src/auth/login.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-secret-key",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2009-3035",
+        "CVE-2010-0557",
+        "CVE-2010-2966"
+      ],
+      "cvss_score": 7.8,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+      ],
+      "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+    },
+    {
+      "file": "src/auth/login.py",
+      "line": 7,
+      "severity": "critical",
+      "category": "security",
+      "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-var",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2000-1233",
+        "CVE-2000-1236",
+        "CVE-2001-1348"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+        "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+      ],
+      "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+    },
+    {
+      "line": 11,
+      "severity": "critical",
+      "category": "security",
+      "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+      "fix": "Use environment variables or a secure secrets management system to store sensitive keys, e.g., os.environ['SECRET_KEY']",
+      "file": "src/auth/login.py",
+      "cve_ids": [
+        "CVE-2009-3035",
+        "CVE-2010-0557",
+        "CVE-2010-2966"
+      ],
+      "cvss_score": 7.8,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+      ],
+      "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+    },
+    {
+      "line": 15,
+      "severity": "critical",
+      "category": "security",
+      "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+      "fix": "Use parameterized queries to prevent SQL injection, e.g., query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 13,
+      "severity": "warning",
+      "category": "bug",
+      "message": "def login(username, password):",
+      "fix": "The password parameter is not used in the function. Add password verification logic, e.g., using a library like bcrypt",
+      "file": "src/auth/login.py"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+      "confidence": 0.95,
+      "risk_weight": 10,
+      "cve_ids": [
+        "CVE-2002-2057",
+        "CVE-2002-2058",
+        "CVE-2012-6707"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+        "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+      ],
+      "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-weak-md5-password-hash",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2002-2057",
+        "CVE-2002-2058",
+        "CVE-2012-6707"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+        "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+      ],
+      "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+      "confidence": 0.95,
+      "risk_weight": 10,
+      "cve_ids": [
+        "CVE-2002-2057",
+        "CVE-2002-2058",
+        "CVE-2012-6707"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+        "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+      ],
+      "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+    },
+    {
+      "file": "github_chat.py",
+      "line": 433,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "github_chat.py",
+      "line": 481,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "prchat.py",
+      "line": 39,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "prchat.py",
+      "line": 48,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "prchat.py",
+      "line": 84,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\reviewer_agent.py",
+      "line": 419,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\reviewer_agent.py",
+      "line": 420,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\reviewer_agent.py",
+      "line": 421,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\security_agent.py",
+      "line": 292,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\security_agent.py",
+      "line": 293,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "ingestion\\github_loader.py",
+      "line": 329,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "ingestion\\github_loader.py",
+      "line": 338,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "rag\\prompt.py",
+      "line": 310,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "tools\\fine_tuner.py",
+      "line": 439,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "venv\\Lib\\site-packages\\adodbapi\\test\\adodbapitestconfig.py",
+      "line": 162,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "venv\\Lib\\site-packages\\adodbapi\\test\\test_adodbapi_dbapi20.py",
+      "line": 65,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "src/auth/login.py",
+      "line": 6,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `query = f\"SELECT * FROM users WHERE name='{username}'\"`\nThe code uses an f-string to construct the SQL query, which is a clear violation of the ADR rule. This makes the code vulnerable to SQL injection attacks.",
+      "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "src/auth/login.py",
+      "line": 7,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code: `result = conn.execute(query)`\nThe code does not use parameterized queries when executing the SQL query. Instead, it should pass the parameters separately to prevent SQL injection attacks.",
+      "fix": "result = conn.execute(query, (username,))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: ALL password hashing MUST use bcrypt\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password hashing, which is explicitly forbidden by ADR-002. Instead, bcrypt should be used.",
+      "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+      "source": "architecture_guard",
+      "adr_id": "ADR-002"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: NEVER use MD5, SHA1, or SHA256 for password storage\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password storage, which is explicitly forbidden by ADR-002.",
+      "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+      "source": "architecture_guard",
+      "adr_id": "ADR-002"
+    }
+  ],
+  "files": [
+    {
+      "file": "src/auth/login.py",
+      "focus": "security",
+      "review": {
+        "findings": [
+          {
+            "file": "src/auth/login.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-secret-key",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2009-3035",
+              "CVE-2010-0557",
+              "CVE-2010-2966"
+            ],
+            "cvss_score": 7.8,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+            ],
+            "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+          },
+          {
+            "file": "src/auth/login.py",
+            "line": 7,
+            "severity": "critical",
+            "category": "security",
+            "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-var",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1348"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          },
+          {
+            "line": 11,
+            "severity": "critical",
+            "category": "security",
+            "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+            "fix": "Use environment variables or a secure secrets management system to store sensitive keys, e.g., os.environ['SECRET_KEY']",
+            "file": "src/auth/login.py",
+            "cve_ids": [
+              "CVE-2009-3035",
+              "CVE-2010-0557",
+              "CVE-2010-2966"
+            ],
+            "cvss_score": 7.8,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+            ],
+            "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+          },
+          {
+            "line": 15,
+            "severity": "critical",
+            "category": "security",
+            "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+            "fix": "Use parameterized queries to prevent SQL injection, e.g., query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 13,
+            "severity": "warning",
+            "category": "bug",
+            "message": "def login(username, password):",
+            "fix": "The password parameter is not used in the function. Add password verification logic, e.g., using a library like bcrypt",
+            "file": "src/auth/login.py"
+          }
+        ],
+        "summary": "The added code introduces security vulnerabilities, including a hardcoded secret key and a SQL injection risk. Additionally, the login function does not verify the password. These issues should be addressed to ensure the security and integrity of the application.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test case for successful login with valid credentials",
+          "Test case for failed login with invalid credentials",
+          "Test case for SQL injection attack"
+        ]
+      }
+    },
+    {
+      "file": "src/utils/hash.py",
+      "focus": "security",
+      "review": {
+        "findings": [
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-weak-md5-password-hash",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          }
+        ],
+        "summary": "The current implementation uses MD5 for password hashing, which is insecure. A more secure approach is to use a password hashing algorithm like PBKDF2 or Argon2. The code should also use a salt to prevent rainbow table attacks.",
+        "overall_score": 0.3,
+        "test_coverage_gaps": [
+          "Test case for hash_password function with different input passwords",
+          "Test case for hash_password function with empty password"
+        ]
+      }
+    }
+  ],
+  "fixes": {
+    "src/auth/login.py": [
+      {
+        "line": 3,
+        "severity": "critical",
+        "original": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+        "fixed_code": "import os\nSECRET_KEY = os.getenv('SECRET_KEY')\n\ndef login(username, password):\n    conn = sqlite3.connect('users.db')\n    query = f\"SELECT * FROM users WHERE name='{username}'\"",
+        "explanation": "I replaced the hardcoded secret key with an environment variable retrieved using os.getenv to prevent exposure of sensitive information",
+        "line_start": 3,
+        "line_end": 3
+      },
+      {
+        "line": 7,
+        "severity": "critical",
+        "original": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+        "fixed_code": "def login(username, password):\n    conn = sqlite3.connect('users.db')\n    query = \"SELECT * FROM users WHERE name=?\"\n    result = conn.execute(query, (username,))\n    return result.fetchone()",
+        "explanation": "I replaced the f-string query with a parameterized query to prevent SQL injection attacks.",
+        "line_start": 5,
+        "line_end": 9
+      },
+      {
+        "line": 11,
+        "severity": "critical",
+        "original": "SECRET_KEY = 'hardcoded-secret-abc123'",
+        "fixed_code": "SECRET_KEY = os.environ['SECRET_KEY']",
+        "explanation": "I replaced the hardcoded secret key with an environment variable to prevent exposure of sensitive information",
+        "line_start": 0,
+        "line_end": 0
+      },
+      {
+        "line": 15,
+        "severity": "critical",
+        "original": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+        "fixed_code": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+        "explanation": "I replaced the original query with a parameterized query to prevent SQL injection attacks by separating the SQL command from the user input.",
+        "line_start": 12,
+        "line_end": 12
+      },
+      {
+        "line": 13,
+        "severity": "warning",
+        "original": "def login(username, password):",
+        "fixed_code": "def login(username, password):\n  # Add password verification logic here, e.g., using bcrypt\n  import bcrypt\n  hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())\n  # Compare the hashed password with the stored hash",
+        "explanation": "I added password verification logic using bcrypt to securely hash and compare passwords",
+        "line_start": 0,
+        "line_end": 0
+      }
+    ],
+    "src/utils/hash.py": [
+      {
+        "line": 3,
+        "severity": "warning",
+        "original": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+        "fixed_code": "import bcrypt\ndef hash_password(password: str) -> str:\n    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+        "explanation": "I replaced the insecure MD5 hash algorithm with bcrypt, a more secure password hashing algorithm, to prevent potential security vulnerabilities.",
+        "line_start": 1,
+        "line_end": 3
+      },
+      {
+        "line": 3,
+        "severity": "critical",
+        "original": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+        "fixed_code": "import bcrypt\ndef hash_password(password: str) -> str:\n    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+        "explanation": "I replaced MD5 with bcrypt for password hashing because MD5 is cryptographically broken and unsuitable for secure password storage.",
+        "line_start": 1,
+        "line_end": 3
+      },
+      {
+        "line": 3,
+        "severity": "warning",
+        "original": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+        "fixed_code": "import bcrypt\ndef hash_password(password: str) -> str:\n    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+        "explanation": "I replaced MD5 with bcrypt, a more secure password hashing function, to prevent potential security vulnerabilities.",
+        "line_start": 1,
+        "line_end": 3
+      }
+    ]
+  },
+  "executive_summary": {
+    "executive_summary": "The added authentication code introduces significant security risks, including hardcoded secret keys, SQL injection vulnerabilities, and insecure password hashing. The current implementation uses MD5 for password hashing, which is insecure and should be replaced with a more secure algorithm like PBKDF2 or Argon2. Overall, the code requires substantial improvements to ensure the security and integrity of the application.",
+    "top_risks": [
+      "SQL injection vulnerability",
+      "Insecure password hashing"
+    ],
+    "recommended_actions": [
+      "Replace MD5 with a secure password hashing algorithm like PBKDF2 or Argon2",
+      "Address SQL injection vulnerability and remove hardcoded secret key"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "demo/repo",
+  "pr_number": 1,
+  "pr_title": "Add authentication",
+  "pr_author": "dev",
+  "reviewed_at": "2026-07-20T05:36:07.772419Z",
+  "pipeline": "advanced-langgraph-v2",
+  "head_sha": "mock-sha-abc123",
+  "auto_fix": {
+    "fixed_count": 0,
+    "unfixable": 22,
+    "status": "success",
+    "unresolved": [
+      {
+        "file": "src/auth/login.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "security",
+        "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+        "fix": "Move secret to environment variable or secrets manager.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-hardcoded-secret-key",
+        "confidence": 0.95,
+        "risk_weight": 50,
+        "cve_ids": [
+          "CVE-2009-3035",
+          "CVE-2010-0557",
+          "CVE-2010-2966"
+        ],
+        "cvss_score": 7.8,
+        "cve_urls": [
+          "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+          "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+          "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+        ],
+        "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+      },
+      {
+        "file": "src/auth/login.py",
+        "line": 7,
+        "severity": "critical",
+        "category": "security",
+        "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+        "fix": "Use parameterized queries instead of string formatting.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-sql-injection-fstring-var",
+        "confidence": 0.95,
+        "risk_weight": 50,
+        "cve_ids": [
+          "CVE-2000-1233",
+          "CVE-2000-1236",
+          "CVE-2001-1348"
+        ],
+        "cvss_score": 7.5,
+        "cve_urls": [
+          "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+          "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+          "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+        ],
+        "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+      },
+      {
+        "line": 11,
+        "severity": "critical",
+        "category": "security",
+        "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+        "fix": "Use environment variables or a secure secrets management system to store sensitive keys, e.g., os.environ['SECRET_KEY']",
+        "file": "src/auth/login.py",
+        "cve_ids": [
+          "CVE-2009-3035",
+          "CVE-2010-0557",
+          "CVE-2010-2966"
+        ],
+        "cvss_score": 7.8,
+        "cve_urls": [
+          "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+          "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+          "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+        ],
+        "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+      },
+      {
+        "line": 15,
+        "severity": "critical",
+        "category": "security",
+        "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+        "fix": "Use parameterized queries to prevent SQL injection, e.g., query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+        "file": "src/auth/login.py"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "security",
+        "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+        "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-weak-md5-password-hash",
+        "confidence": 0.95,
+        "risk_weight": 50,
+        "cve_ids": [
+          "CVE-2002-2057",
+          "CVE-2002-2058",
+          "CVE-2012-6707"
+        ],
+        "cvss_score": 7.5,
+        "cve_urls": [
+          "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+          "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+          "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+        ],
+        "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+      },
+      {
+        "file": "src/auth/login.py",
+        "line": 6,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `query = f\"SELECT * FROM users WHERE name='{username}'\"`\nThe code uses an f-string to construct the SQL query, which is a clear violation of the ADR rule. This makes the code vulnerable to SQL injection attacks.",
+        "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "src/auth/login.py",
+        "line": 7,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code: `result = conn.execute(query)`\nThe code does not use parameterized queries when executing the SQL query. Instead, it should pass the parameters separately to prevent SQL injection attacks.",
+        "fix": "result = conn.execute(query, (username,))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: ALL password hashing MUST use bcrypt\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password hashing, which is explicitly forbidden by ADR-002. Instead, bcrypt should be used.",
+        "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+        "source": "architecture_guard",
+        "adr_id": "ADR-002"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: NEVER use MD5, SHA1, or SHA256 for password storage\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password storage, which is explicitly forbidden by ADR-002.",
+        "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt())",
+        "source": "architecture_guard",
+        "adr_id": "ADR-002"
+      }
+    ]
+  }
+}

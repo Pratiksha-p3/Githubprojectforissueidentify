@@ -1,0 +1,141 @@
+name: AI Code Review
+
+# Triggers on every PR — opened, new commits pushed, reopened
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # Only review these file types (skip docs, images, etc.)
+    paths:
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.go'
+      - '**.java'
+      - '**.rs'
+
+# Only one review runs at a time per PR (cancel previous if new commit pushed)
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ai-code-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Required permissions to post PR comments and set commit status
+    permissions:
+      contents:      read
+      pull-requests: write
+      statuses:      write
+      issues:        write
+
+    steps:
+
+      # ── 1. Checkout the PR code ──────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history needed for diff
+
+      # ── 2. Set up Python ─────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ── 3. Install dependencies ───────────────────────────
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            groq \
+            sentence-transformers \
+            chromadb \
+            requests \
+            PyJWT \
+            cryptography \
+            python-dotenv \
+            pydantic \
+            radon \
+            bandit \
+            langgraph \
+            langchain-core
+
+      # ── 4. Install Semgrep ────────────────────────────────
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      # ── 5. Run AI Code Review ─────────────────────────────
+      - name: Run AI Code Review
+        env:
+          # Secrets set in GitHub repo → Settings → Secrets and variables → Actions
+          GROQ_API_KEY:                   ${{ secrets.GROQ_API_KEY }}
+          GITHUB_APP_ID:                  ${{ secrets.APP_ID }}
+          GITHUB_INSTALLATION_ID:         ${{ secrets.INSTALLATION_ID }}
+          GITHUB_APP_PRIVATE_KEY_PATH:    ./github_app.pem
+          CHROMA_PERSIST_DIR:             ./vectordb/chroma_data
+          MIN_SIMILARITY_SCORE:           "0.30"
+          TOP_K_RETRIEVAL:                "8"
+          LLM_PROVIDER:                   groq
+          REVIEW_MODEL:                   llama-3.3-70b-versatile
+          PR_NUMBER:                      ${{ github.event.pull_request.number }}
+          REPO:                           ${{ github.repository }}
+        run: |
+          # Write PEM key from secret
+          echo "${{ secrets.GITHUB_APP_PEM }}" > github_app.pem
+
+          # Run the review
+          python app.py \
+            --repo "$REPO" \
+            --pr   "$PR_NUMBER" \
+            --output reports
+
+      # ── 6. Upload review report as artifact ──────────────
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-review-report-pr${{ github.event.pull_request.number }}
+          path: reports/*.json
+          retention-days: 30
+
+      # ── 7. Post summary to GitHub step summary ────────────
+      - name: Post to GitHub Step Summary
+        if: always()
+        run: |
+          python - << 'PYEOF'
+          import json, glob, os, sys
+
+          files = glob.glob("reports/*.json")
+          if not files:
+              print("No report found")
+              sys.exit(0)
+
+          report = json.loads(open(sorted(files)[-1]).read())
+          score  = report.get("overall_score", 0)
+          total  = report.get("total_findings", 0)
+          crit   = report.get("critical_count", 0)
+          warn   = report.get("warning_count", 0)
+          appr   = report.get("approved", False)
+          bar    = "█" * int(score * 20) + "░" * (20 - int(score * 20))
+
+          summary = f"""## 🤖 AI Code Review Results
+
+          | Metric | Value |
+          |--------|-------|
+          | Score | `[{bar}] {score:.2f}` |
+          | Decision | {"✅ APPROVED" if appr else "❌ CHANGES REQUESTED"} |
+          | Critical Issues | 🔴 {crit} |
+          | Warnings | 🟡 {warn} |
+          | Total Findings | {total} |
+
+          ### Summary
+          {report.get("executive_summary", {}).get("executive_summary", "Review complete.")}
+          """
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "w") as f:
+              f.write(summary)
+          PYEOF

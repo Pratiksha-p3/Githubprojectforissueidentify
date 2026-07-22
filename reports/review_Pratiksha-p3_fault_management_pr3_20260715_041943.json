@@ -1,0 +1,83 @@
+{
+  "overall_score": 0.8,
+  "total_findings": 2,
+  "critical_count": 0,
+  "warning_count": 0,
+  "findings": [
+    {
+      "line": 26,
+      "severity": "info",
+      "category": "style",
+      "message": "cursor.execute(query, (username,))",
+      "fix": "Consider using a context manager to ensure the cursor is properly closed after use, such as 'with self.conn.cursor() as cursor:'",
+      "file": "user_service.py"
+    },
+    {
+      "line": 47,
+      "severity": "info",
+      "category": "style",
+      "message": "subprocess.run([\"ping\", host], check=False, shell=False)",
+      "fix": "Consider using the 'ping3' library instead of subprocess to ping the server, as it provides a more Pythonic and efficient way to perform ping operations.",
+      "file": "user_service.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [
+          {
+            "line": 26,
+            "severity": "info",
+            "category": "style",
+            "message": "cursor.execute(query, (username,))",
+            "fix": "Consider using a context manager to ensure the cursor is properly closed after use, such as 'with self.conn.cursor() as cursor:'",
+            "file": "user_service.py"
+          },
+          {
+            "line": 47,
+            "severity": "info",
+            "category": "style",
+            "message": "subprocess.run([\"ping\", host], check=False, shell=False)",
+            "fix": "Consider using the 'ping3' library instead of subprocess to ping the server, as it provides a more Pythonic and efficient way to perform ping operations.",
+            "file": "user_service.py"
+          }
+        ],
+        "summary": "The code has some security concerns, such as storing API keys and database passwords in environment variables, and some potential bugs, such as not handling database connection failures. Additionally, there are some style improvements that can be made, such as using context managers and more Pythonic libraries. Overall, the code is well-structured, but could benefit from some refinements to improve its security, reliability, and maintainability.",
+        "overall_score": 0.8,
+        "test_coverage_gaps": [
+          "Test case for database connection failure",
+          "Test case for invalid API key or database password",
+          "Test case for ping server failure"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "Reviewed 1 file(s), found 2 issue(s). No critical issues found.",
+    "top_risks": [],
+    "recommended_actions": [],
+    "approve": true
+  },
+  "approved": true,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "6757c22204ce4a7b6b013ff99bad0cad67a6e6f9",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-15T04:19:40.217800Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 0,
+    "unresolved": []
+  },
+  "gate": {
+    "blocked": false,
+    "reason": "No critical issues \u2014 PR approved",
+    "resolved_issues": [],
+    "new_issues": [],
+    "still_present": [],
+    "score_before": 0.5,
+    "score_after": 0.8
+  }
+}

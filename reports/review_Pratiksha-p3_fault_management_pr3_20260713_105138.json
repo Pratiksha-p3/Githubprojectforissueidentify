@@ -1,0 +1,140 @@
+{
+  "overall_score": 0.7,
+  "total_findings": 5,
+  "critical_count": 0,
+  "warning_count": 4,
+  "findings": [
+    {
+      "line": 7,
+      "severity": "warning",
+      "category": "security",
+      "message": "API_KEY = os.getenv(\"API_KEY\")",
+      "fix": "Consider using a secure method to store and retrieve API keys, such as using a secrets manager or environment variables with restricted access.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 8,
+      "severity": "warning",
+      "category": "security",
+      "message": "DB_PASSWORD = os.getenv(\"DB_PASSWORD\")",
+      "fix": "Consider using a secure method to store and retrieve database passwords, such as using a secrets manager or environment variables with restricted access.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 19,
+      "severity": "warning",
+      "category": "security",
+      "message": "self.conn = sqlite3.connect(db_path)",
+      "fix": "Consider using a secure method to connect to the database, such as using a secure connection string or a library that supports secure connections.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 47,
+      "severity": "info",
+      "category": "style",
+      "message": "subprocess.run([\"ping\", host], check=False, shell=False)",
+      "fix": "Consider using a more Pythonic way to ping a server, such as using the 'ping3' library.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 66,
+      "severity": "warning",
+      "category": "security",
+      "message": "cursor.execute(\"SELECT * FROM users\")",
+      "fix": "Consider using a parameterized query to prevent SQL injection attacks.",
+      "file": "user_service.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [
+          {
+            "line": 7,
+            "severity": "warning",
+            "category": "security",
+            "message": "API_KEY = os.getenv(\"API_KEY\")",
+            "fix": "Consider using a secure method to store and retrieve API keys, such as using a secrets manager or environment variables with restricted access.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 8,
+            "severity": "warning",
+            "category": "security",
+            "message": "DB_PASSWORD = os.getenv(\"DB_PASSWORD\")",
+            "fix": "Consider using a secure method to store and retrieve database passwords, such as using a secrets manager or environment variables with restricted access.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 19,
+            "severity": "warning",
+            "category": "security",
+            "message": "self.conn = sqlite3.connect(db_path)",
+            "fix": "Consider using a secure method to connect to the database, such as using a secure connection string or a library that supports secure connections.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 47,
+            "severity": "info",
+            "category": "style",
+            "message": "subprocess.run([\"ping\", host], check=False, shell=False)",
+            "fix": "Consider using a more Pythonic way to ping a server, such as using the 'ping3' library.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 66,
+            "severity": "warning",
+            "category": "security",
+            "message": "cursor.execute(\"SELECT * FROM users\")",
+            "fix": "Consider using a parameterized query to prevent SQL injection attacks.",
+            "file": "user_service.py"
+          }
+        ],
+        "summary": "The code has some security concerns, such as storing API keys and database passwords in environment variables, and using insecure methods to connect to the database. Additionally, there are some style issues, such as using the 'subprocess' module to ping a server. The code also has some potential SQL injection vulnerabilities.",
+        "overall_score": 0.7,
+        "test_coverage_gaps": [
+          "Test case for get_user method with invalid username",
+          "Test case for calculate_average method with division by zero",
+          "Test case for ping_server method with invalid host"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "Reviewed 1 file(s), found 5 issue(s). No critical issues found.",
+    "top_risks": [],
+    "recommended_actions": [],
+    "approve": true
+  },
+  "approved": true,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "6757c22204ce4a7b6b013ff99bad0cad67a6e6f9",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-13T10:51:34.791719Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 0,
+    "unresolved": []
+  },
+  "gate": {
+    "blocked": false,
+    "reason": "All 3 issue(s) resolved \u2014 PR approved! \ud83c\udf89",
+    "resolved_issues": [
+      "'API_KEY = os.getenv(\"API_KEY\")'",
+      "'DB_PASSWORD = os.getenv(\"DB_PASSWORD\")'",
+      "'self.conn = sqlite3.connect(db_path)'"
+    ],
+    "new_issues": [
+      "API_KEY = os.getenv(\"API_KEY\")",
+      "DB_PASSWORD = os.getenv(\"DB_PASSWORD\")",
+      "self.conn = sqlite3.connect(db_path)",
+      "cursor.execute(\"SELECT * FROM users\")"
+    ],
+    "still_present": [],
+    "score_before": 0.7,
+    "score_after": 0.7
+  }
+}

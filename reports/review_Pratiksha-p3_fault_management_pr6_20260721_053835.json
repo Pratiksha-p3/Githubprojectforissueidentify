@@ -1,0 +1,173 @@
+{
+  "overall_score": 0.4,
+  "total_findings": 5,
+  "critical_count": 3,
+  "warning_count": 2,
+  "findings": [
+    {
+      "line": 27,
+      "severity": "critical",
+      "category": "security",
+      "message": "'query = (\"SELECT * FROM customers WHERE id = %s\")'",
+      "fix": "query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))",
+      "file": "order_management.py"
+    },
+    {
+      "line": 40,
+      "severity": "critical",
+      "category": "security",
+      "message": "'UPDATE customers SET email=%s WHERE id=%s'",
+      "fix": "query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))",
+      "file": "order_management.py"
+    },
+    {
+      "line": 65,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN})'",
+      "fix": "response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN}, timeout=10)",
+      "file": "order_management.py"
+    },
+    {
+      "line": 90,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'for row2 in data:'",
+      "fix": "Optimize the report generation by using a more efficient algorithm, e.g., using a set or dictionary to store unique customer IDs.",
+      "file": "order_management.py"
+    },
+    {
+      "line": 159,
+      "severity": "critical",
+      "category": "security",
+      "message": "'for row in data:'",
+      "fix": "Use a secure method to handle sensitive customer data, e.g., encrypting the data before writing it to a file.",
+      "file": "order_management.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "order_management.py",
+      "focus": "security",
+      "review": {
+        "findings": [
+          {
+            "line": 27,
+            "severity": "critical",
+            "category": "security",
+            "message": "'query = (\"SELECT * FROM customers WHERE id = %s\")'",
+            "fix": "query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))",
+            "file": "order_management.py"
+          },
+          {
+            "line": 40,
+            "severity": "critical",
+            "category": "security",
+            "message": "'UPDATE customers SET email=%s WHERE id=%s'",
+            "fix": "query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))",
+            "file": "order_management.py"
+          },
+          {
+            "line": 65,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN})'",
+            "fix": "response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN}, timeout=10)",
+            "file": "order_management.py"
+          },
+          {
+            "line": 90,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'for row2 in data:'",
+            "fix": "Optimize the report generation by using a more efficient algorithm, e.g., using a set or dictionary to store unique customer IDs.",
+            "file": "order_management.py"
+          },
+          {
+            "line": 159,
+            "severity": "critical",
+            "category": "security",
+            "message": "'for row in data:'",
+            "fix": "Use a secure method to handle sensitive customer data, e.g., encrypting the data before writing it to a file.",
+            "file": "order_management.py"
+          }
+        ],
+        "summary": "The code has several critical security issues, including SQL injection vulnerabilities and exposure of sensitive customer data. Additionally, there are performance issues with the report generation and missing timeouts in API requests. These issues need to be addressed to ensure the security and reliability of the system.",
+        "overall_score": 0.4,
+        "test_coverage_gaps": [
+          "Test cases for SQL injection attacks",
+          "Test cases for API request timeouts",
+          "Test cases for report generation performance"
+        ]
+      }
+    }
+  ],
+  "fixes": {
+    "order_management.py": [
+      {
+        "line": 27,
+        "severity": "critical",
+        "original": "'query = (\"SELECT * FROM customers WHERE id = %s\")'",
+        "fixed_code": "query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))",
+        "explanation": "I replaced the vulnerable query string with a parameterized query to prevent SQL injection attacks.",
+        "line_start": 27,
+        "line_end": 27
+      },
+      {
+        "line": 40,
+        "severity": "critical",
+        "original": "'UPDATE customers SET email=%s WHERE id=%s'",
+        "fixed_code": "query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))",
+        "explanation": "I replaced the string formatting with a parameterized query to prevent SQL injection attacks.",
+        "line_start": 43,
+        "line_end": 43
+      },
+      {
+        "line": 65,
+        "severity": "warning",
+        "original": "'response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN})'",
+        "fixed_code": "response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN}, timeout=10)",
+        "explanation": "Added a timeout of 10 seconds to the requests.post call to prevent it from hanging indefinitely",
+        "line_start": 68,
+        "line_end": 69
+      },
+      {
+        "line": 90,
+        "severity": "warning",
+        "original": "'for row2 in data:'",
+        "fixed_code": "customer_ids = set(row[0] for row in data)\nreport = [row for row in data if row[0] not in customer_ids or row[0] == row1[0]]",
+        "explanation": "I replaced the inefficient for loop with a set comprehension to store unique customer IDs and a list comprehension to generate the report, improving performance.",
+        "line_start": 91,
+        "line_end": 94
+      },
+      {
+        "line": 159,
+        "severity": "critical",
+        "original": "'for row in data:'",
+        "fixed_code": "from cryptography.fernet import Fernet\n\n# Generate a key for encryption\nkey = Fernet.generate_key()\ncipher_suite = Fernet(key)\n\nwith open(\"customer_export.txt\", \"wb\") as file:\n    for row in data:\n        encrypted_row = cipher_suite.encrypt(str(row).encode())\n        file.write(encrypted_row)",
+        "explanation": "I replaced the insecure file writing with encryption using the Fernet symmetric encryption algorithm to protect sensitive customer data",
+        "line_start": 156,
+        "line_end": 163
+      }
+    ]
+  },
+  "executive_summary": {
+    "executive_summary": "The order management system implementation has significant security and performance issues. Critical vulnerabilities, such as SQL injection and exposure of sensitive customer data, pose a high risk to the system's security and reliability. The code quality is subpar, with a score of 0.4, indicating a need for major revisions. Overall, the implementation requires substantial improvements to ensure the security and reliability of the system.",
+    "top_risks": [
+      "SQL injection vulnerabilities",
+      "Exposure of sensitive customer data"
+    ],
+    "recommended_actions": [
+      "Address SQL injection vulnerabilities by using parameterized queries",
+      "Implement proper data encryption and access controls to protect sensitive customer data"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 6,
+  "pr_title": "Add order management system implementation",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-21T05:38:35.003053Z",
+  "pipeline": "advanced-langgraph-v2"
+}

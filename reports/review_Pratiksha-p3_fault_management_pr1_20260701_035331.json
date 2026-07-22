@@ -1,0 +1,149 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 6,
+  "critical_count": 1,
+  "warning_count": 1,
+  "findings": [
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The code does not follow a consistent naming convention for HTML classes and IDs.",
+      "fix": "Use a consistent naming convention, such as using lowercase and hyphens for HTML classes and IDs.",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The code uses inline styles, which can make it harder to maintain and update the CSS.",
+      "fix": "Consider moving the styles to an external CSS file or using a CSS preprocessor.",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The code does not include any accessibility features, such as alt text for images or ARIA attributes for dynamic content.",
+      "fix": "Add accessibility features to make the content more usable for users with disabilities.",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 0,
+      "severity": "critical",
+      "category": "security",
+      "message": "'password = \"test123\"'",
+      "fix": "Remove the hardcoded password or replace it with a secure method of storing and retrieving sensitive information, such as using environment variables or a secrets manager.",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 44,
+      "severity": "warning",
+      "category": "bug",
+      "message": "'<div class=\"containers\">'",
+      "fix": "Replace with '<div class=\"container\">' to match the CSS class defined in the style section.",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 112,
+      "severity": "info",
+      "category": "style",
+      "message": "'<td>Definitions</td>'",
+      "fix": "Consider using a more descriptive and grammatically correct term, such as '<td>Definitions:</td>' or '<td>Key Terms:</td>'.",
+      "file": "generate_ai_ml_dl_html.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "ai_ml_dl.html",
+      "review": {
+        "findings": [
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The code does not follow a consistent naming convention for HTML classes and IDs.",
+            "fix": "Use a consistent naming convention, such as using lowercase and hyphens for HTML classes and IDs.",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The code uses inline styles, which can make it harder to maintain and update the CSS.",
+            "fix": "Consider moving the styles to an external CSS file or using a CSS preprocessor.",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The code does not include any accessibility features, such as alt text for images or ARIA attributes for dynamic content.",
+            "fix": "Add accessibility features to make the content more usable for users with disabilities.",
+            "file": "ai_ml_dl.html"
+          }
+        ],
+        "summary": "The code is well-structured and easy to follow, but there are some areas for improvement in terms of style and accessibility. Consider using a consistent naming convention, moving styles to an external CSS file, and adding accessibility features.",
+        "overall_score": 0.95,
+        "test_coverage_gaps": [
+          "No tests are included to verify the correctness of the HTML structure and content."
+        ]
+      }
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "review": {
+        "findings": [
+          {
+            "line": 0,
+            "severity": "critical",
+            "category": "security",
+            "message": "'password = \"test123\"'",
+            "fix": "Remove the hardcoded password or replace it with a secure method of storing and retrieving sensitive information, such as using environment variables or a secrets manager.",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 44,
+            "severity": "warning",
+            "category": "bug",
+            "message": "'<div class=\"containers\">'",
+            "fix": "Replace with '<div class=\"container\">' to match the CSS class defined in the style section.",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 112,
+            "severity": "info",
+            "category": "style",
+            "message": "'<td>Definitions</td>'",
+            "fix": "Consider using a more descriptive and grammatically correct term, such as '<td>Definitions:</td>' or '<td>Key Terms:</td>'.",
+            "file": "generate_ai_ml_dl_html.py"
+          }
+        ],
+        "summary": "This diff contains a critical security issue with a hardcoded password, a potential bug with a mismatched CSS class, and a minor style improvement opportunity. The code should be reviewed and updated to address these issues.",
+        "overall_score": 0.5,
+        "test_coverage_gaps": [
+          "Test case for password handling and security",
+          "Test case for CSS class usage and styling"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request contains a mix of well-structured and problematic code. The ai_ml_dl.html file is generally well-organized but requires minor improvements in style and accessibility. However, the generate_ai_ml_dl_html.py file poses significant concerns, including a critical security issue with a hardcoded password. Overall, the code quality is inconsistent and requires attention to security and best practices. The pull request needs significant revisions before it can be approved.",
+    "top_risks": [
+      "Hardcoded password in generate_ai_ml_dl_html.py",
+      "Potential bug with mismatched CSS class in generate_ai_ml_dl_html.py"
+    ],
+    "recommended_actions": [
+      "Remove hardcoded password and implement secure authentication",
+      "Review and update generate_ai_ml_dl_html.py to address bugs and style improvements"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 1,
+  "head_sha": "3860baf48660b2e442c9bd160f7bf7f49ed3413f",
+  "pr_title": "test PR for AI reviw",
+  "reviewed_at": "2026-07-01T03:53:29.320794Z"
+}

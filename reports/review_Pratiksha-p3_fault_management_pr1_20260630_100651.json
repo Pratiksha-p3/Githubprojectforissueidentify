@@ -1,0 +1,115 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 4,
+  "critical_count": 1,
+  "warning_count": 1,
+  "findings": [
+    {
+      "line": 148,
+      "severity": "info",
+      "category": "style",
+      "message": "'Deep Learnin' should be 'Deep Learning'",
+      "fix": "Deep Learning",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 169,
+      "severity": "critical",
+      "category": "security",
+      "message": "password = \"test123\"",
+      "fix": "Remove hardcoded password. Consider using environment variables or a secure secrets management system.",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 44,
+      "severity": "warning",
+      "category": "bug",
+      "message": "<div class=\"containers\">",
+      "fix": "<div class=\"container\"> (fix CSS class name to match the original)",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 112,
+      "severity": "info",
+      "category": "style",
+      "message": "<td>Definitions</td>",
+      "fix": "<td>Definition</td> (consider using the original singular form for consistency)",
+      "file": "generate_ai_ml_dl_html.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "ai_ml_dl.html",
+      "review": {
+        "findings": [
+          {
+            "line": 148,
+            "severity": "info",
+            "category": "style",
+            "message": "'Deep Learnin' should be 'Deep Learning'",
+            "fix": "Deep Learning",
+            "file": "ai_ml_dl.html"
+          }
+        ],
+        "summary": "The code provided is a basic HTML page with information about AI, ML, and DL. There is a minor typo in the Hierarchy section. The code is well-structured and easy to read.",
+        "overall_score": 0.95,
+        "test_coverage_gaps": []
+      }
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "review": {
+        "findings": [
+          {
+            "line": 169,
+            "severity": "critical",
+            "category": "security",
+            "message": "password = \"test123\"",
+            "fix": "Remove hardcoded password. Consider using environment variables or a secure secrets management system.",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 44,
+            "severity": "warning",
+            "category": "bug",
+            "message": "<div class=\"containers\">",
+            "fix": "<div class=\"container\"> (fix CSS class name to match the original)",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 112,
+            "severity": "info",
+            "category": "style",
+            "message": "<td>Definitions</td>",
+            "fix": "<td>Definition</td> (consider using the original singular form for consistency)",
+            "file": "generate_ai_ml_dl_html.py"
+          }
+        ],
+        "summary": "This diff introduces a critical security issue with a hardcoded password, a potential bug with a mismatched CSS class name, and a minor style inconsistency. The password should be removed and replaced with a secure alternative, and the CSS class name should be corrected to match the original.",
+        "overall_score": 0.5,
+        "test_coverage_gaps": [
+          "Test case for password handling",
+          "Test case for CSS class name consistency"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request introduces a critical security issue with a hardcoded password in the generate_ai_ml_dl_html.py file, which needs to be addressed immediately. Additionally, there are minor issues with a typo in the ai_ml_dl.html file and style inconsistencies in the generate_ai_ml_dl_html.py file. The overall quality of the code is compromised by the security vulnerability. The code is well-structured in some areas but requires significant improvements in security and consistency. Further review and revisions are necessary before approval.",
+    "top_risks": [
+      "Hardcoded password in generate_ai_ml_dl_html.py",
+      "Potential bug with mismatched CSS class name"
+    ],
+    "recommended_actions": [
+      "Remove hardcoded password and replace with a secure alternative",
+      "Correct CSS class name and address style inconsistencies"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 1,
+  "head_sha": "3860baf48660b2e442c9bd160f7bf7f49ed3413f",
+  "pr_title": "test PR for AI reviw",
+  "reviewed_at": "2026-06-30T10:06:49.597444Z"
+}

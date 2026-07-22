@@ -1,0 +1,125 @@
+{
+  "overall_score": 0.3,
+  "total_findings": 1,
+  "critical_count": 1,
+  "warning_count": 0,
+  "findings": [
+    {
+      "file": "order_management.py",
+      "line": 41,
+      "severity": "critical",
+      "category": "security",
+      "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2000-1233",
+        "CVE-2000-1236",
+        "CVE-2001-1348"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+        "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+      ],
+      "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+    }
+  ],
+  "files": [
+    {
+      "file": "order_management.py",
+      "focus": "full",
+      "review": {
+        "findings": [
+          {
+            "file": "order_management.py",
+            "line": 41,
+            "severity": "critical",
+            "category": "security",
+            "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1348"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          }
+        ],
+        "summary": "[RATE LIMITED] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 93203, Requested 8887. Please try again in 30m5.759999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.3,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "fixes": {
+    "order_management.py": [
+      {
+        "line": 41,
+        "severity": "critical",
+        "original": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+        "fixed_code": "cursor.execute(\"UPDATE customers SET email=%s WHERE id=%s\", (email, customer_id))",
+        "explanation": "I replaced the f-string with a parameterized query to prevent SQL injection by passing the variables as a tuple to the execute method.",
+        "line_start": 41,
+        "line_end": 45
+      }
+    ]
+  },
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 6,
+  "pr_title": "Add order management system implementation",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-20T11:05:31.462777Z",
+  "pipeline": "advanced-langgraph-v2",
+  "head_sha": "80ff95c5c9e94112af522bcebb6e8005859a5449",
+  "auto_fix": {
+    "fixed_count": 0,
+    "unfixable": 0,
+    "status": "success",
+    "unresolved": [
+      {
+        "file": "order_management.py",
+        "line": 41,
+        "severity": "critical",
+        "category": "security",
+        "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+        "fix": "Use parameterized queries instead of string formatting.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+        "confidence": 0.95,
+        "risk_weight": 50,
+        "cve_ids": [
+          "CVE-2000-1233",
+          "CVE-2000-1236",
+          "CVE-2001-1348"
+        ],
+        "cvss_score": 7.5,
+        "cve_urls": [
+          "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+          "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+          "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+        ],
+        "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+      }
+    ]
+  },
+  "remaining_critical": 1,
+  "remaining_warning": 0,
+  "gate_decision": "BLOCK"
+}

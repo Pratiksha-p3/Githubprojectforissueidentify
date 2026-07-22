@@ -1,0 +1,38 @@
+# ── LLM (Free) ───────────────────────────────────────────
+groq
+
+# ── Embeddings (Free local) ───────────────────────────────
+sentence-transformers
+
+# ── Vector DB ─────────────────────────────────────────────
+chromadb==0.5.3
+
+# ── LangGraph multi-agent ─────────────────────────────────
+langgraph
+langchain-core
+
+# ── Security scanning ─────────────────────────────────────
+
+bandit
+
+# ── GitHub integration ────────────────────────────────────
+requests==2.32.3
+PyJWT==2.8.0
+cryptography==42.0.8
+
+# ── Web framework + dashboard ─────────────────────────────
+fastapi==0.111.0
+uvicorn==0.30.1
+pydantic==2.7.4
+aiofiles==23.2.1
+httpx==0.27.0
+
+# ── Config ────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── Utilities ─────────────────────────────────────────────
+rich==13.7.1
+
+# ── Keep so existing imports don't break ──────────────────
+openai==1.35.0
+anthropic==0.28.0

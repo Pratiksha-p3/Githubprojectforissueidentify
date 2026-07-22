@@ -1,0 +1,28 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 0,
+  "critical_count": 0,
+  "warning_count": 0,
+  "findings": [],
+  "files": [
+    {
+      "file": "demo1.py",
+      "focus": "security",
+      "review": {
+        "findings": [],
+        "summary": "[RATE LIMITED] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99001, Requested 8366. Please try again in 1h46m5.088s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.5,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "fixes": {},
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 12,
+  "pr_title": "Implement error demonstration functions in demo1.py",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-21T06:53:07.369599Z",
+  "pipeline": "advanced-langgraph-v2"
+}

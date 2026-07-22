@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ai-code-review": {
+      "command": "C:/Users/ngj/Desktop/AI powered code review and DevSecOps automation/ai-code-review/venv/Scripts/python.exe",
+      "args": [
+        "C:/Users/ngj/Desktop/AI powered code review and DevSecOps automation/ai-code-review/mcp_server.py"
+      ],
+      "env": {
+        "GROQ_API_KEY": "your-key",
+        "GITHUB_TOKEN": "your-token"
+      }
+    }
+  }
+}

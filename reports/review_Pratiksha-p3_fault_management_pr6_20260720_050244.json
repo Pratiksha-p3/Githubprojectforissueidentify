@@ -1,0 +1,387 @@
+{
+  "overall_score": 0.2,
+  "risk_score": 170,
+  "risk_level": "HIGH",
+  "total_findings": 24,
+  "critical_count": 3,
+  "warning_count": 18,
+  "info_count": 0,
+  "findings": [
+    {
+      "file": "order_management.py",
+      "line": 41,
+      "severity": "critical",
+      "category": "security",
+      "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "line": 27,
+      "severity": "critical",
+      "category": "security",
+      "message": "'SQL Injection' in query = (\"SELECT * FROM customers \" f\"WHERE id = {customer_id}\")",
+      "fix": "Use parameterized queries, e.g., query = (\"SELECT * FROM customers WHERE id = ?\") and cursor.execute(query, (customer_id,))",
+      "file": "order_management.py"
+    },
+    {
+      "line": 65,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'Missing timeout' in response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN})",
+      "fix": "Add a timeout, e.g., response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN}, timeout=10)",
+      "file": "order_management.py"
+    },
+    {
+      "line": 90,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'Inefficient processing' in for row1 in data: for row2 in data:",
+      "fix": "Optimize the report generation, e.g., use a set or dictionary to store unique customer IDs",
+      "file": "order_management.py"
+    },
+    {
+      "line": 160,
+      "severity": "critical",
+      "category": "security",
+      "message": "'PII exposure' in file.write(str(row) + \"\\n\")",
+      "fix": "Mask or remove sensitive customer information, e.g., use a logging library with a secure logging mechanism",
+      "file": "order_management.py"
+    },
+    {
+      "file": "github_chat.py",
+      "line": 433,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "github_chat.py",
+      "line": 481,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "prchat.py",
+      "line": 39,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "prchat.py",
+      "line": 48,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "prchat.py",
+      "line": 84,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\reviewer_agent.py",
+      "line": 419,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\reviewer_agent.py",
+      "line": 420,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\reviewer_agent.py",
+      "line": 421,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\security_agent.py",
+      "line": 292,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "agents\\security_agent.py",
+      "line": 293,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "ingestion\\github_loader.py",
+      "line": 329,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "ingestion\\github_loader.py",
+      "line": 338,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "Rotate in the service's API settings",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "rag\\prompt.py",
+      "line": 310,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "tools\\fine_tuner.py",
+      "line": 439,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "venv\\Lib\\site-packages\\adodbapi\\test\\adodbapitestconfig.py",
+      "line": 162,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "venv\\Lib\\site-packages\\adodbapi\\test\\test_adodbapi_dbapi20.py",
+      "line": 65,
+      "severity": "warning",
+      "category": "security",
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "Move to environment variable immediately",
+      "source": "secret-scanner"
+    },
+    {
+      "file": "order_management.py",
+      "line": 29,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"WHERE id = {customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+      "fix": "Use parameterized queries instead, e.g., `query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))`",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "order_management.py",
+      "line": 42,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+      "fix": "Use parameterized queries instead, e.g., `query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))`",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "order_management.py",
+      "line": 20,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `self.conn = sqlite3.connect(\"customers.db\")`\nThe CustomerService class, which appears to be a service class, contains direct database queries and connections. However, the ADR-001 rule is more focused on controllers. But since the class is named 'CustomerService', it's likely that it's being used as a service class and should be in the services/ directory. Nevertheless, the direct database connection and queries are still a concern.",
+      "fix": "Move the database connection and queries to a separate data access object or repository class, and use dependency injection to provide the database connection to the service class.",
+      "source": "architecture_guard",
+      "adr_id": "ADR-001"
+    }
+  ],
+  "files": [
+    {
+      "file": "order_management.py",
+      "review": {
+        "findings": [
+          {
+            "file": "order_management.py",
+            "line": 41,
+            "severity": "critical",
+            "category": "security",
+            "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "line": 27,
+            "severity": "critical",
+            "category": "security",
+            "message": "'SQL Injection' in query = (\"SELECT * FROM customers \" f\"WHERE id = {customer_id}\")",
+            "fix": "Use parameterized queries, e.g., query = (\"SELECT * FROM customers WHERE id = ?\") and cursor.execute(query, (customer_id,))",
+            "file": "order_management.py"
+          },
+          {
+            "line": 65,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'Missing timeout' in response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN})",
+            "fix": "Add a timeout, e.g., response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\": API_TOKEN}, timeout=10)",
+            "file": "order_management.py"
+          },
+          {
+            "line": 90,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'Inefficient processing' in for row1 in data: for row2 in data:",
+            "fix": "Optimize the report generation, e.g., use a set or dictionary to store unique customer IDs",
+            "file": "order_management.py"
+          },
+          {
+            "line": 160,
+            "severity": "critical",
+            "category": "security",
+            "message": "'PII exposure' in file.write(str(row) + \"\\n\")",
+            "fix": "Mask or remove sensitive customer information, e.g., use a logging library with a secure logging mechanism",
+            "file": "order_management.py"
+          }
+        ],
+        "summary": "The code has several critical security issues, including SQL injection vulnerabilities, hardcoded secrets, and PII exposure. Additionally, there are performance issues due to inefficient processing and missing timeouts. These issues should be addressed to ensure the security and reliability of the application.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test cases for SQL injection attacks",
+          "Test cases for performance and scalability",
+          "Test cases for security and authentication"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "Reviewed 1 file(s), found 5 issue(s). Critical security issues require immediate attention before merge.",
+    "top_risks": [
+      "order_management.py:41 \u2014 Possible SQL injection: an f-string is being passed directly into a SQL execute(",
+      "order_management.py:27 \u2014 'SQL Injection' in query = (\"SELECT * FROM customers \" f\"WHERE id = {customer_id",
+      "order_management.py:160 \u2014 'PII exposure' in file.write(str(row) + \"\\n\")"
+    ],
+    "recommended_actions": [
+      "Fix all critical findings before merging"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 6,
+  "head_sha": "80ff95c5c9e94112af522bcebb6e8005859a5449",
+  "pr_title": "Add order management system implementation",
+  "reviewed_at": "2026-07-20T05:02:28.098205Z",
+  "auto_fix": {
+    "fixed_count": 2,
+    "unfixable": 22,
+    "status": "success",
+    "unresolved": [
+      {
+        "line": 160,
+        "severity": "critical",
+        "category": "security",
+        "message": "'PII exposure' in file.write(str(row) + \"\\n\")",
+        "fix": "Mask or remove sensitive customer information, e.g., use a logging library with a secure logging mechanism",
+        "file": "order_management.py"
+      },
+      {
+        "file": "order_management.py",
+        "line": 29,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"WHERE id = {customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+        "fix": "Use parameterized queries instead, e.g., `query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))`",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "order_management.py",
+        "line": 42,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+        "fix": "Use parameterized queries instead, e.g., `query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))`",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "order_management.py",
+        "line": 20,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `self.conn = sqlite3.connect(\"customers.db\")`\nThe CustomerService class, which appears to be a service class, contains direct database queries and connections. However, the ADR-001 rule is more focused on controllers. But since the class is named 'CustomerService', it's likely that it's being used as a service class and should be in the services/ directory. Nevertheless, the direct database connection and queries are still a concern.",
+        "fix": "Move the database connection and queries to a separate data access object or repository class, and use dependency injection to provide the database connection to the service class.",
+        "source": "architecture_guard",
+        "adr_id": "ADR-001"
+      }
+    ]
+  },
+  "gate": {
+    "blocked": true,
+    "reason": "12 issue(s) still present, 4 new issue(s) introduced",
+    "resolved_issues": [
+      "'JWT_SECRET = \"customer-secret-key\"'",
+      "'API_TOKEN = \"prod-api-token-123\"'",
+      "'f\"WHERE id = {customer_id}\"'",
+      "'f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"'",
+      "'response = requests.post(...)'",
+      "'for row1 in data: for row2 in data:'",
+      "'file.write(str(row) + \"\\n\")'"
+    ],
+    "new_issues": [
+      "'SQL Injection' in query = (\"SELECT * FROM customers \" f\"WHERE id = {customer_id}\")",
+      "'Missing timeout' in response = requests.post(\"https://api.partner.com/customer\", json=payload, head",
+      "'Inefficient processing' in for row1 in data: for row2 in data:",
+      "'PII exposure' in file.write(str(row) + \"\\n\")"
+    ],
+    "still_present": [
+      "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use paramete",
+      "[Generic API Key] Secret found in commit HEAD by unknown",
+      "[Generic API Key] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Generic API Key] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffend",
+      "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database "
+    ],
+    "score_before": 0.2,
+    "score_after": 0.2
+  }
+}

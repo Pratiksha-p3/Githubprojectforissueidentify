@@ -1,0 +1,413 @@
+{
+  "overall_score": 0.3,
+  "total_findings": 10,
+  "critical_count": 4,
+  "warning_count": 5,
+  "findings": [
+    {
+      "file": "Demo.py",
+      "line": 27,
+      "severity": "critical",
+      "category": "security",
+      "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-var",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2000-1233",
+        "CVE-2000-1236",
+        "CVE-2001-1348"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+        "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+      ],
+      "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+    },
+    {
+      "file": "Demo.py",
+      "line": 70,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+      "confidence": 0.95,
+      "risk_weight": 10,
+      "cve_ids": [
+        "CVE-2002-2057",
+        "CVE-2002-2058",
+        "CVE-2012-6707"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+        "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+      ],
+      "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+    },
+    {
+      "file": "Demo.py",
+      "line": 70,
+      "severity": "critical",
+      "category": "security",
+      "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-weak-md5-password-hash",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2002-2057",
+        "CVE-2002-2058",
+        "CVE-2012-6707"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+        "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+      ],
+      "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+    },
+    {
+      "file": "Demo.py",
+      "line": 70,
+      "severity": "warning",
+      "category": "security",
+      "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+      "confidence": 0.95,
+      "risk_weight": 10,
+      "cve_ids": [
+        "CVE-2002-2057",
+        "CVE-2002-2058",
+        "CVE-2012-6707"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+        "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+        "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+      ],
+      "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+    },
+    {
+      "file": "Demo.py",
+      "line": 75,
+      "severity": "critical",
+      "category": "security",
+      "message": "Found 'subprocess' function 'run' with 'shell=True'. This is dangerous because this call will spawn the command using a shell process. Doing so propagates current shell settings and variables, which makes it much easier for a malicious actor to execute commands. Use 'shell=False' instead.",
+      "fix": "False",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "Demo.py",
+      "line": 85,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected the use of eval(). eval() can be dangerous if used to evaluate dynamic content. If this content can be input from outside the program, this may be a code injection vulnerability. Ensure evaluated content is not definable by external sources.",
+      "fix": "Review this code against OWASP guidelines for this issue type.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.eval-detected.eval-detected",
+      "confidence": 0.95,
+      "risk_weight": 10,
+      "cve_ids": [
+        "CVE-2000-1233",
+        "CVE-2000-1236",
+        "CVE-2001-1472"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+        "https://nvd.nist.gov/vuln/detail/CVE-2001-1472"
+      ],
+      "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+    },
+    {
+      "file": "Demo.py",
+      "line": 91,
+      "severity": "warning",
+      "category": "security",
+      "message": "Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.",
+      "fix": "Review this code against OWASP guidelines for this issue type.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.deserialization.pickle.avoid-pickle",
+      "confidence": 0.95,
+      "risk_weight": 10,
+      "cve_ids": [
+        "CVE-2010-4574",
+        "CVE-2011-1113",
+        "CVE-2019-12760"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2010-4574",
+        "https://nvd.nist.gov/vuln/detail/CVE-2011-1113",
+        "https://nvd.nist.gov/vuln/detail/CVE-2019-12760"
+      ],
+      "cve_detail": "The Pickle::Pickle function in base/pickle.cc in Google Chrome before 8.0.552.224 and Chrome OS before 8.0.552.343 on 64-bit Linux platforms does not properly perform pointer arithmetic, which allows "
+    },
+    {
+      "file": "Demo.py",
+      "line": 97,
+      "severity": "critical",
+      "category": "security",
+      "message": "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLoader`, and `yaml.UnsafeLoader` are all known to be unsafe methods of deserializing YAML. An attacker with control over the YAML input could create special YAML input that allows the attacker to run arbitrary Python code. This would allow the attacker to steal files, download and install malware, or otherwise take over the machine. Use `yaml.safe_load` or `yaml.SafeLoader` instead.",
+      "fix": "yaml.load(f, Loader=yaml.Loader)",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.deserialization.avoid-pyyaml-load.avoid-pyyaml-load",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "'import subprocess' is used, which can be a security risk if not used carefully. Consider using a safer alternative.",
+      "fix": "Use the 'subprocess' module with caution and consider using a safer alternative like 'shutil' or 'pathlib' for file operations.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 47,
+      "severity": "info",
+      "category": "style",
+      "message": "'subprocess.run' is used with 'check=False', which may hide important error messages.",
+      "fix": "Consider setting 'check=True' to ensure that error messages are properly handled and logged.",
+      "file": "user_service.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "Demo.py",
+      "focus": "security",
+      "review": {
+        "findings": [
+          {
+            "file": "Demo.py",
+            "line": 27,
+            "severity": "critical",
+            "category": "security",
+            "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-var",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1348"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          },
+          {
+            "file": "Demo.py",
+            "line": 70,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "Demo.py",
+            "line": 70,
+            "severity": "critical",
+            "category": "security",
+            "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-weak-md5-password-hash",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "Demo.py",
+            "line": 70,
+            "severity": "warning",
+            "category": "security",
+            "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "Demo.py",
+            "line": 75,
+            "severity": "critical",
+            "category": "security",
+            "message": "Found 'subprocess' function 'run' with 'shell=True'. This is dangerous because this call will spawn the command using a shell process. Doing so propagates current shell settings and variables, which makes it much easier for a malicious actor to execute commands. Use 'shell=False' instead.",
+            "fix": "False",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "file": "Demo.py",
+            "line": 85,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected the use of eval(). eval() can be dangerous if used to evaluate dynamic content. If this content can be input from outside the program, this may be a code injection vulnerability. Ensure evaluated content is not definable by external sources.",
+            "fix": "Review this code against OWASP guidelines for this issue type.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.eval-detected.eval-detected",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1472"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1472"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          },
+          {
+            "file": "Demo.py",
+            "line": 91,
+            "severity": "warning",
+            "category": "security",
+            "message": "Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.",
+            "fix": "Review this code against OWASP guidelines for this issue type.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.deserialization.pickle.avoid-pickle",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2010-4574",
+              "CVE-2011-1113",
+              "CVE-2019-12760"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-4574",
+              "https://nvd.nist.gov/vuln/detail/CVE-2011-1113",
+              "https://nvd.nist.gov/vuln/detail/CVE-2019-12760"
+            ],
+            "cve_detail": "The Pickle::Pickle function in base/pickle.cc in Google Chrome before 8.0.552.224 and Chrome OS before 8.0.552.343 on 64-bit Linux platforms does not properly perform pointer arithmetic, which allows "
+          },
+          {
+            "file": "Demo.py",
+            "line": 97,
+            "severity": "critical",
+            "category": "security",
+            "message": "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLoader`, and `yaml.UnsafeLoader` are all known to be unsafe methods of deserializing YAML. An attacker with control over the YAML input could create special YAML input that allows the attacker to run arbitrary Python code. This would allow the attacker to steal files, download and install malware, or otherwise take over the machine. Use `yaml.safe_load` or `yaml.SafeLoader` instead.",
+            "fix": "yaml.load(f, Loader=yaml.Loader)",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.deserialization.avoid-pyyaml-load.avoid-pyyaml-load",
+            "confidence": 0.95,
+            "risk_weight": 50
+          }
+        ],
+        "summary": "[RATE LIMITED] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 91469, Requested 9370. Please try again in 12m4.896s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.3,
+        "test_coverage_gaps": []
+      }
+    },
+    {
+      "file": "user_service.py",
+      "focus": "security",
+      "review": {
+        "findings": [
+          {
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "'import subprocess' is used, which can be a security risk if not used carefully. Consider using a safer alternative.",
+            "fix": "Use the 'subprocess' module with caution and consider using a safer alternative like 'shutil' or 'pathlib' for file operations.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 47,
+            "severity": "info",
+            "category": "style",
+            "message": "'subprocess.run' is used with 'check=False', which may hide important error messages.",
+            "fix": "Consider setting 'check=True' to ensure that error messages are properly handled and logged.",
+            "file": "user_service.py"
+          }
+        ],
+        "summary": "The code has some potential security risks and style issues, such as the use of the 'subprocess' module and exposure of sensitive information. However, the code also has some good practices, such as parameterized queries and division-by-zero validation. Overall, the code needs some improvements to ensure security and maintainability.",
+        "overall_score": 0.8,
+        "test_coverage_gaps": [
+          "Test cases for error handling in the 'get_user' method",
+          "Test cases for division-by-zero validation in the 'calculate_average' method",
+          "Test cases for command injection prevention in the 'ping_server' method"
+        ]
+      }
+    }
+  ],
+  "fixes": {},
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 9,
+  "pr_title": "Pratiksha p3 patch 2",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-21T06:13:34.111483Z",
+  "pipeline": "advanced-langgraph-v2"
+}

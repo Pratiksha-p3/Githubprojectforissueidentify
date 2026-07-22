@@ -1,0 +1,208 @@
+{
+  "overall_score": 0.2,
+  "total_findings": 9,
+  "critical_count": 4,
+  "warning_count": 4,
+  "findings": [
+    {
+      "line": 5,
+      "severity": "critical",
+      "category": "security",
+      "message": "'API_KEY = \"super_secret_api_key_123\"'",
+      "fix": "Use environment variables or a secure secrets management system to store API keys.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 8,
+      "severity": "critical",
+      "category": "security",
+      "message": "'DB_PASSWORD = \"admin123\"'",
+      "fix": "Use environment variables or a secure secrets management system to store database passwords.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 16,
+      "severity": "warning",
+      "category": "architecture",
+      "message": "'self.conn = sqlite3.connect(\"users.db\")'",
+      "fix": "Consider using a dependency injection pattern to manage database connections.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 20,
+      "severity": "critical",
+      "category": "security",
+      "message": "'query = f\"SELECT * FROM users WHERE username='{username}'\"'",
+      "fix": "Use parameterized queries to prevent SQL injection attacks. For example: 'query = \"SELECT * FROM users WHERE username=?\"; cursor.execute(query, (username,))'",
+      "file": "user_service.py"
+    },
+    {
+      "line": 27,
+      "severity": "warning",
+      "category": "bug",
+      "message": "'return total / count'",
+      "fix": "Add a check to prevent division by zero. For example: 'if count == 0: return 0; return total / count'",
+      "file": "user_service.py"
+    },
+    {
+      "line": 31,
+      "severity": "info",
+      "category": "code quality",
+      "message": "'if salary > 50000: return salary * 0.10; else: return salary * 0.05'",
+      "fix": "Extract the duplicate logic into a separate function to improve code readability and maintainability.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 44,
+      "severity": "critical",
+      "category": "security",
+      "message": "'os.system(\"ping \" + host)'",
+      "fix": "Use the 'subprocess' module with the 'shell=False' argument to prevent command injection attacks. For example: 'subprocess.run([\"ping\", host])'",
+      "file": "user_service.py"
+    },
+    {
+      "line": 48,
+      "severity": "warning",
+      "category": "bug",
+      "message": "'self.age = age'",
+      "fix": "Add validation to ensure that the 'age' parameter is a valid integer.",
+      "file": "user_service.py"
+    },
+    {
+      "line": 55,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'for i in range(1000): cursor.execute(\"SELECT * FROM users\")'",
+      "fix": "Consider using a more efficient query or caching mechanism to reduce the number of database queries.",
+      "file": "user_service.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [
+          {
+            "line": 5,
+            "severity": "critical",
+            "category": "security",
+            "message": "'API_KEY = \"super_secret_api_key_123\"'",
+            "fix": "Use environment variables or a secure secrets management system to store API keys.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 8,
+            "severity": "critical",
+            "category": "security",
+            "message": "'DB_PASSWORD = \"admin123\"'",
+            "fix": "Use environment variables or a secure secrets management system to store database passwords.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 16,
+            "severity": "warning",
+            "category": "architecture",
+            "message": "'self.conn = sqlite3.connect(\"users.db\")'",
+            "fix": "Consider using a dependency injection pattern to manage database connections.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 20,
+            "severity": "critical",
+            "category": "security",
+            "message": "'query = f\"SELECT * FROM users WHERE username='{username}'\"'",
+            "fix": "Use parameterized queries to prevent SQL injection attacks. For example: 'query = \"SELECT * FROM users WHERE username=?\"; cursor.execute(query, (username,))'",
+            "file": "user_service.py"
+          },
+          {
+            "line": 27,
+            "severity": "warning",
+            "category": "bug",
+            "message": "'return total / count'",
+            "fix": "Add a check to prevent division by zero. For example: 'if count == 0: return 0; return total / count'",
+            "file": "user_service.py"
+          },
+          {
+            "line": 31,
+            "severity": "info",
+            "category": "code quality",
+            "message": "'if salary > 50000: return salary * 0.10; else: return salary * 0.05'",
+            "fix": "Extract the duplicate logic into a separate function to improve code readability and maintainability.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 44,
+            "severity": "critical",
+            "category": "security",
+            "message": "'os.system(\"ping \" + host)'",
+            "fix": "Use the 'subprocess' module with the 'shell=False' argument to prevent command injection attacks. For example: 'subprocess.run([\"ping\", host])'",
+            "file": "user_service.py"
+          },
+          {
+            "line": 48,
+            "severity": "warning",
+            "category": "bug",
+            "message": "'self.age = age'",
+            "fix": "Add validation to ensure that the 'age' parameter is a valid integer.",
+            "file": "user_service.py"
+          },
+          {
+            "line": 55,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'for i in range(1000): cursor.execute(\"SELECT * FROM users\")'",
+            "fix": "Consider using a more efficient query or caching mechanism to reduce the number of database queries.",
+            "file": "user_service.py"
+          }
+        ],
+        "summary": "The provided code has several critical security issues, including hardcoded secrets, SQL injection vulnerabilities, and command injection vulnerabilities. Additionally, there are several bugs and performance issues that need to be addressed. It is recommended to refactor the code to use secure practices and improve overall code quality.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test cases for SQL injection attacks",
+          "Test cases for command injection attacks",
+          "Test cases for division by zero errors",
+          "Test cases for invalid input validation"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The provided code has significant security and quality issues, including hardcoded secrets, SQL injection vulnerabilities, and command injection vulnerabilities. The overall code quality is poor, with several bugs and performance issues. Refactoring the code to use secure practices and improving overall code quality is essential. The current state of the code poses a high risk to the system's security and reliability.",
+    "top_risks": [
+      "Hardcoded secrets and SQL injection vulnerabilities",
+      "Command injection vulnerabilities"
+    ],
+    "recommended_actions": [
+      "Refactor the code to use secure practices and environment variables for secrets",
+      "Implement input validation and sanitization to prevent SQL and command injection attacks"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "4120687c506403cdd76cd6a8ae101b6dd739e5b4",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-06T11:56:34.642070Z",
+  "gate": {
+    "blocked": true,
+    "reason": "7 issue(s) still present, 1 new issue(s) introduced",
+    "resolved_issues": [
+      "'for i in range(1000): cursor.execute(\"SELECT * FROM users\"); users.extend(cursor.fetchall())'"
+    ],
+    "new_issues": [
+      "'for i in range(1000): cursor.execute(\"SELECT * FROM users\")'"
+    ],
+    "still_present": [
+      "'API_KEY = \"super_secret_api_key_123\"'",
+      "'DB_PASSWORD = \"admin123\"'",
+      "'self.conn = sqlite3.connect(\"users.db\")'",
+      "'query = f\"SELECT * FROM users WHERE username='{username}'\"'",
+      "'return total / count'",
+      "'os.system(\"ping \" + host)'",
+      "'self.age = age'"
+    ],
+    "score_before": 0.2,
+    "score_after": 0.2
+  }
+}

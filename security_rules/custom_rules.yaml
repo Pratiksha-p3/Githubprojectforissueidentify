@@ -1,0 +1,105 @@
+rules:
+  - id: custom-sql-injection-fstring-var
+    languages: [python]
+    severity: ERROR
+    message: >
+      A SQL query string built with an f-string is being executed. This is
+      a classic SQL injection pattern. Use parameterized queries instead
+      (e.g. cursor.execute("SELECT * FROM t WHERE x=?", (value,))).
+    pattern: |
+      $QUERY = f"..."
+      ...
+      $CONN.execute($QUERY)
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+
+  - id: custom-sql-injection-fstring-direct
+    languages: [python]
+    severity: ERROR
+    message: >
+      Possible SQL injection: an f-string is being passed directly into
+      a SQL execute() call. Use parameterized queries instead.
+    pattern: $CONN.execute(f"...")
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+
+  - id: custom-sql-injection-concat
+    languages: [python]
+    severity: ERROR
+    message: >
+      Possible SQL injection: a SQL query is being built with string
+      concatenation or % formatting. Use parameterized queries instead.
+    patterns:
+      - pattern-either:
+          - pattern: $CONN.execute("..." + $VAR)
+          - pattern: $CONN.execute("..." + $VAR + "...")
+          - pattern: $CONN.execute("...%s..." % $VAR)
+          - pattern: $CONN.execute("...".format($VAR))
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+
+  - id: custom-hardcoded-password
+    languages: [python]
+    severity: ERROR
+    message: >
+      Hardcoded password or credential detected. Secrets should never be
+      committed to source code. Use environment variables or a secrets
+      manager instead.
+    patterns:
+      - pattern-either:
+          - pattern: password = "..."
+          - pattern: PASSWORD = "..."
+          - pattern: passwd = "..."
+          - pattern: pwd = "..."
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      confidence: MEDIUM
+
+  - id: custom-hardcoded-secret-key
+    languages: [python]
+    severity: ERROR
+    message: >
+      Hardcoded secret key, API key, or token detected in source code.
+      Move this to an environment variable (os.getenv) or a secrets manager.
+    patterns:
+      - pattern-either:
+          - pattern: SECRET_KEY = "..."
+          - pattern: secret_key = "..."
+          - pattern: API_KEY = "..."
+          - pattern: api_key = "..."
+          - pattern: ACCESS_TOKEN = "..."
+          - pattern: access_token = "..."
+          - pattern: AWS_SECRET_ACCESS_KEY = "..."
+          - pattern: PRIVATE_KEY = "..."
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      confidence: MEDIUM
+
+  - id: custom-weak-md5-password-hash
+    languages: [python]
+    severity: ERROR
+    message: >
+      MD5 is cryptographically broken and unsuitable for password hashing.
+      Use bcrypt, scrypt, or argon2 instead.
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5($PWD.encode())
+          - pattern: hashlib.md5($PWD)
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 Cryptographic Failures"
+      confidence: HIGH

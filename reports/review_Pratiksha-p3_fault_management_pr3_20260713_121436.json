@@ -1,0 +1,44 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 0,
+  "critical_count": 0,
+  "warning_count": 0,
+  "findings": [],
+  "files": [
+    {
+      "file": "user_service.py",
+      "review": {
+        "findings": [],
+        "summary": "[RATE LIMITED \u2014 LLM did not run] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 96372, Requested 6637. Please try again in 43m19.776s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.5,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "executive_summary": {},
+  "approved": true,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 3,
+  "head_sha": "6757c22204ce4a7b6b013ff99bad0cad67a6e6f9",
+  "pr_title": "Add UserService with multiple issues",
+  "reviewed_at": "2026-07-13T12:14:33.749135Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 0,
+    "unresolved": []
+  },
+  "gate": {
+    "blocked": false,
+    "reason": "All 3 issue(s) resolved \u2014 PR approved! \ud83c\udf89",
+    "resolved_issues": [
+      "API_KEY = os.getenv(\"API_KEY\")",
+      "DB_PASSWORD = os.getenv(\"DB_PASSWORD\")",
+      "self.conn = sqlite3.connect(db_path)"
+    ],
+    "new_issues": [],
+    "still_present": [],
+    "score_before": 0.7,
+    "score_after": 0.5
+  }
+}

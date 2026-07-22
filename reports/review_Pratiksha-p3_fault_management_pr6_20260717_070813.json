@@ -1,0 +1,226 @@
+{
+  "overall_score": 0.6,
+  "risk_score": 110,
+  "risk_level": "HIGH",
+  "total_findings": 9,
+  "critical_count": 1,
+  "warning_count": 6,
+  "info_count": 0,
+  "findings": [
+    {
+      "line": 28,
+      "severity": "warning",
+      "category": "bug",
+      "message": "\"order_count += 1\" may cause a race condition in a multi-threaded environment",
+      "fix": "Use a thread-safe approach, such as using a Lock object from the threading module to synchronize access to the order_count variable",
+      "file": "order_management.py"
+    },
+    {
+      "line": 40,
+      "severity": "warning",
+      "category": "performance",
+      "message": "\"with open(self.order_file, 'w') as f: json.dump(orders, f)\" rewrites the entire file every time a new order is created, which can be inefficient for large files",
+      "fix": "Consider using a database or a more efficient file format, such as a JSONL file, to store orders",
+      "file": "order_management.py"
+    },
+    {
+      "line": 48,
+      "severity": "warning",
+      "category": "bug",
+      "message": "\"with open(self.order_file, 'r') as f: data = json.load(f)\" does not handle potential JSON decoding errors",
+      "fix": "Add error handling to catch and handle potential JSON decoding errors",
+      "file": "order_management.py"
+    },
+    {
+      "line": 58,
+      "severity": "warning",
+      "category": "performance",
+      "message": "\"for order in orders: for item in order['items']: if keyword.lower() in item.lower(): result.append(order)\" is an inefficient search algorithm",
+      "fix": "Consider using a more efficient search algorithm, such as a full-text search index",
+      "file": "order_management.py"
+    },
+    {
+      "line": 70,
+      "severity": "critical",
+      "category": "bug",
+      "message": "\"revenue += order['price']\" may raise a KeyError if the 'price' key is missing from an order",
+      "fix": "Add error handling to catch and handle potential KeyError exceptions",
+      "file": "order_management.py"
+    },
+    {
+      "line": 85,
+      "severity": "warning",
+      "category": "performance",
+      "message": "\"time.sleep(10)\" is a blocking call that can delay the execution of other tasks",
+      "fix": "Consider using a non-blocking approach, such as using a threading.Timer object, to simulate email sending",
+      "file": "order_management.py"
+    },
+    {
+      "line": 108,
+      "severity": "warning",
+      "category": "performance",
+      "message": "\"with open('orders.json', 'r') as f: content = f.read()\" loads the entire file into memory, which can be inefficient for large files",
+      "fix": "Consider using a more efficient approach, such as using a streaming JSON parser, to read the file",
+      "file": "order_management.py"
+    },
+    {
+      "file": "order_management.py",
+      "line": 40,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `with open(self.order_file, \"w\") as f: json.dump(orders, f)`\nThe code is directly accessing a file (which can be considered as a database in this context) in the OrderManager class, which seems to be a controller. This violates the rule that controllers must not contain direct database queries. Instead, this operation should be performed through a service layer.",
+      "fix": "Create a service class in the services/ directory that handles file operations, and use this service in the OrderManager class.",
+      "source": "architecture_guard",
+      "adr_id": "ADR-001"
+    },
+    {
+      "file": "order_management.py",
+      "line": 48,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: All database access MUST go through the service layer\nOffending code: `with open(self.order_file, \"r\") as f: data = json.load(f)`\nSimilar to the previous violation, the code is directly accessing a file in the OrderManager class. This should be done through a service layer to comply with the ADR.",
+      "fix": "Use the same service class created for the previous fix to load data from the file.",
+      "source": "architecture_guard",
+      "adr_id": "ADR-001"
+    }
+  ],
+  "files": [
+    {
+      "file": "order_management.py",
+      "review": {
+        "findings": [
+          {
+            "line": 28,
+            "severity": "warning",
+            "category": "bug",
+            "message": "\"order_count += 1\" may cause a race condition in a multi-threaded environment",
+            "fix": "Use a thread-safe approach, such as using a Lock object from the threading module to synchronize access to the order_count variable",
+            "file": "order_management.py"
+          },
+          {
+            "line": 40,
+            "severity": "warning",
+            "category": "performance",
+            "message": "\"with open(self.order_file, 'w') as f: json.dump(orders, f)\" rewrites the entire file every time a new order is created, which can be inefficient for large files",
+            "fix": "Consider using a database or a more efficient file format, such as a JSONL file, to store orders",
+            "file": "order_management.py"
+          },
+          {
+            "line": 48,
+            "severity": "warning",
+            "category": "bug",
+            "message": "\"with open(self.order_file, 'r') as f: data = json.load(f)\" does not handle potential JSON decoding errors",
+            "fix": "Add error handling to catch and handle potential JSON decoding errors",
+            "file": "order_management.py"
+          },
+          {
+            "line": 58,
+            "severity": "warning",
+            "category": "performance",
+            "message": "\"for order in orders: for item in order['items']: if keyword.lower() in item.lower(): result.append(order)\" is an inefficient search algorithm",
+            "fix": "Consider using a more efficient search algorithm, such as a full-text search index",
+            "file": "order_management.py"
+          },
+          {
+            "line": 70,
+            "severity": "critical",
+            "category": "bug",
+            "message": "\"revenue += order['price']\" may raise a KeyError if the 'price' key is missing from an order",
+            "fix": "Add error handling to catch and handle potential KeyError exceptions",
+            "file": "order_management.py"
+          },
+          {
+            "line": 85,
+            "severity": "warning",
+            "category": "performance",
+            "message": "\"time.sleep(10)\" is a blocking call that can delay the execution of other tasks",
+            "fix": "Consider using a non-blocking approach, such as using a threading.Timer object, to simulate email sending",
+            "file": "order_management.py"
+          },
+          {
+            "line": 108,
+            "severity": "warning",
+            "category": "performance",
+            "message": "\"with open('orders.json', 'r') as f: content = f.read()\" loads the entire file into memory, which can be inefficient for large files",
+            "fix": "Consider using a more efficient approach, such as using a streaming JSON parser, to read the file",
+            "file": "order_management.py"
+          }
+        ],
+        "summary": "The code has several issues, including potential race conditions, inefficient search algorithms, and blocking calls. Additionally, there are potential KeyError exceptions and inefficient file reading approaches. These issues should be addressed to improve the reliability and performance of the code.",
+        "overall_score": 0.6,
+        "test_coverage_gaps": [
+          "Test cases for error handling in the create_order method",
+          "Test cases for error handling in the load_orders method",
+          "Test cases for the search_orders method with different keyword inputs",
+          "Test cases for the calculate_revenue method with different order inputs"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The order management system implementation has several critical issues that need to be addressed, including potential race conditions, inefficient search algorithms, and blocking calls. These issues can impact the reliability and performance of the code. The overall quality of the code is below expectations, with a score of 0.6. The implementation requires significant improvements to ensure its stability and efficiency.",
+    "top_risks": [
+      "Potential race conditions",
+      "Inefficient search algorithms"
+    ],
+    "recommended_actions": [
+      "Address potential race conditions and implement thread-safe solutions",
+      "Optimize search algorithms for better performance"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 6,
+  "head_sha": "80595e2e0f865daaceb54bf50cf6ef653c485144",
+  "pr_title": "Add order management system implementation",
+  "reviewed_at": "2026-07-17T07:08:00.181320Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 3,
+    "unresolved": [
+      {
+        "line": 70,
+        "severity": "critical",
+        "category": "bug",
+        "message": "\"revenue += order['price']\" may raise a KeyError if the 'price' key is missing from an order",
+        "fix": "Add error handling to catch and handle potential KeyError exceptions",
+        "file": "order_management.py"
+      },
+      {
+        "file": "order_management.py",
+        "line": 40,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `with open(self.order_file, \"w\") as f: json.dump(orders, f)`\nThe code is directly accessing a file (which can be considered as a database in this context) in the OrderManager class, which seems to be a controller. This violates the rule that controllers must not contain direct database queries. Instead, this operation should be performed through a service layer.",
+        "fix": "Create a service class in the services/ directory that handles file operations, and use this service in the OrderManager class.",
+        "source": "architecture_guard",
+        "adr_id": "ADR-001"
+      },
+      {
+        "file": "order_management.py",
+        "line": 48,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: All database access MUST go through the service layer\nOffending code: `with open(self.order_file, \"r\") as f: data = json.load(f)`\nSimilar to the previous violation, the code is directly accessing a file in the OrderManager class. This should be done through a service layer to comply with the ADR.",
+        "fix": "Use the same service class created for the previous fix to load data from the file.",
+        "source": "architecture_guard",
+        "adr_id": "ADR-001"
+      }
+    ]
+  },
+  "gate": {
+    "blocked": true,
+    "reason": "3 critical issue(s) found \u2014 must fix before merge",
+    "resolved_issues": [],
+    "new_issues": [
+      "\"revenue += order['price']\" may raise a KeyError if the 'price' key is missing from an order",
+      "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database ",
+      "[ADR-ADR-001] No Direct Database Calls in Controllers: All database access MUST go through the servi"
+    ],
+    "still_present": [],
+    "score_before": 0.0,
+    "score_after": 0.6
+  }
+}

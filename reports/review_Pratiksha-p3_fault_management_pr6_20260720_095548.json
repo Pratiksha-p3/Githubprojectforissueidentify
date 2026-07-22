@@ -1,0 +1,244 @@
+{
+  "overall_score": 0.2,
+  "total_findings": 8,
+  "critical_count": 6,
+  "warning_count": 2,
+  "findings": [
+    {
+      "file": "order_management.py",
+      "line": 41,
+      "severity": "critical",
+      "category": "security",
+      "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+      "confidence": 0.95,
+      "risk_weight": 50,
+      "cve_ids": [
+        "CVE-2000-1233",
+        "CVE-2000-1236",
+        "CVE-2001-1348"
+      ],
+      "cvss_score": 7.5,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+        "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+        "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+      ],
+      "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+    },
+    {
+      "line": 10,
+      "severity": "critical",
+      "category": "security",
+      "message": "'JWT_SECRET = \"customer-secret-key\"'",
+      "fix": "Use environment variables or a secure secrets management system to store sensitive keys.",
+      "file": "order_management.py",
+      "cve_ids": [
+        "CVE-2008-7311",
+        "CVE-2017-14143",
+        "CVE-2017-15582"
+      ],
+      "cvss_score": 9.8,
+      "cve_urls": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2008-7311",
+        "https://nvd.nist.gov/vuln/detail/CVE-2017-14143",
+        "https://nvd.nist.gov/vuln/detail/CVE-2017-15582"
+      ],
+      "cve_detail": "The session cookie store implementation in Spree 0.2.0 uses a hardcoded config.action_controller_session hash value (aka secret key), which makes it easier for remote attackers to bypass cryptographic"
+    },
+    {
+      "line": 11,
+      "severity": "critical",
+      "category": "security",
+      "message": "'API_TOKEN = \"prod-api-token-123\"'",
+      "fix": "Use environment variables or a secure secrets management system to store sensitive tokens.",
+      "file": "order_management.py"
+    },
+    {
+      "line": 29,
+      "severity": "critical",
+      "category": "security",
+      "message": "'f\"SELECT * FROM customers WHERE id = {customer_id}\"'",
+      "fix": "Use parameterized queries to prevent SQL injection, e.g., 'SELECT * FROM customers WHERE id = ?' with 'cursor.execute(query, (customer_id,))'.",
+      "file": "order_management.py"
+    },
+    {
+      "line": 43,
+      "severity": "critical",
+      "category": "security",
+      "message": "'f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"'",
+      "fix": "Use parameterized queries to prevent SQL injection, e.g., 'UPDATE customers SET email = ? WHERE id = ?' with 'cursor.execute(query, (email, customer_id))'.",
+      "file": "order_management.py"
+    },
+    {
+      "line": 65,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'response = requests.post(...)'",
+      "fix": "Add a timeout to the request, e.g., 'response = requests.post(..., timeout=10)'.",
+      "file": "order_management.py"
+    },
+    {
+      "line": 90,
+      "severity": "warning",
+      "category": "performance",
+      "message": "'for row1 in data: for row2 in data:'",
+      "fix": "Optimize the report generation by using a more efficient algorithm, e.g., using a set or dictionary to store unique customer IDs.",
+      "file": "order_management.py"
+    },
+    {
+      "line": 160,
+      "severity": "critical",
+      "category": "security",
+      "message": "'file.write(str(row) + \"\\n\")'",
+      "fix": "Use a secure method to handle sensitive customer data, e.g., encrypting the data before writing it to a file.",
+      "file": "order_management.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "order_management.py",
+      "focus": "full",
+      "review": {
+        "findings": [
+          {
+            "file": "order_management.py",
+            "line": 41,
+            "severity": "critical",
+            "category": "security",
+            "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1348"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          },
+          {
+            "line": 10,
+            "severity": "critical",
+            "category": "security",
+            "message": "'JWT_SECRET = \"customer-secret-key\"'",
+            "fix": "Use environment variables or a secure secrets management system to store sensitive keys.",
+            "file": "order_management.py",
+            "cve_ids": [
+              "CVE-2008-7311",
+              "CVE-2017-14143",
+              "CVE-2017-15582"
+            ],
+            "cvss_score": 9.8,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2008-7311",
+              "https://nvd.nist.gov/vuln/detail/CVE-2017-14143",
+              "https://nvd.nist.gov/vuln/detail/CVE-2017-15582"
+            ],
+            "cve_detail": "The session cookie store implementation in Spree 0.2.0 uses a hardcoded config.action_controller_session hash value (aka secret key), which makes it easier for remote attackers to bypass cryptographic"
+          },
+          {
+            "line": 11,
+            "severity": "critical",
+            "category": "security",
+            "message": "'API_TOKEN = \"prod-api-token-123\"'",
+            "fix": "Use environment variables or a secure secrets management system to store sensitive tokens.",
+            "file": "order_management.py"
+          },
+          {
+            "line": 29,
+            "severity": "critical",
+            "category": "security",
+            "message": "'f\"SELECT * FROM customers WHERE id = {customer_id}\"'",
+            "fix": "Use parameterized queries to prevent SQL injection, e.g., 'SELECT * FROM customers WHERE id = ?' with 'cursor.execute(query, (customer_id,))'.",
+            "file": "order_management.py"
+          },
+          {
+            "line": 43,
+            "severity": "critical",
+            "category": "security",
+            "message": "'f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"'",
+            "fix": "Use parameterized queries to prevent SQL injection, e.g., 'UPDATE customers SET email = ? WHERE id = ?' with 'cursor.execute(query, (email, customer_id))'.",
+            "file": "order_management.py"
+          },
+          {
+            "line": 65,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'response = requests.post(...)'",
+            "fix": "Add a timeout to the request, e.g., 'response = requests.post(..., timeout=10)'.",
+            "file": "order_management.py"
+          },
+          {
+            "line": 90,
+            "severity": "warning",
+            "category": "performance",
+            "message": "'for row1 in data: for row2 in data:'",
+            "fix": "Optimize the report generation by using a more efficient algorithm, e.g., using a set or dictionary to store unique customer IDs.",
+            "file": "order_management.py"
+          },
+          {
+            "line": 160,
+            "severity": "critical",
+            "category": "security",
+            "message": "'file.write(str(row) + \"\\n\")'",
+            "fix": "Use a secure method to handle sensitive customer data, e.g., encrypting the data before writing it to a file.",
+            "file": "order_management.py"
+          }
+        ],
+        "summary": "The code has several critical security issues, including hardcoded secrets, SQL injection vulnerabilities, and sensitive data exposure. Additionally, there are performance issues with the report generation and missing timeouts in API requests.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test cases for SQL injection attacks",
+          "Test cases for sensitive data exposure",
+          "Test cases for performance optimization"
+        ]
+      }
+    }
+  ],
+  "fixes": {
+    "order_management.py": [
+      {
+        "line": 41,
+        "severity": "critical",
+        "original": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+        "fixed_code": "cursor.execute(\"UPDATE customers SET email=%s WHERE id=%s\", (email, customer_id))",
+        "explanation": "I replaced the f-string with a parameterized query to prevent SQL injection by passing the variables as a tuple to the execute method.",
+        "line_start": 41,
+        "line_end": 45
+      },
+      {
+        "line": 160,
+        "severity": "critical",
+        "original": "'file.write(str(row) + \"\\n\")'",
+        "fixed_code": "import cryptography\nfrom cryptography.fernet import Fernet\n\n# Generate a key for encryption\nkey = Fernet.generate_key()\ncipher_suite = Fernet(key)\n\nfor row in data:\n    cipher_text = cipher_suite.encrypt(str(row).encode('utf-8'))\n    file.write(cipher_text.decode('utf-8') + \"\\n\")",
+        "explanation": "I replaced the insecure file writing method with a secure encryption method using the cryptography library to protect sensitive customer data.",
+        "line_start": 158,
+        "line_end": 160
+      }
+    ]
+  },
+  "executive_summary": {
+    "findings": [],
+    "summary": "[RATE LIMITED] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 95868, Requested 6623. Please try again in 35m52.224s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+    "overall_score": 0.5,
+    "test_coverage_gaps": []
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 6,
+  "pr_title": "Add order management system implementation",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-20T09:55:48.078600Z",
+  "pipeline": "advanced-langgraph-v2"
+}

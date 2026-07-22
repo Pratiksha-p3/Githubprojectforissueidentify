@@ -1,0 +1,247 @@
+{
+  "overall_score": 0.5,
+  "total_findings": 15,
+  "critical_count": 1,
+  "warning_count": 14,
+  "findings": [
+    {
+      "category": "syntax",
+      "severity": "critical",
+      "file": "demo1.py",
+      "line": 15,
+      "message": "expected an indented block after function definition on line 14",
+      "fix": "Fix Python syntax"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "github_chat.py",
+      "line": 433,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "github_chat.py",
+      "line": 481,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "prchat.py",
+      "line": 39,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "prchat.py",
+      "line": 48,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "prchat.py",
+      "line": 84,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "agents\\reviewer_agent.py",
+      "line": 419,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "agents\\reviewer_agent.py",
+      "line": 420,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "agents\\reviewer_agent.py",
+      "line": 421,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "agents\\security_agent.py",
+      "line": 292,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "agents\\security_agent.py",
+      "line": 293,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "ingestion\\github_loader.py",
+      "line": 329,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "ingestion\\github_loader.py",
+      "line": 338,
+      "message": "[Generic API Key] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Generic API Key",
+      "rotation_cmd": "Rotate in the service's API settings"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "rag\\prompt.py",
+      "line": 310,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    },
+    {
+      "category": "security",
+      "severity": "warning",
+      "file": "tools\\fine_tuner.py",
+      "line": 439,
+      "message": "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "fix": "",
+      "auto_fixable": false,
+      "secret_type": "Hardcoded Password",
+      "rotation_cmd": "Move to environment variable immediately"
+    }
+  ],
+  "files": [
+    {
+      "file": "demo1.py",
+      "focus": "security",
+      "review": {
+        "findings": [],
+        "summary": "[RATE LIMITED] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98242, Requested 8423. Please try again in 1h35m58.56s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.5,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "fixes": {},
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 12,
+  "pr_title": "Implement error demonstration functions in demo1.py",
+  "pr_author": "Pratiksha-p3",
+  "reviewed_at": "2026-07-21T11:40:00.114308+00:00",
+  "pipeline": "advanced-langgraph-v2",
+  "head_sha": "64a19181ad04b3d86725ba9ed233038cefc4aad7",
+  "auto_fix": {
+    "fixed_count": 0,
+    "unfixable": 15,
+    "status": "success",
+    "unresolved": [
+      {
+        "category": "syntax",
+        "severity": "critical",
+        "file": "demo1.py",
+        "line": 15,
+        "message": "expected an indented block after function definition on line 14",
+        "fix": "Fix Python syntax"
+      }
+    ]
+  },
+  "gate": {
+    "blocked": true,
+    "reason": "7 issue(s) still present, 1 new issue(s) introduced",
+    "resolved_issues": [
+      "def get_user(name) is missing a colon at the end of the function definition",
+      "if a > b is missing a colon at the end of the if statement",
+      "for i in range(10) is missing a colon at the end of the for loop",
+      "print(username) is using an undefined variable 'username'",
+      "return False should be return True for the is_adult function to work correctly",
+      "return 0 should be return 1 for the factorial function to work correctly",
+      "query = 'SELECT * FROM users WHERE username=?' is vulnerable to SQL injection",
+      "os.system(cmd) is vulnerable to command injection",
+      "class UserService is missing a colon at the end of the class definition",
+      "except is missing an exception type",
+      "print(divide(10, 0)) will raise a ZeroDivisionError",
+      "print(get_item()) will raise an IndexError",
+      "print_name() will raise a NameError",
+      "read_file() will raise a FileNotFoundError",
+      "expected ':'",
+      "Possible inverted boolean logic",
+      "Factorial base case should return 1"
+    ],
+    "new_issues": [
+      "expected an indented block after function definition on line 14"
+    ],
+    "still_present": [
+      "[Generic API Key] Secret found in commit HEAD by unknown",
+      "[Generic API Key] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Generic API Key] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown",
+      "[Hardcoded Password] Secret found in commit HEAD by unknown"
+    ],
+    "score_before": 0.2,
+    "score_after": 0.5
+  },
+  "remaining_critical": 1,
+  "remaining_warning": 0,
+  "gate_decision": "BLOCK"
+}

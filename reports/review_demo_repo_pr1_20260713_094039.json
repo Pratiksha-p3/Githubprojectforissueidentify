@@ -1,0 +1,219 @@
+{
+  "overall_score": 0.2,
+  "total_findings": 7,
+  "critical_count": 3,
+  "warning_count": 4,
+  "findings": [
+    {
+      "line": 15,
+      "severity": "critical",
+      "category": "security",
+      "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+      "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 11,
+      "severity": "critical",
+      "category": "security",
+      "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+      "fix": "SECRET_KEY = os.environ.get('SECRET_KEY') or raise ValueError('SECRET_KEY not set')",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 14,
+      "severity": "warning",
+      "category": "bug",
+      "message": "conn = sqlite3.connect('users.db')",
+      "fix": "conn = sqlite3.connect('users.db'); conn.close() should be called when done, consider using a context manager",
+      "file": "src/auth/login.py"
+    },
+    {
+      "line": 17,
+      "severity": "warning",
+      "category": "bug",
+      "message": "return result.fetchone()",
+      "fix": "password verification is missing, add a check for the provided password against the stored hash",
+      "file": "src/auth/login.py"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+      "confidence": 0.95
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-weak-md5-password-hash",
+      "confidence": 0.95
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+      "confidence": 0.95
+    }
+  ],
+  "files": [
+    {
+      "file": "src/auth/login.py",
+      "review": {
+        "findings": [
+          {
+            "line": 15,
+            "severity": "critical",
+            "category": "security",
+            "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+            "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 11,
+            "severity": "critical",
+            "category": "security",
+            "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+            "fix": "SECRET_KEY = os.environ.get('SECRET_KEY') or raise ValueError('SECRET_KEY not set')",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 14,
+            "severity": "warning",
+            "category": "bug",
+            "message": "conn = sqlite3.connect('users.db')",
+            "fix": "conn = sqlite3.connect('users.db'); conn.close() should be called when done, consider using a context manager",
+            "file": "src/auth/login.py"
+          },
+          {
+            "line": 17,
+            "severity": "warning",
+            "category": "bug",
+            "message": "return result.fetchone()",
+            "fix": "password verification is missing, add a check for the provided password against the stored hash",
+            "file": "src/auth/login.py"
+          }
+        ],
+        "summary": "The code has critical security issues, including a hardcoded secret key and a SQL injection vulnerability. Additionally, there are bugs related to connection handling and password verification. These issues should be addressed to ensure the security and reliability of the authentication system.",
+        "overall_score": 0.2,
+        "test_coverage_gaps": [
+          "Test case for successful login with valid credentials",
+          "Test case for failed login with invalid credentials",
+          "Test case for SQL injection attack"
+        ]
+      }
+    },
+    {
+      "file": "src/utils/hash.py",
+      "review": {
+        "findings": [
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+            "confidence": 0.95
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-weak-md5-password-hash",
+            "confidence": 0.95
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+            "confidence": 0.95
+          }
+        ],
+        "summary": "The current implementation uses MD5 for password hashing, which is insecure. A more secure approach like PBKDF2 should be used instead. This change will significantly improve the security of the authentication system.",
+        "overall_score": 0.3,
+        "test_coverage_gaps": [
+          "Test case for hash_password function with different input types",
+          "Test case for hash_password function with empty string"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request to add authentication has significant security concerns, including a hardcoded secret key and SQL injection vulnerability in the login module, as well as insecure password hashing using MD5. These issues pose critical risks to the security and reliability of the system. The overall quality of the code is poor, with multiple findings in both the login and hash modules. To improve the security and reliability of the authentication system, these issues must be addressed. The current state of the code does not meet the standards for approval.",
+    "top_risks": [
+      "SQL injection vulnerability",
+      "Insecure password hashing"
+    ],
+    "recommended_actions": [
+      "Implement secure password hashing using PBKDF2",
+      "Address SQL injection vulnerability and remove hardcoded secret key"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "demo/repo",
+  "pr_number": 1,
+  "head_sha": "mock-sha-abc123",
+  "pr_title": "Add authentication",
+  "reviewed_at": "2026-07-13T09:40:39.041256Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 3,
+    "unresolved": [
+      {
+        "line": 15,
+        "severity": "critical",
+        "category": "security",
+        "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+        "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+        "file": "src/auth/login.py"
+      },
+      {
+        "line": 11,
+        "severity": "critical",
+        "category": "security",
+        "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+        "fix": "SECRET_KEY = os.environ.get('SECRET_KEY') or raise ValueError('SECRET_KEY not set')",
+        "file": "src/auth/login.py"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "security",
+        "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+        "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-weak-md5-password-hash",
+        "confidence": 0.95
+      }
+    ]
+  }
+}

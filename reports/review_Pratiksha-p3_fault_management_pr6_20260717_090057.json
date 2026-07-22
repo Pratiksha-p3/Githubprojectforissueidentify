@@ -1,0 +1,142 @@
+{
+  "overall_score": 0.3,
+  "risk_score": 50,
+  "risk_level": "HIGH",
+  "total_findings": 4,
+  "critical_count": 1,
+  "warning_count": 0,
+  "info_count": 0,
+  "findings": [
+    {
+      "file": "order_management.py",
+      "line": 41,
+      "severity": "critical",
+      "category": "security",
+      "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "order_management.py",
+      "line": 29,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"WHERE id = {customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+      "fix": "Use parameterized queries instead, e.g., `query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))`",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "order_management.py",
+      "line": 42,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+      "fix": "Use parameterized queries instead, e.g., `query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))`",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "order_management.py",
+      "line": 20,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `self.conn = sqlite3.connect(\"customers.db\")`\nThe CustomerService class, which appears to be a service class, contains direct database queries and connections.",
+      "fix": "Move the database connection and queries to a separate data access object or repository class, and inject it into the service class.",
+      "source": "architecture_guard",
+      "adr_id": "ADR-001"
+    }
+  ],
+  "files": [
+    {
+      "file": "order_management.py",
+      "review": {
+        "findings": [
+          {
+            "file": "order_management.py",
+            "line": 41,
+            "severity": "critical",
+            "category": "security",
+            "message": "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use parameterized queries instead.\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-direct",
+            "confidence": 0.95,
+            "risk_weight": 50
+          }
+        ],
+        "summary": "[RATE LIMITED \u2014 LLM did not run] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 94411, Requested 9152. Please try again in 51m18.432s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.3,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 6,
+  "head_sha": "80ff95c5c9e94112af522bcebb6e8005859a5449",
+  "pr_title": "Add order management system implementation",
+  "reviewed_at": "2026-07-17T09:00:43.005078Z",
+  "auto_fix": {
+    "fixed_count": 1,
+    "fixed_files": [
+      "order_management.py"
+    ],
+    "unresolved_count": 3,
+    "unresolved": [
+      {
+        "file": "order_management.py",
+        "line": 29,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"WHERE id = {customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+        "fix": "Use parameterized queries instead, e.g., `query = 'SELECT * FROM customers WHERE id = ?'; cursor.execute(query, (customer_id,))`",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "order_management.py",
+        "line": 42,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `f\"UPDATE customers SET email='{email}' WHERE id={customer_id}\"`\nThe code uses an f-string to construct the SQL query, which is vulnerable to SQL injection attacks.",
+        "fix": "Use parameterized queries instead, e.g., `query = 'UPDATE customers SET email = ? WHERE id = ?'; cursor.execute(query, (email, customer_id))`",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "order_management.py",
+        "line": 20,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `self.conn = sqlite3.connect(\"customers.db\")`\nThe CustomerService class, which appears to be a service class, contains direct database queries and connections.",
+        "fix": "Move the database connection and queries to a separate data access object or repository class, and inject it into the service class.",
+        "source": "architecture_guard",
+        "adr_id": "ADR-001"
+      }
+    ]
+  },
+  "gate": {
+    "blocked": true,
+    "reason": "3 critical issue(s) still not fixed",
+    "resolved_issues": [
+      "'JWT_SECRET = \"customer-secret-key\"'",
+      "'API_TOKEN = \"prod-api-token-123\"'",
+      "'query = (\"SELECT * FROM customers \" f\"WHERE id = {customer_id}\")'",
+      "'response = requests.post(\"https://api.partner.com/customer\", json=payload, headers={\"Authorization\"",
+      "'for row1 in data: for row2 in data:'"
+    ],
+    "new_issues": [],
+    "still_present": [
+      "Possible SQL injection: an f-string is being passed directly into a SQL execute() call. Use paramete",
+      "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffend",
+      "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database "
+    ],
+    "score_before": 0.2,
+    "score_after": 0.3
+  }
+}

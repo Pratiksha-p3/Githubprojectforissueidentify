@@ -1,0 +1,169 @@
+{
+  "overall_score": 0.3,
+  "total_findings": 7,
+  "critical_count": 2,
+  "warning_count": 1,
+  "findings": [
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The HTML code does not follow the standard HTML indentation",
+      "fix": "Use a standard HTML indentation (2 or 4 spaces) throughout the code",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "The CSS styles are not separated into an external file",
+      "fix": "Consider moving the CSS styles to an external file for better maintainability",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "line": 0,
+      "severity": "info",
+      "category": "style",
+      "message": "There are no comments in the HTML code to explain its purpose or functionality",
+      "fix": "Add comments to the HTML code to explain its purpose and functionality",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "line": 172,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-password",
+      "confidence": 0.95
+    },
+    {
+      "line": 44,
+      "severity": "warning",
+      "category": "style",
+      "message": "'<div class=\"containers\">'",
+      "fix": "'<div class=\"container\">'",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 169,
+      "severity": "critical",
+      "category": "security",
+      "message": "'password = \"test123\"'",
+      "fix": "Remove hardcoded password. Consider using environment variables or a secure secrets management system.",
+      "file": "generate_ai_ml_dl_html.py"
+    },
+    {
+      "line": 112,
+      "severity": "info",
+      "category": "style",
+      "message": "'<td>Definitions</td>'",
+      "fix": "'<td>Definition</td>'",
+      "file": "generate_ai_ml_dl_html.py"
+    }
+  ],
+  "files": [
+    {
+      "file": "ai_ml_dl.html",
+      "review": {
+        "findings": [
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The HTML code does not follow the standard HTML indentation",
+            "fix": "Use a standard HTML indentation (2 or 4 spaces) throughout the code",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "The CSS styles are not separated into an external file",
+            "fix": "Consider moving the CSS styles to an external file for better maintainability",
+            "file": "ai_ml_dl.html"
+          },
+          {
+            "line": 0,
+            "severity": "info",
+            "category": "style",
+            "message": "There are no comments in the HTML code to explain its purpose or functionality",
+            "fix": "Add comments to the HTML code to explain its purpose and functionality",
+            "file": "ai_ml_dl.html"
+          }
+        ],
+        "summary": "The code provided is a basic HTML structure with embedded CSS styles. There are no major issues found, but some improvements can be made to follow standard HTML indentation, separate CSS styles into an external file, and add comments to explain the code's purpose and functionality.",
+        "overall_score": 0.95,
+        "test_coverage_gaps": []
+      }
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "review": {
+        "findings": [
+          {
+            "file": "generate_ai_ml_dl_html.py",
+            "line": 172,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-password",
+            "confidence": 0.95
+          },
+          {
+            "line": 44,
+            "severity": "warning",
+            "category": "style",
+            "message": "'<div class=\"containers\">'",
+            "fix": "'<div class=\"container\">'",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 169,
+            "severity": "critical",
+            "category": "security",
+            "message": "'password = \"test123\"'",
+            "fix": "Remove hardcoded password. Consider using environment variables or a secure secrets management system.",
+            "file": "generate_ai_ml_dl_html.py"
+          },
+          {
+            "line": 112,
+            "severity": "info",
+            "category": "style",
+            "message": "'<td>Definitions</td>'",
+            "fix": "'<td>Definition</td>'",
+            "file": "generate_ai_ml_dl_html.py"
+          }
+        ],
+        "summary": "This diff contains a critical security issue with a hardcoded password, a style issue with an incorrect class name, and a minor style improvement for a table header. These issues should be addressed before merging the code.",
+        "overall_score": 0.3,
+        "test_coverage_gaps": [
+          "Test case for password handling",
+          "Test case for HTML generation with correct class names"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The pull request contains a mix of minor and critical issues across two files. The HTML file is generally well-structured but requires some improvements for better readability and maintainability. However, the Python file poses significant concerns, including a critical security vulnerability due to a hardcoded password. Overall, the quality of the code needs significant improvement before it can be considered for merge. The security issue in the Python file is the most pressing concern that needs immediate attention.",
+    "top_risks": [
+      "Hardcoded password in generate_ai_ml_dl_html.py",
+      "Potential security vulnerabilities due to poor coding practices"
+    ],
+    "recommended_actions": [
+      "Remove the hardcoded password and implement secure authentication mechanisms",
+      "Address all findings from the code review, especially those related to security and style improvements"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 1,
+  "head_sha": "3860baf48660b2e442c9bd160f7bf7f49ed3413f",
+  "pr_title": "test PR for AI reviw",
+  "reviewed_at": "2026-07-01T09:31:32.057672Z"
+}

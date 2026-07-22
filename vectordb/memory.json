@@ -1,0 +1,256 @@
+{
+  "dev": {
+    "total_prs": 2,
+    "total_critical": 8,
+    "patterns": {
+      "security": 12,
+      "bug": 1
+    },
+    "recent_issues": [
+      {
+        "file": "src/auth/login.py",
+        "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a s",
+        "category": "security",
+        "pr": 1,
+        "date": "2026-07-20T05:36:07.740301"
+      },
+      {
+        "file": "src/auth/login.py",
+        "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized ",
+        "category": "security",
+        "pr": 1,
+        "date": "2026-07-20T05:36:07.740301"
+      },
+      {
+        "file": "src/auth/login.py",
+        "message": "SECRET_KEY = 'hardcoded-secret-abc123'",
+        "category": "security",
+        "pr": 1,
+        "date": "2026-07-20T05:36:07.740301"
+      },
+      {
+        "file": "src/auth/login.py",
+        "message": "query = f\"SELECT * FROM users WHERE name='{username}'\"",
+        "category": "security",
+        "pr": 1,
+        "date": "2026-07-20T05:36:07.740301"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+        "category": "security",
+        "pr": 1,
+        "date": "2026-07-20T05:36:07.740301"
+      },
+      {
+        "file": "src/auth/login.py",
+        "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a s",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:50:19.366695"
+      },
+      {
+        "file": "src/auth/login.py",
+        "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized ",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:50:19.366695"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:50:19.366695"
+      }
+    ],
+    "pr_history": [
+      {
+        "repo": "demo/repo",
+        "pr": 1,
+        "critical": 5,
+        "date": "2026-07-20T05:36:07.740301"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 3,
+        "date": "2026-07-21T06:50:19.366695"
+      }
+    ]
+  },
+  "Pratiksha-p3": {
+    "total_prs": 15,
+    "total_critical": 32,
+    "patterns": {
+      "security": 45,
+      "performance": 4,
+      "style": 5,
+      "bug": 16
+    },
+    "recent_issues": [
+      {
+        "file": "Demo.py",
+        "message": "Found 'subprocess' function 'run' with 'shell=True'. This is dangerous because this call will spawn the command using a ",
+        "category": "security",
+        "pr": 9,
+        "date": "2026-07-21T06:13:34.118507"
+      },
+      {
+        "file": "Demo.py",
+        "message": "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLoader`, and `yaml.Uns",
+        "category": "security",
+        "pr": 9,
+        "date": "2026-07-21T06:13:34.118507"
+      },
+      {
+        "file": "demo1.py",
+        "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a s",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:32:05.259665"
+      },
+      {
+        "file": "demo1.py",
+        "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized ",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:32:05.259665"
+      },
+      {
+        "file": "demo1.py",
+        "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a s",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:34:39.962653"
+      },
+      {
+        "file": "demo1.py",
+        "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized ",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T06:34:39.962653"
+      },
+      {
+        "file": "demo1.py",
+        "message": "query = 'SELECT * FROM users WHERE username=?' is vulnerable to SQL injection",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T11:13:35.520990"
+      },
+      {
+        "file": "demo1.py",
+        "message": "os.system(cmd) is vulnerable to command injection",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-21T11:13:35.520990"
+      },
+      {
+        "file": "demo1.py",
+        "message": "query = 'SELECT * FROM users WHERE username=?'",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-22T04:24:33.564158"
+      },
+      {
+        "file": "demo1.py",
+        "message": "Use the subprocess module with the 'args' parameter to prevent command injection",
+        "category": "security",
+        "pr": 12,
+        "date": "2026-07-22T04:24:33.564158"
+      }
+    ],
+    "pr_history": [
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 6,
+        "critical": 6,
+        "date": "2026-07-20T09:55:48.081597"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 6,
+        "critical": 1,
+        "date": "2026-07-20T11:05:27.417389"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 6,
+        "critical": 3,
+        "date": "2026-07-21T05:38:35.009128"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 8,
+        "critical": 6,
+        "date": "2026-07-21T05:53:57.412998"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 8,
+        "critical": 4,
+        "date": "2026-07-21T06:00:10.467930"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 9,
+        "critical": 4,
+        "date": "2026-07-21T06:13:34.118507"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 9,
+        "critical": 0,
+        "date": "2026-07-21T06:19:42.327490"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 2,
+        "date": "2026-07-21T06:32:05.259665"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 2,
+        "date": "2026-07-21T06:34:39.962653"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 0,
+        "date": "2026-07-21T06:53:07.371597"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 0,
+        "date": "2026-07-21T07:37:23.339878"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 0,
+        "date": "2026-07-21T08:51:28.251025"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 2,
+        "date": "2026-07-21T11:13:35.520990"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 0,
+        "date": "2026-07-21T11:39:56.625293"
+      },
+      {
+        "repo": "Pratiksha-p3/fault_management",
+        "pr": 12,
+        "critical": 2,
+        "date": "2026-07-22T04:24:33.564158"
+      }
+    ]
+  }
+}

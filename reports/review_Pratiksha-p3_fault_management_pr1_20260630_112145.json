@@ -1,0 +1,75 @@
+{
+  "overall_score": 0.0,
+  "total_findings": 2,
+  "critical_count": 1,
+  "warning_count": 0,
+  "findings": [
+    {
+      "line": 148,
+      "severity": "info",
+      "category": "style",
+      "message": "'Deep Learnin' should be 'Deep Learning'",
+      "fix": "Deep Learning",
+      "file": "ai_ml_dl.html"
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "line": 172,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-password",
+      "confidence": 0.95
+    }
+  ],
+  "files": [
+    {
+      "file": "ai_ml_dl.html",
+      "review": {
+        "findings": [
+          {
+            "line": 148,
+            "severity": "info",
+            "category": "style",
+            "message": "'Deep Learnin' should be 'Deep Learning'",
+            "fix": "Deep Learning",
+            "file": "ai_ml_dl.html"
+          }
+        ],
+        "summary": "The code provided is a basic HTML page with information about AI, ML, and DL. There is a minor typo in the hierarchy section. The code is well-structured and easy to read.",
+        "overall_score": 0.95,
+        "test_coverage_gaps": []
+      }
+    },
+    {
+      "file": "generate_ai_ml_dl_html.py",
+      "review": {
+        "findings": [
+          {
+            "file": "generate_ai_ml_dl_html.py",
+            "line": 172,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-password",
+            "confidence": 0.95
+          }
+        ],
+        "summary": "Review failed: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98510, Requested 5648. Please try again in 59m52.511999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.0,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "executive_summary": {},
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 1,
+  "head_sha": "3860baf48660b2e442c9bd160f7bf7f49ed3413f",
+  "pr_title": "test PR for AI reviw",
+  "reviewed_at": "2026-06-30T11:21:43.925509Z"
+}

@@ -1,0 +1,283 @@
+{
+  "overall_score": 0.3,
+  "risk_score": 170,
+  "risk_level": "HIGH",
+  "total_findings": 9,
+  "critical_count": 3,
+  "warning_count": 2,
+  "info_count": 0,
+  "findings": [
+    {
+      "file": "src/auth/login.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-secret-key",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "src/auth/login.py",
+      "line": 7,
+      "severity": "critical",
+      "category": "security",
+      "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-var",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+      "confidence": 0.95,
+      "risk_weight": 10
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "security",
+      "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-weak-md5-password-hash",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "warning",
+      "category": "security",
+      "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+      "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+      "confidence": 0.95,
+      "risk_weight": 10
+    },
+    {
+      "file": "src/auth/login.py",
+      "line": 6,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `query = f\"SELECT * FROM users WHERE name='{username}'\"`\nThe code uses an f-string to construct the SQL query, which is a clear violation of the ADR rule. This makes the code vulnerable to SQL injection attacks.",
+      "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "src/auth/login.py",
+      "line": 7,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code: `result = conn.execute(query)`\nThe code does not use parameterized queries when executing the SQL query. This is a clear violation of the ADR rule.",
+      "fix": "result = conn.execute(query, (username,))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: ALL password hashing MUST use bcrypt\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password hashing, which is explicitly forbidden by ADR-002. Instead, bcrypt should be used.",
+      "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt(12))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-002"
+    },
+    {
+      "file": "src/utils/hash.py",
+      "line": 3,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: NEVER use MD5, SHA1, or SHA256 for password storage\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password storage, which is explicitly forbidden by ADR-002.",
+      "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt(12))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-002"
+    }
+  ],
+  "files": [
+    {
+      "file": "src/auth/login.py",
+      "review": {
+        "findings": [
+          {
+            "file": "src/auth/login.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-secret-key",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "file": "src/auth/login.py",
+            "line": 7,
+            "severity": "critical",
+            "category": "security",
+            "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-var",
+            "confidence": 0.95,
+            "risk_weight": 50
+          }
+        ],
+        "summary": "[RATE LIMITED \u2014 LLM did not run] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 96064, Requested 6744. Please try again in 40m26.112s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.3,
+        "test_coverage_gaps": []
+      }
+    },
+    {
+      "file": "src/utils/hash.py",
+      "review": {
+        "findings": [
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+            "confidence": 0.95,
+            "risk_weight": 10
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-weak-md5-password-hash",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+            "confidence": 0.95,
+            "risk_weight": 10
+          }
+        ],
+        "summary": "[RATE LIMITED \u2014 LLM did not run] Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01jx1yct0je8ttf4gpzehkhqpb` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 96002, Requested 6615. Please try again in 37m41.087999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "overall_score": 0.3,
+        "test_coverage_gaps": []
+      }
+    }
+  ],
+  "executive_summary": {},
+  "approved": false,
+  "repo": "demo/repo",
+  "pr_number": 1,
+  "head_sha": "mock-sha-abc123",
+  "pr_title": "Add authentication",
+  "reviewed_at": "2026-07-17T09:20:21.647031Z",
+  "auto_fix": {
+    "fixed_count": 0,
+    "fixed_files": [],
+    "unresolved_count": 7,
+    "unresolved": [
+      {
+        "file": "src/auth/login.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "security",
+        "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+        "fix": "Move secret to environment variable or secrets manager.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-hardcoded-secret-key",
+        "confidence": 0.95,
+        "risk_weight": 50
+      },
+      {
+        "file": "src/auth/login.py",
+        "line": 7,
+        "severity": "critical",
+        "category": "security",
+        "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+        "fix": "Use parameterized queries instead of string formatting.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-sql-injection-fstring-var",
+        "confidence": 0.95,
+        "risk_weight": 50
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "security",
+        "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+        "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+        "source": "semgrep",
+        "rule_id": "security_rules.custom-weak-md5-password-hash",
+        "confidence": 0.95,
+        "risk_weight": 50
+      },
+      {
+        "file": "src/auth/login.py",
+        "line": 6,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `query = f\"SELECT * FROM users WHERE name='{username}'\"`\nThe code uses an f-string to construct the SQL query, which is a clear violation of the ADR rule. This makes the code vulnerable to SQL injection attacks.",
+        "fix": "query = 'SELECT * FROM users WHERE name=?'; result = conn.execute(query, (username,))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "src/auth/login.py",
+        "line": 7,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code: `result = conn.execute(query)`\nThe code does not use parameterized queries when executing the SQL query. This is a clear violation of the ADR rule.",
+        "fix": "result = conn.execute(query, (username,))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: ALL password hashing MUST use bcrypt\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password hashing, which is explicitly forbidden by ADR-002. Instead, bcrypt should be used.",
+        "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt(12))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-002"
+      },
+      {
+        "file": "src/utils/hash.py",
+        "line": 3,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-002] Use bcrypt for Password Hashing: NEVER use MD5, SHA1, or SHA256 for password storage\nOffending code: `return hashlib.md5(password.encode()).hexdigest()`\nThe code uses MD5 for password storage, which is explicitly forbidden by ADR-002.",
+        "fix": "return bcrypt.hashpw(password.encode(), bcrypt.gensalt(12))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-002"
+      }
+    ]
+  }
+}

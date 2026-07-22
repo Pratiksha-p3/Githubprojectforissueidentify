@@ -1,0 +1,704 @@
+{
+  "overall_score": 0.0,
+  "risk_score": 620,
+  "risk_level": "HIGH",
+  "total_findings": 28,
+  "critical_count": 10,
+  "warning_count": 12,
+  "info_count": 0,
+  "findings": [
+    {
+      "file": "test_vulnerable.py",
+      "line": 26,
+      "severity": "critical",
+      "category": "security",
+      "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+      "fix": "Use parameterized queries instead of string formatting.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-sql-injection-fstring-var",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 38,
+      "severity": "critical",
+      "category": "security",
+      "message": "Found 'subprocess' function 'check_output' with 'shell=True'. This is dangerous because this call will spawn the command using a shell process. Doing so propagates current shell settings and variables, which makes it much easier for a malicious actor to execute commands. Use 'shell=False' instead.",
+      "fix": "False",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 51,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected SHA1 hash algorithm which is considered insecure. SHA1 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+      "fix": "hashlib.sha256(text.encode())",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1",
+      "confidence": 0.95,
+      "risk_weight": 10
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 59,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected the use of exec(). exec() can be dangerous if used to evaluate dynamic content. If this content can be input from outside the program, this may be a code injection vulnerability. Ensure evaluated content is not definable by external sources.",
+      "fix": "Review this code against OWASP guidelines for this issue type.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.exec-detected.exec-detected",
+      "confidence": 0.95,
+      "risk_weight": 10
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 64,
+      "severity": "warning",
+      "category": "security",
+      "message": "Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.",
+      "fix": "Review this code against OWASP guidelines for this issue type.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.deserialization.pickle.avoid-pickle",
+      "confidence": 0.95,
+      "risk_weight": 10
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 69,
+      "severity": "critical",
+      "category": "security",
+      "message": "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLoader`, and `yaml.UnsafeLoader` are all known to be unsafe methods of deserializing YAML. An attacker with control over the YAML input could create special YAML input that allows the attacker to run arbitrary Python code. This would allow the attacker to steal files, download and install malware, or otherwise take over the machine. Use `yaml.safe_load` or `yaml.SafeLoader` instead.",
+      "fix": "yaml.load(f, Loader=yaml.Loader)",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.deserialization.avoid-pyyaml-load.avoid-pyyaml-load",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 137,
+      "severity": "warning",
+      "category": "security",
+      "message": "Detected the use of exec(). exec() can be dangerous if used to evaluate dynamic content. If this content can be input from outside the program, this may be a code injection vulnerability. Ensure evaluated content is not definable by external sources.",
+      "fix": "Review this code against OWASP guidelines for this issue type.",
+      "source": "semgrep",
+      "rule_id": "python.lang.security.audit.exec-detected.exec-detected",
+      "confidence": 0.95,
+      "risk_weight": 10
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 142,
+      "severity": "critical",
+      "category": "security",
+      "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+      "fix": "Move secret to environment variable or secrets manager.",
+      "source": "semgrep",
+      "rule_id": "security_rules.custom-hardcoded-password",
+      "confidence": 0.95,
+      "risk_weight": 50
+    },
+    {
+      "line": 43,
+      "severity": "critical",
+      "category": "security",
+      "message": "'return os.system(command)'",
+      "fix": "Avoid using 'os.system' as it can lead to command injection; instead, use the 'subprocess' module with a list of arguments",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 47,
+      "severity": "warning",
+      "category": "security",
+      "message": "'return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()'",
+      "fix": "Consider using a more secure password hashing algorithm like Argon2 or PBKDF2",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 55,
+      "severity": "critical",
+      "category": "security",
+      "message": "'return ast.literal_eval(expression)'",
+      "fix": "Avoid using 'ast.literal_eval' with untrusted input; instead, use a safer evaluation method or validate the input",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 63,
+      "severity": "critical",
+      "category": "security",
+      "message": "'return pickle.load(f)'",
+      "fix": "Avoid using 'pickle' with untrusted input; instead, use a safer deserialization method like JSON or MessagePack",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 73,
+      "severity": "warning",
+      "category": "security",
+      "message": "'with open(filename, \"r\") as f:'",
+      "fix": "Consider validating the 'filename' parameter to prevent path traversal attacks",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 78,
+      "severity": "warning",
+      "category": "security",
+      "message": "'with open(filename, \"w\") as f:'",
+      "fix": "Consider validating the 'filename' parameter to prevent arbitrary file write attacks",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 99,
+      "severity": "warning",
+      "category": "security",
+      "message": "'return requests.get(url).text'",
+      "fix": "Consider validating the 'url' parameter to prevent SSRF attacks",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 103,
+      "severity": "warning",
+      "category": "security",
+      "message": "'random.seed(1234)'",
+      "fix": "Consider using a more secure random number generator like 'secrets' or 'os.urandom'",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 109,
+      "severity": "critical",
+      "category": "security",
+      "message": "'if username == \"admin\":'",
+      "fix": "Avoid hardcoding admin credentials; instead, use a secure method to store and retrieve credentials",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 114,
+      "severity": "warning",
+      "category": "security",
+      "message": "'query = \"UPDATE users SET profile='\" + user_input + \"'\"'",
+      "fix": "Use parameterized queries to prevent SQL injection, e.g., 'query = \"UPDATE users SET profile = ?\"; self.conn.execute(query, (user_input,))'",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 124,
+      "severity": "critical",
+      "category": "security",
+      "message": "'print(f\"User={username}, Password={password}\")'",
+      "fix": "Avoid logging sensitive information like passwords; instead, use a secure logging method that redacts sensitive data",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 129,
+      "severity": "warning",
+      "category": "security",
+      "message": "'return f\"Redirecting to {url}\"'",
+      "fix": "Consider validating the 'url' parameter to prevent open redirect attacks",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 133,
+      "severity": "warning",
+      "category": "security",
+      "message": "'return str(random.randint(1, 1000))'",
+      "fix": "Consider using a more secure method to generate session IDs, like 'secrets' or 'uuid'",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "line": 141,
+      "severity": "critical",
+      "category": "security",
+      "message": "'username = \"admin\"; password = \"password123\"'",
+      "fix": "Avoid hardcoding admin credentials; instead, use a secure method to store and retrieve credentials",
+      "file": "test_vulnerable.py"
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 13,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or connection strings\nOffending code: `DB_PASSWORD = \"admin123\"`\nHardcoding secrets is a security risk. Secrets should be stored in environment variables.",
+      "fix": "DB_PASSWORD = os.getenv(\"DB_PASSWORD\")",
+      "source": "architecture_guard",
+      "adr_id": "ADR-004"
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 15,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or connection strings\nOffending code: `AWS_ACCESS_KEY = \"AKIA1234567890TEST\"`\nHardcoding secrets is a security risk. Secrets should be stored in environment variables.",
+      "fix": "AWS_ACCESS_KEY = os.getenv(\"AWS_ACCESS_KEY\")",
+      "source": "architecture_guard",
+      "adr_id": "ADR-004"
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 16,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or connection strings\nOffending code: `AWS_SECRET_KEY = \"aws-secret-key\"`\nHardcoding secrets is a security risk. Secrets should be stored in environment variables.",
+      "fix": "AWS_SECRET_KEY = os.getenv(\"AWS_SECRET_KEY\")",
+      "source": "architecture_guard",
+      "adr_id": "ADR-004"
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 26,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `query = f\"SELECT * FROM users WHERE username = '{username}'\"`\nUsing f-strings in SQL strings can lead to SQL injection attacks. Parameterized queries should be used instead.",
+      "fix": "query = \"SELECT * FROM users WHERE username = ?\"; self.conn.execute(query, (username,))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 22,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `self.conn = sqlite3.connect(\"users.db\")`\nDirect database calls should be made through the service layer, not in controllers.",
+      "fix": "Move database connection and queries to a service class in the services/ directory",
+      "source": "architecture_guard",
+      "adr_id": "ADR-001"
+    },
+    {
+      "file": "test_vulnerable.py",
+      "line": 32,
+      "severity": "critical",
+      "category": "architecture",
+      "message": "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code: `self.conn.execute(query)`\nThe query is not being executed with parameters, which can lead to SQL injection attacks.",
+      "fix": "self.conn.execute(query, (user_id,))",
+      "source": "architecture_guard",
+      "adr_id": "ADR-003"
+    }
+  ],
+  "files": [
+    {
+      "file": "test_vulnerable.py",
+      "review": {
+        "findings": [
+          {
+            "file": "test_vulnerable.py",
+            "line": 26,
+            "severity": "critical",
+            "category": "security",
+            "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-var",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 38,
+            "severity": "critical",
+            "category": "security",
+            "message": "Found 'subprocess' function 'check_output' with 'shell=True'. This is dangerous because this call will spawn the command using a shell process. Doing so propagates current shell settings and variables, which makes it much easier for a malicious actor to execute commands. Use 'shell=False' instead.",
+            "fix": "False",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 51,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected SHA1 hash algorithm which is considered insecure. SHA1 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+            "fix": "hashlib.sha256(text.encode())",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1",
+            "confidence": 0.95,
+            "risk_weight": 10
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 59,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected the use of exec(). exec() can be dangerous if used to evaluate dynamic content. If this content can be input from outside the program, this may be a code injection vulnerability. Ensure evaluated content is not definable by external sources.",
+            "fix": "Review this code against OWASP guidelines for this issue type.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.exec-detected.exec-detected",
+            "confidence": 0.95,
+            "risk_weight": 10
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 64,
+            "severity": "warning",
+            "category": "security",
+            "message": "Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the serialized data could be manipulated to run arbitrary code. Instead, consider serializing the relevant data as JSON or a similar text-based serialization format.",
+            "fix": "Review this code against OWASP guidelines for this issue type.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.deserialization.pickle.avoid-pickle",
+            "confidence": 0.95,
+            "risk_weight": 10
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 69,
+            "severity": "critical",
+            "category": "security",
+            "message": "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLoader`, and `yaml.UnsafeLoader` are all known to be unsafe methods of deserializing YAML. An attacker with control over the YAML input could create special YAML input that allows the attacker to run arbitrary Python code. This would allow the attacker to steal files, download and install malware, or otherwise take over the machine. Use `yaml.safe_load` or `yaml.SafeLoader` instead.",
+            "fix": "yaml.load(f, Loader=yaml.Loader)",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.deserialization.avoid-pyyaml-load.avoid-pyyaml-load",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 137,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected the use of exec(). exec() can be dangerous if used to evaluate dynamic content. If this content can be input from outside the program, this may be a code injection vulnerability. Ensure evaluated content is not definable by external sources.",
+            "fix": "Review this code against OWASP guidelines for this issue type.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.exec-detected.exec-detected",
+            "confidence": 0.95,
+            "risk_weight": 10
+          },
+          {
+            "file": "test_vulnerable.py",
+            "line": 142,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded password or credential detected. Secrets should never be committed to source code. Use environment variables or a secrets manager instead.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-password",
+            "confidence": 0.95,
+            "risk_weight": 50
+          },
+          {
+            "line": 43,
+            "severity": "critical",
+            "category": "security",
+            "message": "'return os.system(command)'",
+            "fix": "Avoid using 'os.system' as it can lead to command injection; instead, use the 'subprocess' module with a list of arguments",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 47,
+            "severity": "warning",
+            "category": "security",
+            "message": "'return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()'",
+            "fix": "Consider using a more secure password hashing algorithm like Argon2 or PBKDF2",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 55,
+            "severity": "critical",
+            "category": "security",
+            "message": "'return ast.literal_eval(expression)'",
+            "fix": "Avoid using 'ast.literal_eval' with untrusted input; instead, use a safer evaluation method or validate the input",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 63,
+            "severity": "critical",
+            "category": "security",
+            "message": "'return pickle.load(f)'",
+            "fix": "Avoid using 'pickle' with untrusted input; instead, use a safer deserialization method like JSON or MessagePack",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 73,
+            "severity": "warning",
+            "category": "security",
+            "message": "'with open(filename, \"r\") as f:'",
+            "fix": "Consider validating the 'filename' parameter to prevent path traversal attacks",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 78,
+            "severity": "warning",
+            "category": "security",
+            "message": "'with open(filename, \"w\") as f:'",
+            "fix": "Consider validating the 'filename' parameter to prevent arbitrary file write attacks",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 99,
+            "severity": "warning",
+            "category": "security",
+            "message": "'return requests.get(url).text'",
+            "fix": "Consider validating the 'url' parameter to prevent SSRF attacks",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 103,
+            "severity": "warning",
+            "category": "security",
+            "message": "'random.seed(1234)'",
+            "fix": "Consider using a more secure random number generator like 'secrets' or 'os.urandom'",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 109,
+            "severity": "critical",
+            "category": "security",
+            "message": "'if username == \"admin\":'",
+            "fix": "Avoid hardcoding admin credentials; instead, use a secure method to store and retrieve credentials",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 114,
+            "severity": "warning",
+            "category": "security",
+            "message": "'query = \"UPDATE users SET profile='\" + user_input + \"'\"'",
+            "fix": "Use parameterized queries to prevent SQL injection, e.g., 'query = \"UPDATE users SET profile = ?\"; self.conn.execute(query, (user_input,))'",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 124,
+            "severity": "critical",
+            "category": "security",
+            "message": "'print(f\"User={username}, Password={password}\")'",
+            "fix": "Avoid logging sensitive information like passwords; instead, use a secure logging method that redacts sensitive data",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 129,
+            "severity": "warning",
+            "category": "security",
+            "message": "'return f\"Redirecting to {url}\"'",
+            "fix": "Consider validating the 'url' parameter to prevent open redirect attacks",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 133,
+            "severity": "warning",
+            "category": "security",
+            "message": "'return str(random.randint(1, 1000))'",
+            "fix": "Consider using a more secure method to generate session IDs, like 'secrets' or 'uuid'",
+            "file": "test_vulnerable.py"
+          },
+          {
+            "line": 141,
+            "severity": "critical",
+            "category": "security",
+            "message": "'username = \"admin\"; password = \"password123\"'",
+            "fix": "Avoid hardcoding admin credentials; instead, use a secure method to store and retrieve credentials",
+            "file": "test_vulnerable.py"
+          }
+        ],
+        "summary": "The provided code contains numerous security vulnerabilities, including SQL injection, command injection, weak cryptography, and sensitive information exposure. It is essential to address these issues to prevent potential attacks and data breaches. The code should be refactored to use secure practices, such as parameterized queries, secure password hashing, and safe deserialization methods.",
+        "overall_score": 0.0,
+        "test_coverage_gaps": [
+          "SQL injection attacks",
+          "Command injection attacks",
+          "Weak cryptography",
+          "Sensitive information exposure",
+          "Path traversal attacks",
+          "Arbitrary file write attacks",
+          "SSRF attacks",
+          "Open redirect attacks"
+        ]
+      }
+    }
+  ],
+  "executive_summary": {
+    "executive_summary": "The provided code in test_vulnerable.py contains severe security vulnerabilities, including SQL injection, command injection, and weak cryptography, posing significant risks to data security and integrity. The code's overall quality is poor due to the numerous findings. It is crucial to address these issues to prevent potential attacks and data breaches. The code requires a thorough refactor to incorporate secure practices.",
+    "top_risks": [
+      "SQL injection",
+      "Command injection"
+    ],
+    "recommended_actions": [
+      "Refactor the code to use parameterized queries and secure password hashing",
+      "Implement safe deserialization methods and secure cryptography practices"
+    ],
+    "approve": false
+  },
+  "approved": false,
+  "repo": "Pratiksha-p3/fault_management",
+  "pr_number": 5,
+  "head_sha": "4a011b0cbf491de82d7313779118fadf047c50d6",
+  "pr_title": "Create test_vulnerable.py with security issues",
+  "reviewed_at": "2026-07-17T06:00:01.171591Z",
+  "auto_fix": {
+    "fixed_count": 4,
+    "fixed_files": [
+      "test_vulnerable.py",
+      "test_vulnerable.py",
+      "test_vulnerable.py",
+      "test_vulnerable.py"
+    ],
+    "unresolved_count": 13,
+    "unresolved": [
+      {
+        "file": "test_vulnerable.py",
+        "line": 38,
+        "severity": "critical",
+        "category": "security",
+        "message": "Found 'subprocess' function 'check_output' with 'shell=True'. This is dangerous because this call will spawn the command using a shell process. Doing so propagates current shell settings and variables, which makes it much easier for a malicious actor to execute commands. Use 'shell=False' instead.",
+        "fix": "False",
+        "source": "semgrep",
+        "rule_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+        "confidence": 0.95,
+        "risk_weight": 50
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 69,
+        "severity": "critical",
+        "category": "security",
+        "message": "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLoader`, and `yaml.UnsafeLoader` are all known to be unsafe methods of deserializing YAML. An attacker with control over the YAML input could create special YAML input that allows the attacker to run arbitrary Python code. This would allow the attacker to steal files, download and install malware, or otherwise take over the machine. Use `yaml.safe_load` or `yaml.SafeLoader` instead.",
+        "fix": "yaml.load(f, Loader=yaml.Loader)",
+        "source": "semgrep",
+        "rule_id": "python.lang.security.deserialization.avoid-pyyaml-load.avoid-pyyaml-load",
+        "confidence": 0.95,
+        "risk_weight": 50
+      },
+      {
+        "line": 55,
+        "severity": "critical",
+        "category": "security",
+        "message": "'return ast.literal_eval(expression)'",
+        "fix": "Avoid using 'ast.literal_eval' with untrusted input; instead, use a safer evaluation method or validate the input",
+        "file": "test_vulnerable.py"
+      },
+      {
+        "line": 63,
+        "severity": "critical",
+        "category": "security",
+        "message": "'return pickle.load(f)'",
+        "fix": "Avoid using 'pickle' with untrusted input; instead, use a safer deserialization method like JSON or MessagePack",
+        "file": "test_vulnerable.py"
+      },
+      {
+        "line": 109,
+        "severity": "critical",
+        "category": "security",
+        "message": "'if username == \"admin\":'",
+        "fix": "Avoid hardcoding admin credentials; instead, use a secure method to store and retrieve credentials",
+        "file": "test_vulnerable.py"
+      },
+      {
+        "line": 124,
+        "severity": "critical",
+        "category": "security",
+        "message": "'print(f\"User={username}, Password={password}\")'",
+        "fix": "Avoid logging sensitive information like passwords; instead, use a secure logging method that redacts sensitive data",
+        "file": "test_vulnerable.py"
+      },
+      {
+        "line": 141,
+        "severity": "critical",
+        "category": "security",
+        "message": "'username = \"admin\"; password = \"password123\"'",
+        "fix": "Avoid hardcoding admin credentials; instead, use a secure method to store and retrieve credentials",
+        "file": "test_vulnerable.py"
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 13,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or connection strings\nOffending code: `DB_PASSWORD = \"admin123\"`\nHardcoding secrets is a security risk. Secrets should be stored in environment variables.",
+        "fix": "DB_PASSWORD = os.getenv(\"DB_PASSWORD\")",
+        "source": "architecture_guard",
+        "adr_id": "ADR-004"
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 15,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or connection strings\nOffending code: `AWS_ACCESS_KEY = \"AKIA1234567890TEST\"`\nHardcoding secrets is a security risk. Secrets should be stored in environment variables.",
+        "fix": "AWS_ACCESS_KEY = os.getenv(\"AWS_ACCESS_KEY\")",
+        "source": "architecture_guard",
+        "adr_id": "ADR-004"
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 16,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or connection strings\nOffending code: `AWS_SECRET_KEY = \"aws-secret-key\"`\nHardcoding secrets is a security risk. Secrets should be stored in environment variables.",
+        "fix": "AWS_SECRET_KEY = os.getenv(\"AWS_SECRET_KEY\")",
+        "source": "architecture_guard",
+        "adr_id": "ADR-004"
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 26,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffending code: `query = f\"SELECT * FROM users WHERE username = '{username}'\"`\nUsing f-strings in SQL strings can lead to SQL injection attacks. Parameterized queries should be used instead.",
+        "fix": "query = \"SELECT * FROM users WHERE username = ?\"; self.conn.execute(query, (username,))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 22,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database queries\nOffending code: `self.conn = sqlite3.connect(\"users.db\")`\nDirect database calls should be made through the service layer, not in controllers.",
+        "fix": "Move database connection and queries to a service class in the services/ directory",
+        "source": "architecture_guard",
+        "adr_id": "ADR-001"
+      },
+      {
+        "file": "test_vulnerable.py",
+        "line": 32,
+        "severity": "critical",
+        "category": "architecture",
+        "message": "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code: `self.conn.execute(query)`\nThe query is not being executed with parameters, which can lead to SQL injection attacks.",
+        "fix": "self.conn.execute(query, (user_id,))",
+        "source": "architecture_guard",
+        "adr_id": "ADR-003"
+      }
+    ]
+  },
+  "gate": {
+    "blocked": true,
+    "reason": "7 issue(s) still present, 18 new issue(s) introduced",
+    "resolved_issues": [
+      "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variabl",
+      "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is ther",
+      "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 i",
+      "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because i",
+      "Detected the use of eval(). eval() can be dangerous if used to evaluate dynamic content. If this con"
+    ],
+    "new_issues": [
+      "'return os.system(command)'",
+      "'return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()'",
+      "'return ast.literal_eval(expression)'",
+      "'return pickle.load(f)'",
+      "'with open(filename, \"r\") as f:'",
+      "'with open(filename, \"w\") as f:'",
+      "'return requests.get(url).text'",
+      "'random.seed(1234)'",
+      "'if username == \"admin\":'",
+      "'query = \"UPDATE users SET profile='\" + user_input + \"'\"'",
+      "'print(f\"User={username}, Password={password}\")'",
+      "'return f\"Redirecting to {url}\"'",
+      "'return str(random.randint(1, 1000))'",
+      "'username = \"admin\"; password = \"password123\"'",
+      "[ADR-ADR-004] Environment Variables for All Secrets: NEVER hardcode API keys, passwords, tokens, or ",
+      "[ADR-ADR-003] Parameterized Queries Only: NEVER use f-strings, .format(), or % in SQL strings\nOffend",
+      "[ADR-ADR-001] No Direct Database Calls in Controllers: Controllers MUST NOT contain direct database ",
+      "[ADR-ADR-003] Parameterized Queries Only: Use cursor.execute(query, (params,)) always\nOffending code"
+    ],
+    "still_present": [
+      "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern",
+      "Found 'subprocess' function 'check_output' with 'shell=True'. This is dangerous because this call wi",
+      "Detected SHA1 hash algorithm which is considered insecure. SHA1 is not collision resistant and is th",
+      "Detected the use of exec(). exec() can be dangerous if used to evaluate dynamic content. If this con",
+      "Avoid using `pickle`, which is known to lead to code execution vulnerabilities. When unpickling, the",
+      "Detected a possible YAML deserialization vulnerability. `yaml.unsafe_load`, `yaml.Loader`, `yaml.CLo",
+      "Hardcoded password or credential detected. Secrets should never be committed to source code. Use env"
+    ],
+    "score_before": 0.0,
+    "score_after": 0.0
+  }
+}
