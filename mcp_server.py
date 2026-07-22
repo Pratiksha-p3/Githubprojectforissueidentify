@@ -487,7 +487,7 @@ async def _tool_review_pr(repo: str, pr_number: int, post_comments: bool) -> str
 async def _tool_review_code(code: str, language: str, filename: str) -> str:
     """Review a code snippet directly."""
     from groq import Groq
-    from rag.prompt import SYSTEM_PROMPT
+    from prompts.prompts import SYSTEM_PROMPT,build_prompt, build_security_prompt, build_summary_prompt
 
     client = Groq(api_key=cfg.groq_api_key)
     prompt = (

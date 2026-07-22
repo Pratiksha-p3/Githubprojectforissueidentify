@@ -1,27 +1,15 @@
+# agents/runtime_agent.py
+#
+# Thin wrapper — all detection logic lives in analyzers/runtime_checker.py.
+# The old version of this file defined a PATTERNS list with 4 checks but
+# never actually used it, only checking "/ 0" as a hardcoded substring.
+# That gap is fixed by delegating to the analyzer, which implements all
+# 4 patterns correctly.
+
+from analyzers.runtime_checker import detect_runtime_errors
+
+
 class RuntimeAgent:
 
-    PATTERNS = [
-        ("ZeroDivisionError", r"/\s*0"),
-        ("IndexError", r"\[\d+\]"),
-        ("NameError", r"print\([A-Za-z_]+\)"),
-        ("FileNotFoundError", r'open\(".*"\)')
-    ]
-
     def scan(self, file):
-
-        findings = []
-
-        lines = file.full_content.splitlines()
-
-        for i, line in enumerate(lines, 1):
-
-            if "/ 0" in line:
-                findings.append({
-                    "category": "runtime",
-                    "severity": "warning",
-                    "file": file.filename,
-                    "line": i,
-                    "message": "Division by zero"
-                })
-
-        return findings
+        return detect_runtime_errors(file.full_content, file.filename)

@@ -70,7 +70,7 @@ from agents.incremental_agent import IncrementalAgent
 from memory.review_memory import ReviewMemory
 from notifications.notifier import Notifier
 from rag.retriever import Retriever
-from rag.prompt import build_prompt, build_summary_prompt, SYSTEM_PROMPT
+from prompts.prompts import build_prompt, build_security_prompt, build_summary_prompt
 from config import cfg
 
 

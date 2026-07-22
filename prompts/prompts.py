@@ -1,19 +1,23 @@
 """
-rag/prompt.py
+prompts/prompts.py
 
-Builds prompts for AI code review.
+Single home for every LLM prompt template used in the review/fix pipeline.
 
-IMPROVEMENTS over original:
-  1. SYSTEM_PROMPT now enforces strict JSON schema with examples — reduces hallucination.
-  2. Added explicit "ONLY report issues visible in the diff" instruction to prevent
-     the LLM from inventing issues in unchanged code.
-  3. Context chunks are filtered by similarity score (min_similarity_score) so
-     low-quality RAG hits don't pollute the prompt.
-  4. Changed line extraction is explicit in the prompt — LLM sees numbered changed lines,
-     making line-number references in findings accurate.
-  5. Added `build_security_prompt` with CWE/OWASP anchoring (unchanged from original,
-     kept for compatibility).
-  6. Added `build_summary_prompt` for a final PR-level roll-up after per-file reviews.
+Previously split across three places:
+  - rag/prompt.py           (review prompts — wrong folder, rag/ should be
+                              retrieval logic only, not prompt text)
+  - prompts/fix_prompt.py   (fix prompt — incomplete/malformed as originally
+                              pasted, and duplicated by an inline f-string
+                              inside agents/autofix_engine.py)
+Now merged into this one module. Nothing else should define a prompt string.
+
+Sections:
+  1. REVIEW PROMPTS   — SYSTEM_PROMPT, build_prompt, build_security_prompt,
+                         build_summary_prompt (moved from rag/prompt.py)
+  2. FIX PROMPT        — build_fix_prompt (moved from prompts/fix_prompt.py,
+                         now the only fix-prompt builder — autofix_engine.py
+                         no longer builds its own inline prompt)
+  3. HELPERS
 """
 
 from __future__ import annotations
@@ -23,9 +27,9 @@ from vectordb.chroma_store import RetrievedChunk
 from config import cfg
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SYSTEM PROMPT
-# ─────────────────────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════
+# 1. REVIEW PROMPTS
+# ═════════════════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT = """\
 You are a senior software engineer performing a precise, evidence-based code review.
@@ -74,10 +78,6 @@ If there are NO issues, return:
 """
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN PROMPT BUILDER
-# ─────────────────────────────────────────────────────────────────────────────
-
 def build_prompt(
     pr_file: PRFile,
     context_chunks: list[RetrievedChunk],
@@ -102,8 +102,6 @@ def build_prompt(
     lines.append("")
 
     # ── CHANGED LINES (numbered) ─────────────────────────
-    # Explicitly listing changed lines with their line numbers makes
-    # the LLM's line references far more accurate.
     changed = _extract_changed_lines_with_numbers(
         getattr(pr_file, "patch", "")
     )
@@ -134,24 +132,15 @@ def build_prompt(
             score = getattr(rc, "score", 0)
             content = getattr(rc, "content", "")
 
-            lines.append(
-            f"--- Context {idx} | score={score:.2f} ---"
-            )
-
-            lines.append(
-                f"File: {filename}  Section: {section_type} {section_name}"
-            )
-
-            lines.append(
-                f"Lines: {start_line}-{end_line}"
-            )
+            lines.append(f"--- Context {idx} | score={score:.2f} ---")
+            lines.append(f"File: {filename}  Section: {section_type} {section_name}")
+            lines.append(f"Lines: {start_line}-{end_line}")
 
             if len(content) > 400:
                 content = content[:400] + "\n...[truncated]"
 
             lines.append(content)
             lines.append("")
-
 
     # ── DIFF ─────────────────────────────────────────────
     lines.append("=== DIFF TO REVIEW ===")
@@ -170,10 +159,6 @@ def build_prompt(
 
     return "\n".join(lines)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SECURITY-FOCUSED PROMPT
-# ─────────────────────────────────────────────────────────────────────────────
 
 def build_security_prompt(pr_file: PRFile) -> str:
 
@@ -224,10 +209,6 @@ Return VALID JSON ONLY:
 """
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PR SUMMARY PROMPT  (new — used after all file reviews are done)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def build_summary_prompt(
     file_reviews: list[dict],
     pr_title: str = "",
@@ -261,21 +242,69 @@ Return VALID JSON ONLY:
 """
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# HELPER
-# ─────────────────────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════
+# 2. FIX PROMPT
+# ═════════════════════════════════════════════════════════════════════════
+
+FIX_PROMPT_TEMPLATE = """\
+You are a Senior Python Engineer fixing a specific code issue.
+
+Issue Type: {issue_type}
+Issue: {message}
+File: {filename}
+
+Code (lines {start_line}-{end_line}):
+{code}
+
+Target line {line_num}: {target_line}
+
+Fix ONLY the target line. Return VALID JSON ONLY, no markdown fences:
+{{"fixed_line": "<corrected single line, same indentation>", "explanation": "<one sentence why>"}}
+"""
+
+
+def build_fix_prompt(
+    issue_type: str,
+    message: str,
+    filename: str,
+    code: str,
+    start_line: int,
+    end_line: int,
+    line_num: int,
+    target_line: str,
+) -> str:
+    """
+    Builds the LLM fix-generation prompt from a finding + surrounding code.
+    Used by agents/autofix_engine.py's _llm_fix() fallback.
+    """
+    return FIX_PROMPT_TEMPLATE.format(
+        issue_type=issue_type,
+        message=message,
+        filename=filename,
+        code=code,
+        start_line=start_line,
+        end_line=end_line,
+        line_num=line_num,
+        target_line=target_line,
+    )
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 3. HELPERS
+# ═════════════════════════════════════════════════════════════════════════
 
 def _extract_changed_lines_with_numbers(patch: str) -> list[tuple[int, str]]:
     """
     Parses a unified diff patch and returns (line_number, code) tuples
     for every added line (+), giving the LLM accurate line references.
     """
+    import re
+
     result: list[tuple[int, str]] = []
     line_num = 0
 
     for line in patch.splitlines():
         if line.startswith("@@"):
-            import re
             m = re.search(r"\+(\d+)", line)
             if m:
                 line_num = int(m.group(1))
@@ -288,9 +317,9 @@ def _extract_changed_lines_with_numbers(patch: str) -> list[tuple[int, str]]:
     return result
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════
 # TEST
-# ─────────────────────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     from dataclasses import dataclass

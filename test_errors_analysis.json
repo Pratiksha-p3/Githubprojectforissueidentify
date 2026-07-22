@@ -1,0 +1,29 @@
+[
+  {
+    "line": 1,
+    "type": "security",
+    "severity": "critical",
+    "message": "Hardcoded secret detected",
+    "bad_code": "password = \"admin123\"",
+    "fix_code": "password = os.getenv(\"PASSWORD\")",
+    "reason": "Secrets committed to git are permanently exposed. Use environment variables."
+  },
+  {
+    "line": 5,
+    "type": "runtime",
+    "severity": "critical",
+    "message": "Division by zero",
+    "bad_code": "return a / 0",
+    "fix_code": "return a / b if b != 0 else float('inf')",
+    "reason": "Division by zero will raise a ZeroDivisionError."
+  },
+  {
+    "line": 7,
+    "type": "logic",
+    "severity": "critical",
+    "message": "Wrong base case in recursion",
+    "bad_code": "return 0",
+    "fix_code": "return 1",
+    "reason": "The base case of the factorial function should return 1, not 0."
+  }
+]
