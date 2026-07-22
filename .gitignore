@@ -1,0 +1,9 @@
+.env
+secrets/
+*.pem
+venv/
+__pycache__/
+*.pyc
+vectordb/chroma_data/
+gitleaks.exe
+*.sqlite3
