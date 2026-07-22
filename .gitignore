@@ -7,3 +7,9 @@ __pycache__/
 vectordb/chroma_data/
 gitleaks.exe
 *.sqlite3
+
+vectordb/repo_index_cache.json
+vectordb/repo_index.json
+vectordb/memory.json
+reports/*.json
+*_analysis.json
