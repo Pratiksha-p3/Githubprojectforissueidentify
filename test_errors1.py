@@ -79,13 +79,7 @@ def broken_function(
 class UserService
 
     def __init__(self):
-        self.name = "admin"
-
-
-try:
-    print("hello")
-except Exception
-    print("error")
+        
 
 
 # ==========================
