@@ -87,7 +87,7 @@ try: print("hello")
     def create_user(self):
         pass
 
-# ==========================
+class UserService:
 # SYNTAX ISSUES
 # ==========================
 
