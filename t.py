@@ -57,7 +57,9 @@ with open(path, "r") as f:
 def print_name():
     if variable_name is None:
         raise ValueError("Undefined variable")
-    print(variable_name)
+if variable_name is None:
+    raise ValueError("Undefined variable")
+print(variable_name)
 
 # LOGIC ERROR: Incorrect factorial
 def factorial(n):
