@@ -40,7 +40,10 @@ def access_item():
         raise IndexError('Index out of range')```
 
 def read_file():
-    with open("missing.txt") as f:
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
+with open(path, "r") as f:
+    data = f.read()
         return f.read()
 
 def use_variable():
