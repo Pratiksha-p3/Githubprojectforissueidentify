@@ -1,111 +1,161 @@
 import sqlite3
-import hashlib
+import bcrypt
 import subprocess
-import random
+import secrets
 import os
+import ast
 
-# SECURITY ISSUE: Hardcoded secrets
+
+# Secrets from environment variables
 API_KEY = os.getenv("API_KEY")
-DB_PASSWORD = os.getenv("DB_PASSWORD") 
-JWT_SECRET = os.getenv("JWT_SECRET") 
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+JWT_SECRET = os.getenv("JWT_SECRET")
 
-# SECURITY ISSUE: Weak hash
+
+# Secure password hashing
 def hash_password(password):
-    bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)) 
-    
-# SECURITY ISSUE: SQL Injection
+    return bcrypt.hashpw(
+        password.encode(),
+        bcrypt.gensalt(rounds=12)
+    ).decode()
+
+
+# Parameterized query
 def get_user(username):
     conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
 
-    query = "SELECT * FROM users WHERE username = ?"
-    cursor.execute(query, (username,))
+    try:
+        cursor = conn.cursor()
 
-    return cursor.fetchall()
+        query = "SELECT * FROM users WHERE username = ?"
+        cursor.execute(query, (username,))
 
-# SECURITY ISSUE: Command Injection
+        return cursor.fetchall()
+
+    finally:
+        conn.close()
+
+
+# Safer subprocess usage
 def run_command(cmd):
-    subprocess.run(cmd, shell=False)
+    if isinstance(cmd, str):
+        cmd = cmd.split()
 
-# SECURITY ISSUE: Dangerous eval
+    result = subprocess.run(
+        cmd,
+        shell=False,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    return result.stdout
+
+
+# Safe expression parsing
 def calculate(expression):
     return ast.literal_eval(expression)
 
-# RUNTIME ERROR: Division by zero
+
+# Safe division
 def divide(a, b):
-    return a / 0
+    if b == 0:
+        raise ValueError("Division by zero is not allowed")
 
-# RUNTIME ERROR: Index out of range
-def get_item():
-    arr = [1, 2, 3]
-if index >= len(items):
-    raise IndexError("Index out of range")
-value = items[index]
+    return a / b
 
-# RUNTIME ERROR: File not found
-def read_file():
+
+# Safe list access
+def get_item(index):
+    items = [1, 2, 3]
+
+    if index < 0 or index >= len(items):
+        raise IndexError("Index out of range")
+
+    return items[index]
+
+
+# Safe file reading
+def read_file(path):
     if not os.path.exists(path):
         raise FileNotFoundError(path)
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
-with open(path, "r") as f:
-    data = f.read()
-        data = f.read()
-    return f.read()
 
-# RUNTIME ERROR: Undefined variable
-def print_name():
-    if variable_name is None:
-        raise ValueError("Undefined variable")
-if variable_name is None:
-    raise ValueError("Undefined variable")
-print(variable_name)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
-# LOGIC ERROR: Incorrect factorial
+
+# Safe variable usage
+def print_name(name):
+    if not name:
+        raise ValueError("Name cannot be empty")
+
+    print(name)
+
+
+# Correct factorial
 def factorial(n):
+    if n < 0:
+        raise ValueError("Factorial is not defined for negative numbers")
+
     if n == 0:
-        return 0
+        return 1
+
     return n * factorial(n - 1)
 
-# LOGIC ERROR: Infinite recursion
-def recursive_loop():
-    return recursive_loop()
 
-# SECURITY ISSUE: Weak randomness
+# Controlled recursion example
+def recursive_loop(n):
+    if n <= 0:
+        return "Done"
+
+    return recursive_loop(n - 1)
+
+
+# Cryptographically secure OTP
 def generate_otp():
-    return random.randint(100000, 999999)
+    return str(secrets.randbelow(900000) + 100000)
 
-# SECURITY ISSUE: No input validation
+
+# Input validation
 def transfer_money(amount):
+    if amount <= 0:
+        raise ValueError("Amount must be positive")
+
     balance = 1000
+
+    if amount > balance:
+        raise ValueError("Insufficient funds")
+
     balance -= amount
     return balance
 
-# RUNTIME ERROR: Type mismatch
-def add_numbers():
-    return 10 + "20"
+
+# Type-safe addition
+def add_numbers(a, b):
+    return int(a) + int(b)
 
 
-
-# LOGIC ERROR
+# Correct logic
 def is_adult(age):
-    if age<18:
-        return False
-    return True
+    return age >= 18
 
-# MAIN
+
 if __name__ == "__main__":
+
     print(hash_password("password"))
-    print(get_user("admin"))
-    run_command("dir")
-    print(calculate("2+2"))
-    print(divide(10, 2))
-    print(get_item())
-    print(read_file())
-    print_name()
-    print(factorial(5))
-    print(generate_otp())
-    write_log()
-    print(transfer_money(-5000))
-    print(add_numbers())
-    print(is_adult(25))
+
+    try:
+        print(get_user("admin"))
+        print(run_command(["echo", "hello"]))
+        print(calculate("123"))
+        print(divide(10, 2))
+        print(get_item(1))
+        print_name("Pratiksha")
+        print(factorial(5))
+        print(generate_otp())
+        print(transfer_money(100))
+        print(add_numbers(10, 20))
+        print(is_adult(25))
+
+    except Exception as e:
+        print(f"Error: {e}")
