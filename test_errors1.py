@@ -76,7 +76,7 @@ def login(password):
 # ARCHITECTURE ISSUES
 # ==========================
 
-class UserController:
+try: print("hello")
 
     def __init__(self)
         self.conn = sqlite3.connect("users.db")
