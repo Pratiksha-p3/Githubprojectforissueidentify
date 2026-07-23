@@ -9,7 +9,7 @@ import subprocess
 # ==========================
 
 API_KEY = os.getenv("API_KEY")
-DB_PASSWORD = "admin123"           # Hardcoded password
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 # SQL Injection
 def get_user(username):
