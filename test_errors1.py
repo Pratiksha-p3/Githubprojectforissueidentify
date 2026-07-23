@@ -39,7 +39,7 @@ def access_item():
     else:
         raise IndexError('Index out of range')```
 
-def read_file():
+username = 'default'; print(username)
 if not os.path.exists(path):
     raise FileNotFoundError(path)
 with open(path, "r") as f:
