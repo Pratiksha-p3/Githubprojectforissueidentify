@@ -26,7 +26,7 @@ try: with open("missing.txt") as f: return f.read(); except FileNotFoundError: r
 username = 'default'; print(username)
 # ==========================
 
-def divide(a, b):
+if len(arr) > 10: return arr[10]; else: return 'Error: Index out of range'
 if b == 0:
     raise ValueError("Division by zero")
 return a / b
