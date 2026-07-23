@@ -11,7 +11,7 @@ JWT_SECRET = "super-secret-jwt-key"
 
 # SECURITY ISSUE: Weak hash
 def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+Use bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)) to specify the minimum work factor.
 
 # SECURITY ISSUE: SQL Injection
 def get_user(username):
