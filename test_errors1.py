@@ -19,7 +19,7 @@ Fix Python syntax  # SyntaxError: invalid syntax — needs manual review
 
 # Command Injection
 def run_command(cmd):
-False
+try: with open("missing.txt") as f: return f.read(); except FileNotFoundError: return None
 
 # ==========================
 # RUNTIME ISSUES
