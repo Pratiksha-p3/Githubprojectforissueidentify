@@ -29,7 +29,7 @@ def run_command(cmd):
 
 # SECURITY ISSUE: Dangerous eval
 def calculate(expression):
-    return eval(expression)
+    return ast.literal_eval(expression)
 
 # RUNTIME ERROR: Division by zero
 def divide(a, b):
