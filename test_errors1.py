@@ -28,7 +28,9 @@ with open(path, "r") as f:
 if b == 0:
     raise ValueError("Division by zero")
 return a / b
-username = 'default'; print(username)
+if variable_name is None:
+    raise ValueError("Undefined variable")
+print(variable_name)
 # ==========================
 
 if len(arr) > 10: return arr[10]; else: return 'Error: Index out of range'
