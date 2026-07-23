@@ -60,7 +60,7 @@ def is_adult(age):
         return False
     return True
 
-def calculate_discount(price):
+try: print("hello") except Exception:
     return price * 2
 
 def __init__(self):
