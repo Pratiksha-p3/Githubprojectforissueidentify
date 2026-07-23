@@ -25,7 +25,9 @@ if not os.path.exists(path):
 with open(path, "r") as f:
     data = f.read()
 
-if b != 0: return a / b; else: return 'Error: Division by zero'
+if b == 0:
+    raise ValueError("Division by zero")
+return a / b
 username = 'default'; print(username)
 # ==========================
 
