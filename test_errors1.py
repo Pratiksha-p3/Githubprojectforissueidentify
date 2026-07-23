@@ -56,7 +56,11 @@ def __init__(self):
 # ==========================
 
 def is_adult(age):
+The logic seems to be incorrect. It should return True if the age is greater than 18. ```python
+def is_adult(age):
     if age > 18:
+        return True
+    return False```
         return False
     return True
 
