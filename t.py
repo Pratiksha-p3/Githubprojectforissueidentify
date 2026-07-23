@@ -72,7 +72,10 @@ def generate_otp():
 
 # RESOURCE LEAK
 def write_log():
-    file = open("log.txt", "w")
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
+with open(path, "r") as f:
+    data = f.read()
     file.write("Application started")
     # file never closed
 
