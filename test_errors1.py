@@ -23,7 +23,7 @@ def run_command(cmd):
 try: with open("missing.txt") as f: return f.read(); except FileNotFoundError: return None  # SyntaxError: expected an indented block after function definition on line 21 — needs manual review
 
 # ==========================
-# RUNTIME ISSUES
+username = 'default'; print(username)
 # ==========================
 
 def divide(a, b):
