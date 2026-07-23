@@ -19,7 +19,7 @@ def get_user(username):
     cursor = conn.cursor()
 
 Use parameterized queries instead of string formatting.  # SyntaxError: invalid syntax — needs manual review
-    cursor.execute(query)
+cursor.execute(query)  # fix indentation to match the surrounding block
 
     return cursor.fetchall()
 
