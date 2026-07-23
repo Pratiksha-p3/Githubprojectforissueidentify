@@ -46,7 +46,10 @@ value = items[index]
 def read_file():
     if not os.path.exists(path):
         raise FileNotFoundError(path)
-    with open(path, "r") as f:
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
+with open(path, "r") as f:
+    data = f.read()
         data = f.read()
     return f.read()
 
