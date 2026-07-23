@@ -6,13 +6,13 @@ import os
 
 # SECURITY ISSUE: Hardcoded secrets
 API_KEY = os.getenv("API_KEY")
-Store DB_PASSWORD in an environment variable using os.getenv("DB_PASSWORD") or python-dotenv.
-Store JWT_SECRET in an environment variable using os.getenv("JWT_SECRET") or python-dotenv.
+DB_PASSWORD = os.getenv("DB_PASSWORD") 
+JWT_SECRET = os.getenv("JWT_SECRET") 
 
 # SECURITY ISSUE: Weak hash
 def hash_password(password):
-Use bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)) to specify the minimum work factor.
-
+    bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)) 
+    
 # SECURITY ISSUE: SQL Injection
 def get_user(username):
     conn = sqlite3.connect("users.db")
