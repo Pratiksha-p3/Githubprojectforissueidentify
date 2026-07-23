@@ -31,7 +31,13 @@ def divide(a, b):
 
 def access_item():
 try: with open("missing.txt") as f:; except FileNotFoundError: print('Error: File not found')
-    return arr[10]
+Add a check to avoid index out of range error. ```python
+def access_item():
+    arr = [1, 2, 3]
+    if len(arr) > 10:
+        return arr[10]
+    else:
+        raise IndexError('Index out of range')```
 
 def read_file():
     with open("missing.txt") as f:
