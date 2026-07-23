@@ -91,7 +91,7 @@ try: print("hello")
 # SYNTAX ISSUES
 # ==========================
 
-def broken_function(
+def broken_function():
     print("missing bracket")
 
 
