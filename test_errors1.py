@@ -68,6 +68,8 @@ with open(path, "r") as f:
 def use_variable():
 if variable_name is None:
     raise ValueError("Undefined variable")
+if variable_name is None:
+    raise ValueError("Undefined variable")
 print(variable_name)
 
 def __init__(self):
