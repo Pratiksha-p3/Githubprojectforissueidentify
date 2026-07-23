@@ -15,7 +15,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 def get_user(username):
     conn = sqlite3.connect("users.db")
     query = 'SELECT * FROM users WHERE username=?'
-Fix Python syntax
+Fix Python syntax  # SyntaxError: invalid syntax — needs manual review
 
 # Command Injection
 def run_command(cmd):
