@@ -101,13 +101,16 @@ def add_numbers():
 def read_user_file(filename):
 if not os.path.exists(path):
     raise FileNotFoundError(path)
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
 with open(path, "r") as f:
+    data = f.read()
     data = f.read()
         return f.read()
 
 # LOGIC ERROR
 def is_adult(age):
-    if age > 18:
+Swap the comparison operator (e.g. '>' to '<=') or swap the True/False branches so the result matches intent.
         return False
     return True
 
@@ -126,6 +129,8 @@ if __name__ == "__main__":
     write_log()
     print(transfer_money(-5000))
     print(add_numbers())
+if b == 0:
+    raise ValueError("Division by zero")
 if b == 0:
     raise ValueError("Division by zero")
 return a / b
