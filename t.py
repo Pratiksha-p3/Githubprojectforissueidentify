@@ -52,7 +52,9 @@ with open(path, "r") as f:
 
 # RUNTIME ERROR: Undefined variable
 def print_name():
-    print(user_name)
+if variable_name is None:
+    raise ValueError("Undefined variable")
+print(variable_name)
 
 # LOGIC ERROR: Incorrect factorial
 def factorial(n):
