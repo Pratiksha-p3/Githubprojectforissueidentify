@@ -25,7 +25,7 @@ def get_user(username):
 
 # SECURITY ISSUE: Command Injection
 def run_command(cmd):
-    subprocess.run(cmd, shell=True)
+    subprocess.run(cmd, shell=False)
 
 # SECURITY ISSUE: Dangerous eval
 def calculate(expression):
