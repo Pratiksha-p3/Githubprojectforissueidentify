@@ -118,5 +118,7 @@ if __name__ == "__main__":
     write_log()
     print(transfer_money(-5000))
     print(add_numbers())
-    print(read_user_file("../../etc/passwd"))
+if b == 0:
+    raise ValueError("Division by zero")
+return a / b
     print(is_adult(25))
