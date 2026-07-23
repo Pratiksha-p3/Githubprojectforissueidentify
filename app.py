@@ -15,7 +15,7 @@ from ingestion.chunker import Chunker
 from embeddings.embed import Embedder
 from mcp.codeintel_mcp import CodeIntelMCP
 
-from vectordb.chroma_store import ChromaStore
+from vectordb.factory import get_vector_store
 from agents.reviewer_agent import ReviewerAgent
 from tools.architecture_guard import ArchitectureGuard
 
@@ -66,11 +66,32 @@ def _run_linear_review(files, pr_ctx, retriever_getter=_get_retriever):
 # CORE PIPELINE
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _get_loader(provider: str, mock: bool):
+    """
+    provider: "github" or "gitlab". The rest of the pipeline (parsing,
+    review, security, autofix, ...) is provider-agnostic — it only ever
+    calls loader.load_pr()/post_review_comments(), so any loader that
+    implements those two methods against PRFile/PRContext works here.
+
+    Note: a few specialized posting agents (autofix suggestions,
+    architecture/compliance PR comments, PR gate) still call the GitHub
+    REST API directly rather than going through this loader abstraction —
+    against a GitLab repo those steps no-op (they're wrapped in
+    try/except) rather than posting. The core load -> review -> summary
+    comment flow works for both providers.
+    """
+    if provider == "gitlab":
+        from ingestion.gitlab_loader import GitLabLoader, MockGitLabLoader
+        return MockGitLabLoader() if mock else GitLabLoader()
+    return MockGitHubLoader() if mock else GitHubLoader()
+
+
 def run_review(
     repo: str,
     pr_number: int,
     mock: bool = False,
     output_dir: str = "reports",
+    provider: str = "github",
 ) -> dict:
     """
     Full ingestion + review pipeline for a single PR.
@@ -78,7 +99,7 @@ def run_review(
     """
 
     # ── 1. Load PR ───────────────────────────────────────
-    loader = MockGitHubLoader() if mock else GitHubLoader()
+    loader = _get_loader(provider, mock)
     print(f"\n[app] Loading PR #{pr_number} from {repo}…")
     pr_ctx = loader.load_pr(repo, pr_number)
 
@@ -135,9 +156,9 @@ def run_review(
     print(f"[app] Embedded {len(embedded_chunks)} chunks")
 
     # ── 5. Store ─────────────────────────────────────────
-    store = ChromaStore()
+    store = get_vector_store()
     store.upsert(embedded_chunks)
-    print(f"[app] ChromaDB total vectors: {store.count()}")
+    print(f"[app] Vector store total: {store.count()}")
 
     # ── 6. Review ─────────────────────────────────────────
     print(f"[app] Reviewing {len(files)} files…")
@@ -227,6 +248,26 @@ def run_review(
     except Exception as e:
         print(f"[app] Secret scan failed: {e}")
 
+    # ─────────────────────────────────────────────
+    # SONARQUBE (second static analyzer, alongside Semgrep)
+    # ─────────────────────────────────────────────
+
+    try:
+        from tools.sonarqube_scanner import SonarQubeScanner
+
+        sonar = SonarQubeScanner()
+        if sonar.available:
+            print("[app] Running SonarQube scan...")
+            sonar_findings = sonar.scan_files(files, repo_root=getattr(pr_ctx, "repo_path", "."))
+            report["findings"].extend(sonar_findings)
+            print(f"[app] SonarQube findings: {len(sonar_findings)}")
+        else:
+            print("[app] SonarQube not configured — skipping (set SONAR_TOKEN, "
+                  "SONAR_HOST_URL, SONAR_PROJECT_KEY to enable)")
+
+    except Exception as e:
+        print(f"[app] SonarQube scan failed: {e}")
+
 
     # ─────────────────────────────────────────────
     # ARCHITECTURE DRIFT DETECTION
@@ -256,7 +297,26 @@ def run_review(
         )
 
     except Exception as e:
-        print(f"[app] Architecture scan failed: {e}")    
+        print(f"[app] Architecture scan failed: {e}")
+
+    # ─────────────────────────────────────────────
+    # COMPLIANCE CHECKING (internal standards)
+    # ─────────────────────────────────────────────
+
+    try:
+        from tools.compliance_guard import ComplianceGuard
+        print("[app] Running Compliance Check...")
+
+        compliance = ComplianceGuard(standards_dir="docs/standards")
+        compliance_findings = compliance.scan(files)
+
+        report.setdefault("findings", [])
+        report["findings"].extend(compliance_findings)
+
+        print(f"[app] Compliance findings: {len(compliance_findings)}")
+
+    except Exception as e:
+        print(f"[app] Compliance scan failed: {e}")
 
     # ─────────────────────────────────────────────
     # AUTO FIX AGENT
@@ -299,6 +359,29 @@ def run_review(
             "status": "failed",
             "error": str(e)
         }
+
+    # ─────────────────────────────────────────────
+    # DEVELOPER SKILL-GAP PROFILING
+    # ─────────────────────────────────────────────
+
+    try:
+        from agents.skill_profiler import SkillProfiler
+        print("[app] Updating skill profile...")
+
+        profiler = SkillProfiler()
+        profiler.record_review(
+            author=pr_ctx.author,
+            repo=repo,
+            pr_number=pr_number,
+            findings=report.get("findings", []),
+            reviewed_at=datetime.now(timezone.utc).isoformat(),
+        )
+        report["skill_profile"] = profiler.generate_gap_report(pr_ctx.author)
+
+        print(f"[app] Skill profile: {report['skill_profile']['summary']}")
+
+    except Exception as e:
+        print(f"[app] Skill profiling failed: {e}")
 
     # ─────────────────────────────────────────────
     # POST REVIEW TO GITHUB
@@ -452,6 +535,13 @@ def run_review(
         encoding="utf-8"
     )
 
+    try:
+        from storage.postgres_store import save_report, is_configured
+        if is_configured():
+            save_report(report)
+    except Exception as e:
+        print(f"[app] Postgres save skipped: {e}")
+
     _print_summary(report, out_file)
 
     return report
@@ -532,6 +622,21 @@ def _print_summary(report: dict, out_file: Path) -> None:
 # FASTAPI WEBHOOK  (optional — run with: uvicorn app:fastapi_app)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _dispatch_review(repo: str, pr_number: int, mock: bool = False,
+                      output_dir: str = "reports", provider: str = "github") -> dict:
+    """
+    Runs a review, via Temporal (retries + observability) when
+    TEMPORAL_ADDRESS is configured, otherwise calling run_review()
+    directly — same pipeline either way, this only changes who
+    orchestrates it.
+    """
+    from workflows.temporal_workflow import is_configured as temporal_configured
+    if temporal_configured():
+        from workflows.temporal_workflow import submit_review
+        return submit_review(repo, pr_number, mock, output_dir, provider)
+    return run_review(repo, pr_number, mock, output_dir, provider)
+
+
 try:
     import hashlib
     import hmac
@@ -567,7 +672,34 @@ try:
         repo      = payload["repository"]["full_name"]
         pr_number = payload["pull_request"]["number"]
 
-        background_tasks.add_task(run_review, repo, pr_number)
+        background_tasks.add_task(_dispatch_review, repo, pr_number)
+        return {"status": "queued", "repo": repo, "pr": pr_number}
+
+    @fastapi_app.post("/webhook/gitlab")
+    async def gitlab_webhook(
+        request: Request,
+        background_tasks: BackgroundTasks,
+    ):
+        body = await request.body()
+
+        # GitLab uses a static shared-secret header, not an HMAC signature.
+        token = request.headers.get("X-Gitlab-Token", "")
+        if cfg.gitlab_webhook_secret and not hmac.compare_digest(token, cfg.gitlab_webhook_secret):
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        payload = json.loads(body)
+        if payload.get("object_kind") != "merge_request":
+            return {"status": "skipped", "reason": "not a merge_request event"}
+
+        attrs  = payload.get("object_attributes", {})
+        action = attrs.get("action", "")
+        if action not in ("open", "update", "reopen"):
+            return {"status": "skipped", "action": action}
+
+        repo      = payload.get("project", {}).get("path_with_namespace", "")
+        pr_number = attrs.get("iid")
+
+        background_tasks.add_task(_dispatch_review, repo, pr_number, False, "reports", "gitlab")
         return {"status": "queued", "repo": repo, "pr": pr_number}
 
     @fastapi_app.get("/health")
@@ -602,6 +734,10 @@ def main():
         help="Use MockGitHubLoader (no credentials needed)",
     )
     parser.add_argument(
+        "--provider", type=str, choices=["github", "gitlab"], default="github",
+        help="Which platform to load the PR/MR from (default: github)",
+    )
+    parser.add_argument(
         "--output", type=str,
         default="reports",
         help="Output directory for review reports",
@@ -610,11 +746,22 @@ def main():
 
     if not args.repo and not args.mock:
         print("Usage: python app.py --repo owner/repo --pr 42")
+        print("       python app.py --repo group/project --pr 42 --provider gitlab")
         print("       python app.py --mock  (offline demo)")
         sys.exit(1)
 
     repo = args.repo or "demo/repo"
-    run_review(repo=repo, pr_number=args.pr, mock=args.mock, output_dir=args.output)
+    report = run_review(
+        repo=repo, pr_number=args.pr, mock=args.mock,
+        output_dir=args.output, provider=args.provider,
+    )
+
+    # Non-zero exit on unresolved critical findings so CI (GitHub Actions,
+    # Jenkins, etc.) can fail the build/block the merge on this check.
+    if report.get("remaining_critical", report.get("critical_count", 0)) > 0:
+        print(f"[app] BLOCKED — {report.get('remaining_critical', report.get('critical_count'))} "
+              f"unresolved critical finding(s)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

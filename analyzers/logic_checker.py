@@ -10,19 +10,41 @@
 
 import ast
 
+from analyzers.ai_review import get_ai_findings
+
 
 def detect_logic_errors(code, filename):
-    findings = []
-
     try:
         tree = ast.parse(code)
     except SyntaxError:
         # syntax_checker already reports this; don't double-report here
-        return findings
+        return []
 
     checker = _LogicVisitor(filename)
     checker.visit(tree)
-    return checker.findings
+    findings = checker.findings
+    seen_lines = {f["line"] for f in findings}
+
+    # ── LLM pass — senior-engineer review for logic bugs that don't match
+    #    the structural checks above (wrong return values, bad operators,
+    #    inverted conditions of any shape, not just the ones coded below) ──
+    for f in get_ai_findings(code, filename):
+        if f["category"] != "logic" or f["line"] in seen_lines:
+            continue
+        findings.append({
+            "file": filename,
+            "line": f["line"],
+            "severity": f["severity"],
+            "category": "logic",
+            "message": f["message"],
+            "fix": f["fix"],
+            "bad_code": f["bad_code"],
+            "reason": f["reason"],
+            "source": "llm",
+        })
+        seen_lines.add(f["line"])
+
+    return findings
 
 
 class _LogicVisitor(ast.NodeVisitor):
@@ -30,13 +52,14 @@ class _LogicVisitor(ast.NodeVisitor):
         self.filename = filename
         self.findings = []
 
-    def _add(self, node, message):
+    def _add(self, node, message, fix=""):
         self.findings.append({
             "file": self.filename,
             "line": getattr(node, "lineno", 0),
             "severity": "warning",
             "category": "logic",
             "message": message,
+            "fix": fix,
         })
 
     # ── Check 1: if/else branches return the same literal value ──────
@@ -52,7 +75,9 @@ class _LogicVisitor(ast.NodeVisitor):
             self._add(
                 node,
                 f"Both branches return the same value ({then_val!r}) — "
-                "the condition has no effect on the result."
+                "the condition has no effect on the result.",
+                fix=f"Review the condition — one branch likely needs a different "
+                    f"return value than {then_val!r}.",
             )
 
         self.generic_visit(node)
@@ -97,7 +122,9 @@ class _LogicVisitor(ast.NodeVisitor):
                 if_node,
                 "Branch returns False immediately after a threshold "
                 "comparison (e.g. 'age > N') — check whether the "
-                "condition/branches are reversed."
+                "condition/branches are reversed.",
+                fix="Swap the comparison operator (e.g. '>' to '<=') or swap "
+                    "the True/False branches so the result matches intent.",
             )
 
     # ── Check 3: multiplication in a function whose name implies a
@@ -115,13 +142,17 @@ class _LogicVisitor(ast.NodeVisitor):
                 self._add(
                     node,
                     f"Function '{func}' name implies a reduction, but "
-                    "multiplies instead — check the operator."
+                    "multiplies instead — check the operator.",
+                    fix="Change '*' to '/' (or multiply by a fraction like "
+                        "(1 - rate) instead of (1 + rate)).",
                 )
             if isinstance(node.op, ast.Div) and any(w in fname for w in self.INCREASE_WORDS):
                 self._add(
                     node,
                     f"Function '{func}' name implies an increase, but "
-                    "divides instead — check the operator."
+                    "divides instead — check the operator.",
+                    fix="Change '/' to '*' (or divide by a fraction instead of "
+                        "a value greater than 1).",
                 )
         self.generic_visit(node)
 

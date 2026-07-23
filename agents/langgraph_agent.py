@@ -567,29 +567,15 @@ def run_advanced_review(
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
-_groq_client = None
-
-def _get_groq():
-    global _groq_client
-    if _groq_client is None:
-        from groq import Groq
-        _groq_client = Groq(api_key=cfg.groq_api_key)
-    return _groq_client
-
 def _call_llm_safe(prompt: str) -> dict:
     try:
-        client = _get_groq()
-        resp   = client.chat.completions.create(
-            model       = cfg.review_model,
-            temperature = 0,
-            max_tokens  = cfg.max_review_tokens,
-            messages    = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": prompt},
-            ],
-            timeout=60,
-        )
-        text = resp.choices[0].message.content.strip()
+        from agents.llm_client import chat_completion
+        text = chat_completion(
+            system=SYSTEM_PROMPT,
+            user=prompt,
+            temperature=0,
+            max_tokens=cfg.max_review_tokens,
+        ).strip()
         if "```" in text:
             text = "\n".join(
                 l for l in text.splitlines()

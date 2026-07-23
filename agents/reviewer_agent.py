@@ -24,7 +24,6 @@ class ReviewerAgent:
         self.retriever    = retriever or Retriever()
         self.security     = SecurityAgent()
         self._retry_limit = 2
-        self._groq_client = None
 
     # ── Public ────────────────────────────────────────────
 
@@ -190,23 +189,13 @@ class ReviewerAgent:
         }
 
     def _call_llm(self, user_prompt: str) -> dict:
-        return self._call_groq(user_prompt)
-
-    def _call_groq(self, user_prompt: str) -> dict:
-        if self._groq_client is None:
-            from groq import Groq
-            self._groq_client = Groq(api_key=cfg.groq_api_key)
-
-        response = self._groq_client.chat.completions.create(
-            model=cfg.review_model,
+        from agents.llm_client import chat_completion
+        content = chat_completion(
+            system=SYSTEM_PROMPT,
+            user=user_prompt,
             temperature=0,
             max_tokens=cfg.max_review_tokens,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": user_prompt},
-            ],
         )
-        content = response.choices[0].message.content
         return _safe_json_parse(content)
 
     # ── Validation ────────────────────────────────────────

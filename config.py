@@ -21,9 +21,12 @@ class Config:
     # ── Local embeddings (free, no API key) ──────────────
     embedding_model: str    = "all-MiniLM-L6-v2"
 
-    # ── These are kept so old imports don't crash ─────────
-    openai_api_key: str     = ""
-    anthropic_api_key: str  = ""
+    # ── Optional paid providers — only used when LLM_PROVIDER selects
+    #    them; the app runs entirely on Groq without these set. ───────
+    openai_api_key: str     = os.getenv("OPENAI_API_KEY", "")
+    openai_model: str       = os.getenv("OPENAI_MODEL", "gpt-4o")
+    anthropic_api_key: str  = os.getenv("ANTHROPIC_API_KEY", "")
+    anthropic_model: str    = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 
     # ── GitHub (optional) ─────────────────────────────────
     github_app_id: str          = os.getenv("GITHUB_APP_ID", "")
@@ -31,9 +34,42 @@ class Config:
     github_install_id: str      = os.getenv("GITHUB_INSTALLATION_ID", "")
     github_webhook_secret: str  = os.getenv("GITHUB_WEBHOOK_SECRET", "")
 
-    # ── ChromaDB ─────────────────────────────────────────
+    # ── GitLab (optional — mirrors the GitHub integration) ────
+    gitlab_token: str           = os.getenv("GITLAB_TOKEN", "")
+    gitlab_url: str              = os.getenv("GITLAB_URL", "https://gitlab.com")
+    gitlab_webhook_secret: str  = os.getenv("GITLAB_WEBHOOK_SECRET", "")
+
+    # ── SonarQube (optional — second static analyzer alongside Semgrep) ──
+    sonar_token: str             = os.getenv("SONAR_TOKEN", "")
+    sonar_host_url: str          = os.getenv("SONAR_HOST_URL", "")
+    sonar_project_key: str       = os.getenv("SONAR_PROJECT_KEY", "")
+
+    # ── ChromaDB (default, free, local) ───────────────────
     chroma_dir: str             = os.getenv("CHROMA_PERSIST_DIR", "./vectordb/chroma_data")
     chroma_collection: str      = "code_review"
+
+    # ── Postgres (optional — persists review reports; falls back to the
+    #    existing reports/*.json files when unset) ─────────────────────
+    database_url: str           = os.getenv("DATABASE_URL", "")
+
+    # ── Redis (optional — caches LLM/retrieval calls; falls back to an
+    #    in-process no-op cache when unset) ───────────────────────────
+    redis_url: str              = os.getenv("REDIS_URL", "")
+    cache_ttl_seconds: int      = int(os.getenv("CACHE_TTL_SECONDS", "86400"))
+
+    # ── Temporal (optional — wraps the review pipeline as a workflow
+    #    for retries/observability; the CLI/webhook path works without it) ─
+    temporal_address: str       = os.getenv("TEMPORAL_ADDRESS", "")
+    temporal_task_queue: str    = os.getenv("TEMPORAL_TASK_QUEUE", "ai-code-review")
+
+    # ── Pinecone (optional alternative — VECTOR_DB_PROVIDER=pinecone) ──
+    vector_db_provider: str     = os.getenv("VECTOR_DB_PROVIDER", "chroma")
+    pinecone_api_key: str       = os.getenv("PINECONE_API_KEY", "")
+    pinecone_index: str         = os.getenv("PINECONE_INDEX", "ai-code-review")
+    pinecone_namespace: str     = os.getenv("PINECONE_NAMESPACE", "code")
+    pinecone_cloud: str         = os.getenv("PINECONE_CLOUD", "aws")
+    pinecone_region: str        = os.getenv("PINECONE_REGION", "us-east-1")
+    pinecone_dimension: int     = int(os.getenv("PINECONE_DIMENSION", "384"))
 
     # ── RAG settings ─────────────────────────────────────
     chunk_size: int             = int(os.getenv("CHUNK_SIZE", "512"))

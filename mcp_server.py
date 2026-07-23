@@ -435,7 +435,7 @@ async def _tool_review_pr(repo: str, pr_number: int, post_comments: bool) -> str
     from ingestion.parser import Parser
     from ingestion.chunker import Chunker
     from embeddings.embed import Embedder
-    from vectordb.chroma_store import ChromaStore
+    from vectordb.factory import get_vector_store
     from agents.reviewer_agent import ReviewerAgent
 
     loader   = GitHubLoader()
@@ -443,7 +443,7 @@ async def _tool_review_pr(repo: str, pr_number: int, post_comments: bool) -> str
     parser   = Parser()
     chunker  = Chunker()
     embedder = Embedder()
-    store    = ChromaStore()
+    store    = get_vector_store()
 
     sections = parser.parse_many(pr_ctx.files)
     chunks   = chunker.chunk_sections(sections)

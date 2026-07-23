@@ -33,6 +33,14 @@ python-dotenv==1.0.1
 # ── Utilities ─────────────────────────────────────────────
 rich==13.7.1
 
-# ── Keep so existing imports don't break ──────────────────
-openai==1.35.0
-anthropic==0.28.0
+# ── Optional paid LLM providers (LLM_PROVIDER=openai|anthropic) ──
+openai>=1.54,<2
+anthropic>=0.34,<1
+
+# ── Optional infra — all no-op/fall back to the free defaults above
+#    unless their env vars are set. See config.py for the switches. ──
+pinecone>=5.0,<6            # VECTOR_DB_PROVIDER=pinecone
+sqlalchemy>=2.0,<3           # DATABASE_URL (Postgres report persistence)
+psycopg2-binary>=2.9,<3      # DATABASE_URL
+redis>=5.0,<6                # REDIS_URL (LLM response cache)
+temporalio>=1.7,<2           # TEMPORAL_ADDRESS (pipeline orchestration)

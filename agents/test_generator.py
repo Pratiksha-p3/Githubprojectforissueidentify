@@ -25,8 +25,6 @@ import json
 from pathlib import Path
 from dataclasses import dataclass
 
-from config import cfg
-
 
 @dataclass
 class GeneratedTest:
@@ -38,9 +36,6 @@ class GeneratedTest:
 
 
 class TestGeneratorAgent:
-
-    def __init__(self):
-        self._groq = None
 
     # ── Public API ────────────────────────────────────────
 
@@ -283,17 +278,13 @@ Requirements:
 Generate at least 4 test cases."""
 
         try:
-            client = self._get_groq()
-            resp   = client.chat.completions.create(
-                model       = cfg.review_model,
-                temperature = 0.1,
-                max_tokens  = 2048,
-                messages    = [
-                    {"role": "system", "content": system},
-                    {"role": "user",   "content": prompt},
-                ],
-            )
-            text = resp.choices[0].message.content.strip()
+            from agents.llm_client import chat_completion
+            text = chat_completion(
+                system=system,
+                user=prompt,
+                temperature=0.1,
+                max_tokens=2048,
+            ).strip()
             text = re.sub(r'```[a-z]*\n?', '', text).strip('`').strip()
 
             data = json.loads(text)
@@ -327,8 +318,3 @@ Generate at least 4 test cases."""
                 line_num += 1
         return changed
 
-    def _get_groq(self):
-        if self._groq is None:
-            from groq import Groq
-            self._groq = Groq(api_key=cfg.groq_api_key)
-        return self._groq

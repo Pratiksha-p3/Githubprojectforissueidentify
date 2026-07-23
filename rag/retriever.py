@@ -22,7 +22,8 @@ from __future__ import annotations
 import re
 
 from embeddings.embed import Embedder
-from vectordb.chroma_store import ChromaStore, RetrievedChunk
+from vectordb.chroma_store import RetrievedChunk
+from vectordb.factory import get_vector_store
 from ingestion.github_loader import PRFile
 from config import cfg
 
@@ -31,10 +32,10 @@ class Retriever:
 
     def __init__(
         self,
-        store: ChromaStore = None,
+        store=None,
         embedder: Embedder = None,
     ):
-        self.store   = store   or ChromaStore()
+        self.store   = store   or get_vector_store()
         self.embedder = embedder or Embedder()
 
     # ── Public API ────────────────────────────────────────

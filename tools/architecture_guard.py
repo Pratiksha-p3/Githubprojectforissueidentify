@@ -339,7 +339,6 @@ class ArchitectureGuard:
         self.parser  = ADRParser()
         self._col    = None
         self._embed  = None
-        self._groq   = None
         self._adrs:  list[ADR] = []
 
     # ── Public API ────────────────────────────────────────
@@ -633,20 +632,13 @@ Return ONLY valid JSON:
 If no violations found, return: {{"violations": []}}"""
 
         try:
-            client = self._get_groq()
-            resp   = client.chat.completions.create(
-                model       = cfg.review_model,
-                temperature = 0,
-                max_tokens  = 1024,
-                messages    = [
-                    {
-                        "role":    "system",
-                        "content": "You check code against architecture decisions. Return JSON only."
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            text = resp.choices[0].message.content.strip()
+            from agents.llm_client import chat_completion
+            text = chat_completion(
+                system="You check code against architecture decisions. Return JSON only.",
+                user=prompt,
+                temperature=0,
+                max_tokens=1024,
+            ).strip()
             text = re.sub(r'```[a-z]*\n?', '', text).strip('`').strip()
             data = json.loads(text)
 
@@ -694,12 +686,6 @@ If no violations found, return: {{"violations": []}}"""
         return self._embed.encode(
             [text[:4000]], normalize_embeddings=True, show_progress_bar=False
         ).tolist()[0]
-
-    def _get_groq(self):
-        if self._groq is None:
-            from groq import Groq
-            self._groq = Groq(api_key=cfg.groq_api_key)
-        return self._groq
 
 
 # ─────────────────────────────────────────────────────────────────────────────

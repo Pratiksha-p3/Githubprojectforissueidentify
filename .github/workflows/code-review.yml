@@ -1,0 +1,62 @@
+name: AI Code Review
+
+# Runs the review agent (app.py) against every PR. This is the "CI/CD
+# pipeline hooks" piece of the automation workflow — the same review that
+# runs via the /webhook/github endpoint also runs here, so protected
+# branches can require this check to pass before merge.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install semgrep
+
+      - name: Write GitHub App private key
+        if: env.GITHUB_APP_PRIVATE_KEY != ''
+        env:
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+        run: echo "$GITHUB_APP_PRIVATE_KEY" > github_app.pem
+
+      - name: Run AI code review
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_APP_ID: ${{ secrets.GH_APP_ID }}
+          GITHUB_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}
+          GITHUB_APP_PRIVATE_KEY_PATH: github_app.pem
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        run: |
+          python -m cli review \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --output reports
+
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-report
+          path: reports/
+          retention-days: 14

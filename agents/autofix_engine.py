@@ -24,7 +24,6 @@ import json
 import re
 import requests
 from dataclasses import dataclass
-from config import cfg
 
 FIXABLE_PATTERNS = [
     {"id": "hardcoded-secret", "pattern": r'(password|passwd|pwd|secret|api_key|apikey|token|db_pass)\s*=\s*["\'][^"\']+["\']', "flags": re.IGNORECASE, "fix_type": "env_var"},
@@ -55,9 +54,6 @@ class FixResult:
 
 
 class AutoFixEngine:
-
-    def __init__(self):
-        self._groq = None
 
     def _github_request(self, method: str, url: str, headers: dict, payload: dict | None = None):
         try:
@@ -239,14 +235,13 @@ Target line {line_num}: {target_line}
 
 Return exactly: {{"fixed_line": "<corrected single line>", "explanation": "<one sentence why>"}}"""
         try:
-            resp = self._get_groq().chat.completions.create(
-                model=cfg.review_model, temperature=0, max_tokens=256,
-                messages=[
-                    {"role": "system", "content": "You fix security vulnerabilities. Return JSON only, no markdown fences."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            text = resp.choices[0].message.content.strip()
+            from agents.llm_client import chat_completion
+            text = chat_completion(
+                system="You fix security vulnerabilities. Return JSON only, no markdown fences.",
+                user=prompt,
+                temperature=0,
+                max_tokens=256,
+            ).strip()
             text = re.sub(r'```[a-z]*\n?', '', text).strip('`').strip()
             data = json.loads(text)
             return data.get("fixed_line", ""), data.get("explanation", "")
@@ -429,9 +424,3 @@ Return exactly: {{"fixed_line": "<corrected single line>", "explanation": "<one 
                     return position
         print(f"[autofix] target_line={target_line}, position=None")
         return None
-
-    def _get_groq(self):
-        if self._groq is None:
-            from groq import Groq
-            self._groq = Groq(api_key=cfg.groq_api_key)
-        return self._groq
