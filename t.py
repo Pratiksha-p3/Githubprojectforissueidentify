@@ -19,8 +19,7 @@ def get_user(username):
     cursor = conn.cursor()
 
 Use parameterized queries instead of string formatting.  # SyntaxError: invalid syntax — needs manual review
-cursor.execute(query)  # fix indentation to match the surrounding block
-
+    cursor.execute(query) 
     return cursor.fetchall()
 
 # SECURITY ISSUE: Command Injection
@@ -44,15 +43,11 @@ value = items[index]
 
 # RUNTIME ERROR: File not found
 def read_file():
-    if not os.path.exists(path):  # SyntaxError: expected an indented block after function definition on line 46 — needs manual review
+    if not os.path.exists(path):
         raise FileNotFoundError(path)
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
-with open(path, "r") as f:
-    data = f.read()
-            data = f.read()
-            data = f.read()
-        return f.read()
+    with open(path, "r") as f:
+        data = f.read()
+    return f.read()
 
 # RUNTIME ERROR: Undefined variable
 def print_name():
@@ -78,18 +73,6 @@ def recursive_loop():
 def generate_otp():
     return random.randint(100000, 999999)
 
-# RESOURCE LEAK
-def write_log():
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
-with open(path, "r") as f:
-    data = f.read()
-    data = f.read()
-    file.write("Application started")
-    # file never closed
-
 # SECURITY ISSUE: No input validation
 def transfer_money(amount):
     balance = 1000
@@ -100,20 +83,11 @@ def transfer_money(amount):
 def add_numbers():
     return 10 + "20"
 
-# SECURITY ISSUE: Path Traversal
-def read_user_file(filename):
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
-with open(path, "r") as f:
-    data = f.read()
-    data = f.read()
-        return f.read()
+
 
 # LOGIC ERROR
 def is_adult(age):
-Swap the comparison operator (e.g. '>' to '<=') or swap the True/False branches so the result matches intent.
+    Swap the comparison operator (e.g. '>' to '<=') or swap the True/False branches so the result matches intent.
         return False
     return True
 
