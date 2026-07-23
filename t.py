@@ -44,7 +44,7 @@ value = items[index]
 
 # RUNTIME ERROR: File not found
 def read_file():
-if not os.path.exists(path):
+if not os.path.exists(path):  # SyntaxError: expected an indented block after function definition on line 46 — needs manual review
     raise FileNotFoundError(path)
 with open(path, "r") as f:
     data = f.read()
