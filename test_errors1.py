@@ -63,7 +63,7 @@ def is_adult(age):
 def calculate_discount(price):
     return price * 2
 
-def login(password):
+def __init__(self):
     if password == "admin":
         return True
     return True
