@@ -365,20 +365,23 @@ def run_review(
     # ─────────────────────────────────────────────
 
     try:
-        from agents.skill_profiler import SkillProfiler
+        from tools.skill_profiler import SkillProfiler
         print("[app] Updating skill profile...")
 
         profiler = SkillProfiler()
-        profiler.record_review(
+        profiler.record(
             author=pr_ctx.author,
-            repo=repo,
-            pr_number=pr_number,
             findings=report.get("findings", []),
-            reviewed_at=datetime.now(timezone.utc).isoformat(),
+            pr_number=pr_number,
+            repo=repo,
+            score=report.get("overall_score", 1.0),
         )
-        report["skill_profile"] = profiler.generate_gap_report(pr_ctx.author)
+        report["skill_profile"] = {
+            "author": pr_ctx.author,
+            "growth_report": profiler.growth_report(pr_ctx.author),
+        }
 
-        print(f"[app] Skill profile: {report['skill_profile']['summary']}")
+        print(f"[app] Skill profile updated for {pr_ctx.author}")
 
     except Exception as e:
         print(f"[app] Skill profiling failed: {e}")

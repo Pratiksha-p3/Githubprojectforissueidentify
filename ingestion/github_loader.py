@@ -183,38 +183,36 @@ class GitHubLoader:
             fix = f.get("fix", "").strip()
 
             if fix:
-                cat  = f.get("category", "general")
-                msg  = f.get("message", "")
-                body = "\n".join([
-                    f"{icon} **{severity}** \u2014 {cat}",
-                    "",
-                    "### \U0001f50d Detected",
-                    "",
-                    "```python",
-                    msg[:100],
-                    "```",
-                    "",
-                    "### \U0001f4cb Issue",
-                    "",
-                    f"> {msg}",
-                    "",
-                    "### \u2705 Auto Fix",
-                    "",
-                    "```suggestion",
-                    fix,
-                    "```",
-                    "",
-                    "### \U0001f4a1 Or apply manually",
-                    "",
-                    "```python",
-                    fix,
-                    "```",
-                    "",
-                    "> Move to environment variable \u2014 never commit credentials.",
-                    "",
+                cat      = f.get("category", "general")
+                msg      = f.get("message", "")
+                bad_code = f.get("bad_code", "").strip()
+                reason   = f.get("reason", "").strip()
+
+                sections = [f"{icon} **{severity}** \u2014 {cat}", ""]
+
+                if bad_code:
+                    sections += [
+                        "### \U0001f50d Detected", "",
+                        "```python", bad_code, "```", "",
+                    ]
+
+                sections += [
+                    "### \U0001f4cb Issue", "",
+                    f"> {msg}", "",
+                    "### \u2705 Auto Fix", "",
+                    "```suggestion", fix, "```", "",
+                    "### \U0001f4a1 Or apply manually", "",
+                    "```python", fix, "```", "",
+                ]
+
+                if reason:
+                    sections += [f"> {reason}", ""]
+
+                sections += [
                     "---",
                     "*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to apply instantly*",
-                ])
+                ]
+                body = "\n".join(sections)
             else:
                 body = (
                     f"{icon} **{severity}** — {f.get('category', 'general')}\n\n"

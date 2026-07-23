@@ -84,7 +84,7 @@ Return ONLY valid JSON in this exact shape:
       "severity": "critical" | "warning" | "info",
       "message":  "<short description of the bug>",
       "bad_code": "<exact current line from the file>",
-      "fix":      "<exact replacement line — valid Python, same indentation>",
+      "fix":      "<replacement code for that line, as valid standalone Python. Use a single line when one line is enough. When the correct fix genuinely needs more than one statement (e.g. wrapping in try/except, adding an if-guard), return multiple lines separated by \\n, each with the SAME indentation as bad_code — never join multiple statements onto one physical line with semicolons, and never split a compound statement (try/except/if/with) across a semicolon.>",
       "reason":   "<one sentence on why this is wrong>"
     }}
   ]

@@ -1,0 +1,272 @@
+[
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "security",
+    "severity": "critical",
+    "message": "'Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "bug",
+    "severity": "warning",
+    "message": "'False'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "bug",
+    "severity": "warning",
+    "message": "'return a / b'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "bug",
+    "severity": "warning",
+    "message": "'return arr[10]'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "bug",
+    "severity": "warning",
+    "message": "'with open('missing.txt') as f:'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "bug",
+    "severity": "warning",
+    "message": "'print(username)'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "logic",
+    "severity": "warning",
+    "message": "'if age > 18: return False'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "logic",
+    "severity": "warning",
+    "message": "'return price * 2'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "logic",
+    "severity": "warning",
+    "message": "'if password == 'admin': return True'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "syntax",
+    "severity": "critical",
+    "message": "'def __init__(self)'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "syntax",
+    "severity": "critical",
+    "message": "'def broken_function('",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "syntax",
+    "severity": "critical",
+    "message": "'class UserService'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "syntax",
+    "severity": "critical",
+    "message": "'except Exception'",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "syntax",
+    "severity": "critical",
+    "message": "invalid syntax",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "syntax",
+    "severity": "critical",
+    "message": "expected an indented block after function definition on line 21",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "warning",
+    "message": "Possible division by variable (unguarded)",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "warning",
+    "message": "Possible IndexError",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "warning",
+    "message": "File may not exist",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "warning",
+    "message": "Possible undefined variable",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "SQL query is incomplete",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Function does not handle command injection",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Division by zero",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Index out of range",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "File not found",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Undefined variable",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Missing colon",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Missing colon",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Missing colon",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Missing class definition",
+    "file": "test_errors1.py"
+  },
+  {
+    "reviewed_at": "2026-07-23T05:24:39.938811+00:00",
+    "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+    "pr_number": 1,
+    "category": "runtime",
+    "severity": "critical",
+    "message": "Missing bracket",
+    "file": "test_errors1.py"
+  }
+]
