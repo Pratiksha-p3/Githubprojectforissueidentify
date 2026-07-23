@@ -91,7 +91,10 @@ def add_numbers():
 
 # SECURITY ISSUE: Path Traversal
 def read_user_file(filename):
-    with open(filename, "r") as f:
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
+with open(path, "r") as f:
+    data = f.read()
         return f.read()
 
 # LOGIC ERROR
