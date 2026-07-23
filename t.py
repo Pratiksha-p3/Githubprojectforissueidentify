@@ -18,7 +18,7 @@ def get_user(username):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
 
-Use parameterized queries instead of string formatting.
+Use parameterized queries instead of string formatting.  # SyntaxError: invalid syntax — needs manual review
     cursor.execute(query)
 
     return cursor.fetchall()
