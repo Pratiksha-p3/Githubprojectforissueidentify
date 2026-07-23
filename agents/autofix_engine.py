@@ -20,6 +20,7 @@ Flow:
   NO → Block PR via gate
 """
 from __future__ import annotations
+import ast
 import json
 import re
 import requests
@@ -147,9 +148,14 @@ class AutoFixEngine:
                         return True, rule["fix_type"]
 
                 print("[autofix] No fixable pattern matched")
-        fix_hint = (finding.get("fix") or "").lower()
-        if any(kw in fix_hint for kw in ["os.getenv", "parameterized", "bcrypt", "subprocess.run"]):
-            return True, "llm_hint"
+
+        # Finding already carries its own fix from an earlier stage
+        # (semgrep, ai_review's senior-engineer pass, architecture/
+        # compliance guards) — reuse it (after validation) instead of
+        # spending a fresh LLM call to regenerate one from scratch.
+        if (finding.get("fix") or "").strip():
+            return True, "existing_fix"
+
         return False, ""
 
     # ── Fix generation ───────────────────────────────────
@@ -164,13 +170,47 @@ class AutoFixEngine:
         target = lines[line_num - 1]
         indent = " " * (len(target) - len(target.lstrip()))
 
-        # Rule-based first (no LLM cost)
+        # 1. Rule-based first — free, deterministic, no LLM call.
         rule_fix = self._rule_fix(target, fix_type, indent)
-        if rule_fix:
+        if rule_fix and self._is_valid_fix(rule_fix, indent):
             return rule_fix, self._explain(fix_type)
 
-        # LLM fallback
-        return self._llm_fix(finding, pf, target, line_num, fix_type)
+        # 2. Reuse a fix the finding already carries (semgrep/ai_review/
+        #    architecture/compliance guards already spent an LLM call on
+        #    this, if it used one at all) — validate it, then use it
+        #    directly instead of regenerating from scratch.
+        if fix_type == "existing_fix":
+            existing = (finding.get("fix") or "").rstrip()
+            if existing and self._is_valid_fix(existing, indent):
+                explanation = finding.get("reason") or finding.get("message", "")
+                return existing, explanation
+            print(f"[autofix] Existing fix failed validation for "
+                  f"{finding.get('file')}:{line_num}, falling back to LLM")
+
+        # 3. LLM fallback — last resort, and validated before use.
+        fix_code, explanation = self._llm_fix(finding, pf, target, line_num, fix_type)
+        if fix_code and not self._is_valid_fix(fix_code, indent):
+            print(f"[autofix] Discarding invalid LLM fix for "
+                  f"{finding.get('file')}:{line_num}: {fix_code!r}")
+            return "", "Generated fix failed syntax validation"
+        return fix_code, explanation
+
+    def _is_valid_fix(self, code: str, indent: str) -> bool:
+        """
+        Best-effort syntax check: does this fix parse as valid Python when
+        dropped into a block at the target line's indentation? Catches the
+        failure mode where a fix jams multiple statements onto one
+        physical line with semicolons (e.g. an invalid one-line
+        try/except) instead of the multi-line block it actually needs.
+        """
+        if not code.strip():
+            return False
+        try:
+            wrapped = ("if True:\n" + code) if indent else code
+            ast.parse(wrapped)
+            return True
+        except SyntaxError:
+            return False
 
     def _rule_fix(self, line, fix_type, indent):
         if fix_type == "env_var":
@@ -233,7 +273,7 @@ Code (lines {start+1}-{end}):
 
 Target line {line_num}: {target_line}
 
-Return exactly: {{"fixed_line": "<corrected single line>", "explanation": "<one sentence why>"}}"""
+Return exactly: {{"fixed_line": "<replacement code for the target line, as valid Python matching its indentation. Use one line when one line is enough. When the correct fix genuinely needs more than one statement (e.g. wrapping in try/except), return multiple lines separated by \\n at the same indentation — never join statements with semicolons across a compound-statement boundary.>", "explanation": "<one sentence why>"}}"""
         try:
             from agents.llm_client import chat_completion
             text = chat_completion(

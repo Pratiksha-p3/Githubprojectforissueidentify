@@ -130,12 +130,33 @@ class ChromaStore:
 
         col = self._get_collection()
 
+        # chunk_id is a hash of (filename, section name, chunk index,
+        # content) — two chunks can legitimately land on the same id when
+        # a file has structurally identical sections (e.g. the parser
+        # doesn't disambiguate same-named functions/classes). ChromaDB's
+        # upsert() is supposed to just overwrite on a duplicate id, but it
+        # rejects duplicate ids within a single call outright — so dedupe
+        # here, keeping the last occurrence (matches upsert-overwrite
+        # semantics), before ever calling into the client.
+        seen_ids = set()
+        deduped = []
+        for ec in reversed(embedded_chunks):
+            if ec.chunk.chunk_id in seen_ids:
+                continue
+            seen_ids.add(ec.chunk.chunk_id)
+            deduped.append(ec)
+        deduped.reverse()
+
+        skipped = len(embedded_chunks) - len(deduped)
+        if skipped:
+            print(f"[chroma] Skipped {skipped} duplicate-id chunk(s) in this batch")
+
         ids = []
         embeddings = []
         documents = []
         metadatas = []
 
-        for ec in embedded_chunks:
+        for ec in deduped:
 
             c = ec.chunk
 

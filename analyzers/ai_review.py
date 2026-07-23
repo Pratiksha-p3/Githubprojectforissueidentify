@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from functools import lru_cache
@@ -120,16 +121,43 @@ def _validate(raw_findings) -> list[dict]:
             severity = "warning"
         if not f.get("message"):
             continue
+
+        bad_code = str(f.get("bad_code", ""))
+        fix = str(f.get("fix", ""))
+        if fix and not _is_valid_fix(fix, bad_code):
+            print(f"[ai_review] Discarding invalid fix at line {line}: {fix!r}")
+            fix = ""
+
         clean.append({
             "line": line,
             "category": category,
             "severity": severity,
             "message": str(f.get("message", "")),
-            "bad_code": str(f.get("bad_code", "")),
-            "fix": str(f.get("fix", "")),
+            "bad_code": bad_code,
+            "fix": fix,
             "reason": str(f.get("reason", "")),
         })
     return clean
+
+
+def _is_valid_fix(fix: str, bad_code: str) -> bool:
+    """
+    Best-effort syntax check: does this fix parse as valid Python when
+    dropped into a block at the same indentation as the line it replaces?
+    Guards against the LLM jamming multiple statements onto one physical
+    line with semicolons (e.g. an invalid one-line try/except) — a real
+    failure mode this prompt used to hit before fixes were allowed to
+    span multiple lines.
+    """
+    if not fix.strip():
+        return False
+    indent = len(bad_code) - len(bad_code.lstrip()) if bad_code else 0
+    try:
+        wrapped = ("if True:\n" + fix) if indent > 0 else fix
+        ast.parse(wrapped)
+        return True
+    except SyntaxError:
+        return False
 
 
 def _safe_json_parse(text: str) -> dict:

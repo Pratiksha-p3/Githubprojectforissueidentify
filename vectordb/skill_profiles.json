@@ -1,0 +1,390 @@
+{
+  "Pratiksha-p3": {
+    "author": "Pratiksha-p3",
+    "email": "",
+    "total_prs": 4,
+    "total_critical": 15,
+    "issue_counts": {
+      "syntax": 10,
+      "runtime": 31,
+      "architecture": 5
+    },
+    "monthly_counts": {
+      "2026-07:syntax": 10,
+      "2026-07:runtime": 31,
+      "2026-07:architecture": 5
+    },
+    "pr_history": [
+      {
+        "pr_number": 1,
+        "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+        "date": "2026-07-23T05:46:15.220009+00:00",
+        "score": 0.5,
+        "findings": [
+          {
+            "file": "test_errors1.py",
+            "line": 18,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "invalid syntax",
+            "bad_code": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review",
+            "fix": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: invalid syntax \u2014 needs manual review"
+          },
+          {
+            "file": "test_errors1.py",
+            "line": 22,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "expected an indented block after function definition on line 21",
+            "bad_code": "False",
+            "fix": "False  # SyntaxError: expected an indented block after function definition on line 21 \u2014 needs manual review"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 29,
+            "message": "Possible division by variable (unguarded)",
+            "fix_type": "division_guard",
+            "fix_code": "\nif b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b\n",
+            "fix": "if b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 33,
+            "message": "Possible IndexError",
+            "fix_type": "index_guard",
+            "fix_code": "\nif index >= len(items):\n    raise IndexError(\"Index out of range\")\nvalue = items[index]\n",
+            "fix": "if index >= len(items):\n    raise IndexError(\"Index out of range\")\nvalue = items[index]"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 36,
+            "message": "File may not exist",
+            "fix_type": "file_exists_guard",
+            "fix_code": "\nif not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()\n",
+            "fix": "if not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()"
+          }
+        ]
+      },
+      {
+        "pr_number": 1,
+        "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+        "date": "2026-07-23T07:03:07.268294+00:00",
+        "score": 0.5,
+        "findings": [
+          {
+            "file": "test_errors1.py",
+            "line": 18,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "invalid syntax",
+            "bad_code": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review",
+            "fix": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: invalid syntax \u2014 needs manual review"
+          },
+          {
+            "file": "test_errors1.py",
+            "line": 22,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "expected an indented block after function definition on line 21",
+            "bad_code": "try: with open(\"missing.txt\") as f: return f.read(); except FileNotFoundError: return None",
+            "fix": "try: with open(\"missing.txt\") as f: return f.read(); except FileNotFoundError: return None  # SyntaxError: expected an indented block after function definition on line 21 \u2014 needs manual review"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 22,
+            "message": "File may not exist",
+            "fix_type": "file_exists_guard",
+            "fix_code": "\nif not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()\n",
+            "fix": "if not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 29,
+            "message": "Possible division by variable (unguarded)",
+            "fix_type": "division_guard",
+            "fix_code": "\nif b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b\n",
+            "fix": "if b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 33,
+            "message": "Possible IndexError",
+            "fix_type": "index_guard",
+            "fix_code": "\nif index >= len(items):\n    raise IndexError(\"Index out of range\")\nvalue = items[index]\n",
+            "fix": "if index >= len(items):\n    raise IndexError(\"Index out of range\")\nvalue = items[index]"
+          }
+        ]
+      },
+      {
+        "pr_number": 1,
+        "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+        "date": "2026-07-23T09:11:25.904014+00:00",
+        "score": 0.5,
+        "findings": [
+          {
+            "file": "test_errors1.py",
+            "line": 15,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "invalid syntax",
+            "bad_code": "Move the database query to a service class in the services/ directory and call the service method from the controller.",
+            "fix": "Move the database query to a service class in the services/ directory and call the service method from the controller.  # SyntaxError: invalid syntax \u2014 needs manual review"
+          },
+          {
+            "file": "test_errors1.py",
+            "line": 16,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "invalid syntax",
+            "bad_code": "Use a service class to handle database queries, e.g., user_service.get_user(username)",
+            "fix": "Use a service class to handle database queries, e.g., user_service.get_user(username)  # SyntaxError: invalid syntax \u2014 needs manual review"
+          },
+          {
+            "file": "test_errors1.py",
+            "line": 19,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "expected an indented block after function definition on line 17",
+            "bad_code": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: invalid syntax \u2014 needs manual review",
+            "fix": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: expected an indented block after function definition on line 17 \u2014 needs manual review"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 15,
+            "message": "Possible division by variable (unguarded)",
+            "fix_type": "division_guard",
+            "fix_code": "\nif b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b\n",
+            "fix": "if b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 23,
+            "message": "File may not exist",
+            "fix_type": "file_exists_guard",
+            "fix_code": "\nif not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()\n",
+            "fix": "if not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()"
+          }
+        ]
+      },
+      {
+        "pr_number": 1,
+        "repo": "Pratiksha-p3/Githubprojectforissueidentify",
+        "date": "2026-07-23T09:21:28.537148+00:00",
+        "score": 0.5,
+        "findings": [
+          {
+            "file": "test_errors1.py",
+            "line": 15,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "invalid syntax",
+            "bad_code": "Move the database query to a service class in the services/ directory and call the service method from the controller.",
+            "fix": "Move the database query to a service class in the services/ directory and call the service method from the controller.  # SyntaxError: invalid syntax \u2014 needs manual review"
+          },
+          {
+            "file": "test_errors1.py",
+            "line": 16,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "invalid syntax",
+            "bad_code": "Use a service class to handle database queries, e.g., user_service.get_user(username)",
+            "fix": "Use a service class to handle database queries, e.g., user_service.get_user(username)  # SyntaxError: invalid syntax \u2014 needs manual review"
+          },
+          {
+            "file": "test_errors1.py",
+            "line": 19,
+            "severity": "critical",
+            "category": "syntax",
+            "message": "expected an indented block after function definition on line 17",
+            "bad_code": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: invalid syntax \u2014 needs manual review",
+            "fix": "Fix Python syntax  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: invalid syntax \u2014 needs manual review  # SyntaxError: expected an indented block after function definition on line 17 \u2014 needs manual review"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 15,
+            "message": "Possible division by variable (unguarded)",
+            "fix_type": "division_guard",
+            "fix_code": "\nif b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b\n",
+            "fix": "if b == 0:\n    raise ValueError(\"Division by zero\")\nreturn a / b"
+          },
+          {
+            "category": "runtime",
+            "severity": "warning",
+            "file": "test_errors1.py",
+            "line": 23,
+            "message": "File may not exist",
+            "fix_type": "file_exists_guard",
+            "fix_code": "\nif not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()\n",
+            "fix": "if not os.path.exists(path):\n    raise FileNotFoundError(path)\nwith open(path, \"r\") as f:\n    data = f.read()"
+          }
+        ]
+      }
+    ]
+  },
+  "dev": {
+    "author": "dev",
+    "email": "",
+    "total_prs": 1,
+    "total_critical": 5,
+    "issue_counts": {
+      "hardcoded_secret": 3,
+      "sql_injection": 2,
+      "weak_crypto": 1,
+      "architecture": 1
+    },
+    "monthly_counts": {
+      "2026-07:hardcoded_secret": 3,
+      "2026-07:sql_injection": 2,
+      "2026-07:weak_crypto": 1,
+      "2026-07:architecture": 1
+    },
+    "pr_history": [
+      {
+        "pr_number": 1,
+        "repo": "demo/repo",
+        "date": "2026-07-23T09:20:52.412549+00:00",
+        "score": 0.3,
+        "findings": [
+          {
+            "file": "src/auth/login.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "Hardcoded secret key, API key, or token detected in source code. Move this to an environment variable (os.getenv) or a secrets manager.\n",
+            "fix": "Move secret to environment variable or secrets manager.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-hardcoded-secret-key",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2009-3035",
+              "CVE-2010-0557",
+              "CVE-2010-2966"
+            ],
+            "cvss_score": 7.8,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2009-3035",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-0557",
+              "https://nvd.nist.gov/vuln/detail/CVE-2010-2966"
+            ],
+            "cve_detail": "The web console in Symantec Altiris Notification Server 6.0.x before 6.0 SP3 R12 uses a hardcoded key that can decrypt SQL Server credentials and certain discovery credentials, and stores this key on "
+          },
+          {
+            "file": "src/auth/login.py",
+            "line": 7,
+            "severity": "critical",
+            "category": "security",
+            "message": "A SQL query string built with an f-string is being executed. This is a classic SQL injection pattern. Use parameterized queries instead (e.g. cursor.execute(\"SELECT * FROM t WHERE x=?\", (value,))).\n",
+            "fix": "Use parameterized queries instead of string formatting.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-sql-injection-fstring-var",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2000-1233",
+              "CVE-2000-1236",
+              "CVE-2001-1348"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1233",
+              "https://nvd.nist.gov/vuln/detail/CVE-2000-1236",
+              "https://nvd.nist.gov/vuln/detail/CVE-2001-1348"
+            ],
+            "cve_detail": "SQL injection vulnerability in read.php3 and other scripts in Phorum 3.0.7 allows remote attackers to execute arbitrary SQL queries via the sSQL parameter."
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "critical",
+            "category": "security",
+            "message": "MD5 is cryptographically broken and unsuitable for password hashing. Use bcrypt, scrypt, or argon2 instead.\n",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "security_rules.custom-weak-md5-password-hash",
+            "confidence": 0.95,
+            "risk_weight": 50,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          },
+          {
+            "file": "src/utils/hash.py",
+            "line": 3,
+            "severity": "warning",
+            "category": "security",
+            "message": "It looks like MD5 is used as a password hash. MD5 is not considered a secure password hash because it can be cracked by an attacker in a short amount of time. Use a suitable password hashing function such as scrypt. You can use `hashlib.scrypt`.",
+            "fix": "Use bcrypt, scrypt, or argon2 for password hashing.",
+            "source": "semgrep",
+            "rule_id": "python.lang.security.audit.md5-used-as-password.md5-used-as-password",
+            "confidence": 0.95,
+            "risk_weight": 10,
+            "cve_ids": [
+              "CVE-2002-2057",
+              "CVE-2002-2058",
+              "CVE-2012-6707"
+            ],
+            "cvss_score": 7.5,
+            "cve_urls": [
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2057",
+              "https://nvd.nist.gov/vuln/detail/CVE-2002-2058",
+              "https://nvd.nist.gov/vuln/detail/CVE-2012-6707"
+            ],
+            "cve_detail": "TeeKai Forum 1.2 uses weak encryption of web usage statistics in data/member_log.txt, which is stored under the web document root with insufficient access control, which allows remote attackers to ide"
+          }
+        ]
+      }
+    ]
+  }
+}

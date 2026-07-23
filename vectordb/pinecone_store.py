@@ -56,8 +56,21 @@ class PineconeStore:
             return
 
         index = self._get_index()
+
+        # Same dedup as ChromaStore.upsert — chunk_id can collide when the
+        # parser produces structurally identical sections; keep the last
+        # occurrence, matching upsert-overwrite semantics.
+        seen_ids = set()
+        deduped = []
+        for ec in reversed(embedded_chunks):
+            if ec.chunk.chunk_id in seen_ids:
+                continue
+            seen_ids.add(ec.chunk.chunk_id)
+            deduped.append(ec)
+        deduped.reverse()
+
         vectors = []
-        for ec in embedded_chunks:
+        for ec in deduped:
             c = ec.chunk
             vectors.append({
                 "id": c.chunk_id,
