@@ -464,6 +464,12 @@ def publisher_node(state: AdvancedReviewState) -> AdvancedReviewState:
         except Exception as e:
             print(f"[publisher] GitHub post failed: {e}")
 
+    # So callers (e.g. app.py) that check this flag to decide whether to
+    # post their own review comments actually see an accurate value —
+    # previously this key was never set, so that check silently always
+    # saw False and posted a second, uncoordinated round of comments.
+    report["already_posted_to_github"] = posted
+
     # Print summary
     _print_summary(report)
 

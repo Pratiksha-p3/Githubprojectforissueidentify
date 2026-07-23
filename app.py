@@ -213,16 +213,22 @@ def run_review(
 
         print("[app] Using LangGraph pipeline")
 
+        # post_to_github is always False here — LangGraph's own posting path
+        # (inline suggestions built from raw finding["fix"] text, no
+        # cross-checker dedup) runs with zero knowledge of everything app.py
+        # does next (secret scan, architecture/compliance findings, location
+        # dedup, AutoFixEngine's validated fixes). Letting both post
+        # independently is exactly what produced 2-3 competing/contradictory
+        # suggestion comments on the same line. app.py's own posting step
+        # below (dedup -> AutoFixEngine -> posted_locations-aware final
+        # post) is the sole poster; LangGraph is analysis-only here.
         report = run_advanced_review(
         pr_ctx=pr_ctx,
         repo=repo,
-        post_to_github=not mock,
+        post_to_github=False,
         )
 
-        skip_github_post = report.get(
-    "already_posted_to_github",
-    False
-)
+        skip_github_post = False
 
     except ImportError:
         print("[app] LangGraph not installed")
