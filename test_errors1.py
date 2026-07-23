@@ -30,7 +30,7 @@ def divide(a, b):
     return a / b
 
 def access_item():
-    arr = [1, 2, 3]
+try: with open("missing.txt") as f:; except FileNotFoundError: print('Error: File not found')
     return arr[10]
 
 def read_file():
