@@ -11,7 +11,7 @@ import subprocess
 API_KEY = os.getenv("API_KEY")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-# SQL Injection
+query = 'SELECT * FROM users WHERE username=?'; cursor = conn.cursor(); cursor.execute(query, (username,))
 def get_user(username):
     conn = sqlite3.connect("users.db")
     query = 'SELECT * FROM users WHERE username=?'
