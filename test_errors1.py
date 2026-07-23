@@ -33,7 +33,9 @@ if variable_name is None:
 print(variable_name)
 # ==========================
 
-if len(arr) > 10: return arr[10]; else: return 'Error: Index out of range'
+if index >= len(items):
+    raise IndexError("Index out of range")
+value = items[index]
 if b == 0:
     raise ValueError("Division by zero")
 return a / b
