@@ -44,7 +44,10 @@ value = items[index]
 
 # RUNTIME ERROR: File not found
 def read_file():
-    with open("missing_file.txt") as f:
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
+with open(path, "r") as f:
+    data = f.read()
         return f.read()
 
 # RUNTIME ERROR: Undefined variable
