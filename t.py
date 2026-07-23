@@ -6,7 +6,7 @@ import os
 
 # SECURITY ISSUE: Hardcoded secrets
 API_KEY = os.getenv("API_KEY")
-DB_PASSWORD = "admin123"
+Store DB_PASSWORD in an environment variable using os.getenv("DB_PASSWORD") or python-dotenv.
 Store JWT_SECRET in an environment variable using os.getenv("JWT_SECRET") or python-dotenv.
 
 # SECURITY ISSUE: Weak hash
