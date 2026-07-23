@@ -95,7 +95,7 @@ def broken_function(
     print("missing bracket")
 
 
-class UserService
+class UserService:
 
     def __init__(self):
         
