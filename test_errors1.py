@@ -47,7 +47,9 @@ with open(path, "r") as f:
         return f.read()
 
 def use_variable():
-    print(username)
+if variable_name is None:
+    raise ValueError("Undefined variable")
+print(variable_name)
 
 # ==========================
 # LOGIC ISSUES
