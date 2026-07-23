@@ -18,8 +18,9 @@ def get_user(username):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
 
-Use parameterized queries instead of string formatting.  # SyntaxError: invalid syntax — needs manual review  # SyntaxError: invalid syntax — needs manual review
-cursor.execute(query)  # fix indentation to match the surrounding block
+    query = "SELECT * FROM users WHERE username = ?"
+    cursor.execute(query, (username,))
+
     return cursor.fetchall()
 
 # SECURITY ISSUE: Command Injection
@@ -83,7 +84,7 @@ def add_numbers():
 
 # LOGIC ERROR
 def is_adult(age):
-    Swap the comparison operator (e.g. '>' to '<=') or swap the True/False branches so the result matches intent.
+    if age<18:
         return False
     return True
 
@@ -102,7 +103,4 @@ if __name__ == "__main__":
     write_log()
     print(transfer_money(-5000))
     print(add_numbers())
-if b == 0:
-    raise ValueError("Division by zero")
-return a / b
     print(is_adult(25))
