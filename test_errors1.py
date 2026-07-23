@@ -64,7 +64,11 @@ def calculate_discount(price):
     return price * 2
 
 def __init__(self):
-    if password == "admin":
+The login function seems to be incorrect. It should return True only if the password is correct. ```python
+def login(password):
+    if password == 'admin':
+        return True
+    return False```
         return True
     return True
 
