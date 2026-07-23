@@ -18,7 +18,7 @@ def get_user(username):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
 
-    query = f"SELECT * FROM users WHERE username='{username}'"
+Use parameterized queries instead of string formatting.
     cursor.execute(query)
 
     return cursor.fetchall()
