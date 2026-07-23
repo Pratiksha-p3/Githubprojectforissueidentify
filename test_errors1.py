@@ -27,7 +27,9 @@ try: with open("missing.txt") as f: return f.read(); except FileNotFoundError: r
 # ==========================
 
 def divide(a, b):
-    return a / b
+if b == 0:
+    raise ValueError("Division by zero")
+return a / b
 
 def access_item():
 try: with open("missing.txt") as f:; except FileNotFoundError: print('Error: File not found')
