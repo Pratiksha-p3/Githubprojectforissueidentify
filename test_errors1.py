@@ -12,7 +12,7 @@ API_KEY = os.getenv("API_KEY")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 query = 'SELECT * FROM users WHERE username=?'; cursor = conn.cursor(); cursor.execute(query, (username,))
-def get_user(username):
+Move the database query to a service class in the services/ directory and call the service method from the controller.
 Use a service class to handle database queries, e.g., user_service.get_user(username)
 def run_command(cmd):
     # Implement command injection handling
