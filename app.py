@@ -24,6 +24,51 @@ from agents.runtime_agent import RuntimeAgent
 from agents.logic_agent import LogicAgent
 
 
+_SEVERITY_RANK = {"critical": 0, "warning": 1, "info": 2}
+
+
+def _dedupe_by_location(findings: list[dict]) -> list[dict]:
+    """
+    Multiple independent checkers (semgrep, the LLM reviewer, ai_review.py,
+    architecture/compliance guards) can all flag the exact same line with
+    differently-worded findings. Without this, each one posts its own
+    suggestion comment and the same line ends up with 2-3 competing,
+    sometimes contradictory boxes on GitHub. Keep exactly one finding per
+    (file, line): highest severity first, then prefer one that already
+    carries a usable fix. Findings with no (file, line) — e.g. file-level
+    or summary-only findings — pass through untouched.
+    """
+    located, unlocated = [], []
+    for f in findings:
+        if isinstance(f, dict) and f.get("file") and f.get("line"):
+            located.append(f)
+        else:
+            unlocated.append(f)
+
+    def rank(f: dict) -> tuple:
+        return (
+            _SEVERITY_RANK.get(f.get("severity", "info"), 2),
+            0 if (f.get("fix") or "").strip() else 1,
+        )
+
+    best_by_key: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    for f in located:
+        key = (f["file"], f["line"])
+        if key not in best_by_key:
+            order.append(key)
+            best_by_key[key] = f
+        elif rank(f) < rank(best_by_key[key]):
+            best_by_key[key] = f
+
+    deduped = [best_by_key[k] for k in order]
+    dropped = len(located) - len(deduped)
+    if dropped:
+        print(f"[app] Deduped {dropped} finding(s) sharing a location with a higher-priority one")
+
+    return deduped + unlocated
+
+
 def _get_retriever():
     """
     Auto-detect whether a repo index exists and use
@@ -319,9 +364,15 @@ def run_review(
         print(f"[app] Compliance scan failed: {e}")
 
     # ─────────────────────────────────────────────
+    # DEDUPE — one finding per (file, line) before anything gets posted
+    # ─────────────────────────────────────────────
+    report["findings"] = _dedupe_by_location(report.get("findings", []))
+
+    # ─────────────────────────────────────────────
     # AUTO FIX AGENT
     # ─────────────────────────────────────────────
     findings = report.setdefault("findings", [])
+    posted_locations: set[tuple] = set()
     try:
         from agents.auto_fix_orchestrator import AutoFixOrchestrator
         print("[app] Running Auto Fix Agent...")
@@ -343,6 +394,7 @@ def run_review(
             "unresolved":  auto_result_raw["unresolved"],
         }
         report["auto_fix"] = auto_result
+        posted_locations = set(auto_result_raw.get("posted_locations", []))
 
         print(
             f"[app] Auto fixed "
@@ -402,12 +454,22 @@ def run_review(
                f"found {report.get('total_findings', 0)} issues."
         )
 
+        # Don't re-post a suggestion for a (file, line) the Auto Fix Agent
+        # already posted one for above — same underlying bug, one comment.
+        remaining_findings = [
+            f for f in report.get("findings", [])
+            if (f.get("file"), f.get("line")) not in posted_locations
+        ]
+        skipped = len(report.get("findings", [])) - len(remaining_findings)
+        if skipped:
+            print(f"[app] Skipping {skipped} finding(s) already posted by Auto Fix Agent")
+
         try:
             loader.post_review_comments(
                 repo=repo,
                 pr_number=pr_number,
                 head_sha=pr_ctx.head_sha,
-                findings=report.get("findings", []),
+                findings=remaining_findings,
                 summary=exec_summary,
                 approved=report.get("approved", False),
             )

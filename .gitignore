@@ -11,5 +11,6 @@ gitleaks.exe
 vectordb/repo_index_cache.json
 vectordb/repo_index.json
 vectordb/memory.json
+vectordb/skill_profiles.json
 reports/*.json
 *_analysis.json

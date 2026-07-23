@@ -53,4 +53,11 @@ class AutoFixOrchestrator:
             "fixed_files": [f.finding["file"] for f in fixed if f.fix_applied],
             "unresolved_count": len(unresolved),
             "unresolved": unresolved,
+            # (file, line) pairs that already got a suggestion comment posted
+            # here — the main review pass must not post a second, competing
+            # suggestion for the same spot.
+            "posted_locations": [
+                (f.finding.get("file"), f.finding.get("line"))
+                for f in fixed if f.fix_applied
+            ],
         }
