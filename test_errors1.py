@@ -51,7 +51,7 @@ if variable_name is None:
     raise ValueError("Undefined variable")
 print(variable_name)
 
-# ==========================
+def __init__(self):
 # LOGIC ISSUES
 # ==========================
 
