@@ -5,7 +5,7 @@ import random
 import os
 
 # SECURITY ISSUE: Hardcoded secrets
-API_KEY = "sk-test-123456789"
+API_KEY = os.getenv("API_KEY")
 DB_PASSWORD = "admin123"
 JWT_SECRET = "super-secret-jwt-key"
 
