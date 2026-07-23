@@ -13,7 +13,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 query = 'SELECT * FROM users WHERE username=?'; cursor = conn.cursor(); cursor.execute(query, (username,))
 def get_user(username):
-    conn = sqlite3.connect("users.db")
+Use a service class to handle database queries, e.g., user_service.get_user(username)
 def run_command(cmd):
     # Implement command injection handling
 Fix Python syntax  # SyntaxError: invalid syntax — needs manual review  # SyntaxError: invalid syntax — needs manual review
