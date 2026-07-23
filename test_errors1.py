@@ -44,6 +44,8 @@ if b == 0:
     raise ValueError("Division by zero")
 if b == 0:
     raise ValueError("Division by zero")
+if b == 0:
+    raise ValueError("Division by zero")
 return a / b
 
 def access_item():
