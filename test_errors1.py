@@ -16,7 +16,7 @@ Move the database query to a service class in the services/ directory and call t
 Use a service class to handle database queries, e.g., user_service.get_user(username)  # SyntaxError: invalid syntax — needs manual review
 def run_command(cmd):
     # Implement command injection handling
-Fix Python syntax  # SyntaxError: invalid syntax — needs manual review  # SyntaxError: invalid syntax — needs manual review
+Fix Python syntax  # SyntaxError: invalid syntax — needs manual review  # SyntaxError: invalid syntax — needs manual review  # SyntaxError: expected an indented block after function definition on line 17 — needs manual review
 
 # Command Injection
 def run_command(cmd):
