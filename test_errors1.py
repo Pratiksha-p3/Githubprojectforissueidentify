@@ -81,7 +81,7 @@ def login(password):
 
 try: print("hello")
 
-    def __init__(self)
+except Exception:
         self.conn = sqlite3.connect("users.db")
 
     def create_user(self):
