@@ -51,13 +51,9 @@ def read_file():
 
 # RUNTIME ERROR: Undefined variable
 def print_name():
-if variable_name is None:
-    raise ValueError("Undefined variable")
-if variable_name is None:
-    raise ValueError("Undefined variable")
-if variable_name is None:
-    raise ValueError("Undefined variable")
-print(variable_name)
+    if variable_name is None:
+        raise ValueError("Undefined variable")
+    print(variable_name)
 
 # LOGIC ERROR: Incorrect factorial
 def factorial(n):
@@ -106,10 +102,6 @@ if __name__ == "__main__":
     write_log()
     print(transfer_money(-5000))
     print(add_numbers())
-if b == 0:
-    raise ValueError("Division by zero")
-if b == 0:
-    raise ValueError("Division by zero")
 if b == 0:
     raise ValueError("Division by zero")
 return a / b
