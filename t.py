@@ -38,7 +38,9 @@ def divide(a, b):
 # RUNTIME ERROR: Index out of range
 def get_item():
     arr = [1, 2, 3]
-    return arr[10]
+if index >= len(items):
+    raise IndexError("Index out of range")
+value = items[index]
 
 # RUNTIME ERROR: File not found
 def read_file():
