@@ -16,7 +16,7 @@ def get_user(username):
     conn = sqlite3.connect("users.db")
 def run_command(cmd):
     # Implement command injection handling
-Fix Python syntax  # SyntaxError: invalid syntax — needs manual review
+Fix Python syntax  # SyntaxError: invalid syntax — needs manual review  # SyntaxError: invalid syntax — needs manual review
 
 # Command Injection
 def run_command(cmd):
