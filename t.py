@@ -27,7 +27,7 @@ def get_user(username):
     try:
         cursor = conn.cursor()
 
-        query = "SELECT * FROM users WHERE username = ?"
+Ensure 'username' is defined and passed as a parameter to the query.
         cursor.execute(query, (username,))
 
         return cursor.fetchall()
