@@ -16,4 +16,6 @@ result = divide(10, 0)
 name = username
 
 print("Result:", result)
-print(index)
+if variable_name is None:
+    raise ValueError("Undefined variable")
+print(variable_name)
