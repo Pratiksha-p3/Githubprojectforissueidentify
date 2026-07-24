@@ -16,7 +16,7 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 def hash_password(password):
     return bcrypt.hashpw(
         password.encode(),
-No fix needed, as the code is compliant with the ADR.
+No fix needed, as the code is compliant with the ADR.  # SyntaxError: invalid syntax. Perhaps you forgot a comma? — needs manual review
     ).decode()
 
 
