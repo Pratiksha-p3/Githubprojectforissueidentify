@@ -69,6 +69,90 @@ def _dedupe_by_location(findings: list[dict]) -> list[dict]:
     return deduped + unlocated
 
 
+def _compute_metrics(files: list, report: dict, complexity_reports: list) -> dict:
+    """
+    Aggregates the run's headline numbers into one block, saved as
+    report["metrics"] and printed as a summary. Auto-fixed / manual-review
+    counts are read from the auto_fix step that already ran; everything
+    else (LOC, indentation-specific fixes, complexity, data-structure
+    complexity) is computed fresh here since nothing upstream tracks it.
+    """
+    from tools.data_structure_analyzer import DataStructureAnalyzer
+
+    loc_analyzed = sum(
+        len((getattr(pf, "full_content", "") or "").splitlines()) for pf in files
+    )
+
+    auto_fix = report.get("auto_fix", {})
+    total_auto_fixed = auto_fix.get("fixed_count", 0)
+    total_manual_review = auto_fix.get("unfixable", 0)
+
+    # Indentation-specific fixes are a subset of the syntax findings —
+    # "resolved" here means it wasn't left in the auto-fix step's
+    # unresolved list (the only place we know what's actually still
+    # outstanding after this run).
+    unresolved_messages = {
+        f.get("message") for f in auto_fix.get("unresolved", []) if isinstance(f, dict)
+    }
+    indentation_findings = [
+        f for f in report.get("findings", [])
+        if isinstance(f, dict) and f.get("category") == "syntax"
+        and "indent" in (f.get("message") or "").lower()
+    ]
+    indentation_resolved = sum(
+        1 for f in indentation_findings if f.get("message") not in unresolved_messages
+    )
+
+    if complexity_reports:
+        all_cc = [fn.cc_score for r in complexity_reports for fn in r.functions]
+        all_mi = [r.avg_mi for r in complexity_reports]
+        code_complexity = {
+            "avg_cyclomatic_complexity": round(sum(all_cc) / len(all_cc), 1) if all_cc else 0,
+            "max_cyclomatic_complexity": max(all_cc) if all_cc else 0,
+            "avg_maintainability_index": round(sum(all_mi) / len(all_mi), 1) if all_mi else 0,
+            "functions_analyzed": len(all_cc),
+        }
+    else:
+        code_complexity = {
+            "avg_cyclomatic_complexity": 0, "max_cyclomatic_complexity": 0,
+            "avg_maintainability_index": 0, "functions_analyzed": 0,
+        }
+
+    ds_results = DataStructureAnalyzer().analyze_files(files)
+    data_structure_complexity = DataStructureAnalyzer().summarize(ds_results)
+
+    return {
+        "total_issues_auto_fixed": total_auto_fixed,
+        "total_issues_manual_review": total_manual_review,
+        "indentation_issues_resolved": indentation_resolved,
+        "lines_of_code": loc_analyzed,
+        "data_structure_complexity": data_structure_complexity,
+        "code_complexity": code_complexity,
+    }
+
+
+def _print_metrics_summary(metrics: dict) -> None:
+    cc = metrics["code_complexity"]
+    ds = metrics["data_structure_complexity"]
+    print(
+        "\n"
+        "──────────────────────────────────────────────────\n"
+        "  METRICS\n"
+        "──────────────────────────────────────────────────\n"
+        f"  Issues auto-fixed          : {metrics['total_issues_auto_fixed']}\n"
+        f"  Issues needing manual review: {metrics['total_issues_manual_review']}\n"
+        f"  Indentation issues resolved: {metrics['indentation_issues_resolved']}\n"
+        f"  Lines of code analyzed     : {metrics['lines_of_code']}\n"
+        f"  Code complexity (avg CC)   : {cc['avg_cyclomatic_complexity']} "
+        f"(max {cc['max_cyclomatic_complexity']}, {cc['functions_analyzed']} functions)\n"
+        f"  Maintainability index (avg): {cc['avg_maintainability_index']}\n"
+        f"  Data structure complexity  : {ds['overall_rating']} "
+        f"(max nesting {ds['max_nesting_depth']}, "
+        f"{ds['files_with_custom_structures']} file(s) with custom structures)\n"
+        "──────────────────────────────────────────────────"
+    )
+
+
 def _get_retriever():
     """
     Auto-detect whether a repo index exists and use
@@ -377,6 +461,26 @@ def run_review(
         print(f"[app] Compliance scan failed: {e}")
 
     # ─────────────────────────────────────────────
+    # CODE COMPLEXITY SCORING
+    # ─────────────────────────────────────────────
+
+    complexity_reports = []
+    try:
+        from agents.complexity_scorer import ComplexityScorer
+        print("[app] Running Complexity Scoring...")
+
+        complexity_reports = ComplexityScorer().score_files(files)
+        complexity_findings = ComplexityScorer().to_findings(complexity_reports)
+
+        report.setdefault("findings", [])
+        report["findings"].extend(complexity_findings)
+
+        print(f"[app] Complexity findings: {len(complexity_findings)}")
+
+    except Exception as e:
+        print(f"[app] Complexity scoring failed: {e}")
+
+    # ─────────────────────────────────────────────
     # DEDUPE — one finding per (file, line) before anything gets posted
     # ─────────────────────────────────────────────
     report["findings"] = _dedupe_by_location(report.get("findings", []))
@@ -442,6 +546,15 @@ def run_review(
             "status": "failed",
             "error": str(e)
         }
+
+    # ─────────────────────────────────────────────
+    # METRICS
+    # ─────────────────────────────────────────────
+    try:
+        report["metrics"] = _compute_metrics(files, report, complexity_reports)
+        _print_metrics_summary(report["metrics"])
+    except Exception as e:
+        print(f"[app] Metrics computation failed: {e}")
 
     # ─────────────────────────────────────────────
     # DEVELOPER SKILL-GAP PROFILING
