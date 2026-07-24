@@ -16,7 +16,7 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 def hash_password(password):
     return bcrypt.hashpw(
         password.encode(),
-        bcrypt.gensalt(rounds=12)
+No fix needed, as the code is compliant with the ADR.
     ).decode()
 
 
