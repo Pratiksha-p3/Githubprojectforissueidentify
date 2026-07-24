@@ -78,6 +78,13 @@ class PRGate:
 
         if prev:
             gate_result = self._compare_and_decide(prev, report)
+            # Nothing resolved and nothing new since the last evaluation —
+            # same blocked/approved state, same reason. Re-posting the
+            # identical comment on every manual re-run added nothing; this
+            # is what produced 3 back-to-back "1 critical issue(s) found"
+            # comments on the same PR with no findings having changed
+            # between them.
+            has_changes = bool(gate_result.new_issues) or bool(gate_result.resolved_issues)
         else:
             # First review — block if critical issues exist
             gate_result = GateResult(
@@ -97,8 +104,10 @@ class PRGate:
                 score_before    = 0.0,
                 score_after     = overall_score,
             )
+            has_changes = True
 
-        # Set GitHub commit status
+        # Set GitHub commit status — always refreshed, this is what branch
+        # protection actually checks, and it's not a comment/notification.
         self._set_commit_status(
             repo     = repo,
             sha      = head_sha,
@@ -106,12 +115,17 @@ class PRGate:
             reason   = gate_result.reason,
         )
 
-        # Post resolution/block comment to PR
-        self._post_gate_comment(
-            repo       = repo,
-            pr_number  = pr_number,
-            result     = gate_result,
-        )
+        # Post resolution/block comment to PR — only when something
+        # actually changed since the last evaluation.
+        if has_changes:
+            self._post_gate_comment(
+                repo       = repo,
+                pr_number  = pr_number,
+                result     = gate_result,
+            )
+        else:
+            print(f"[gate] No new or resolved issues since the last review — "
+                  f"skipping gate comment (status still refreshed above)")
 
         return gate_result
 
