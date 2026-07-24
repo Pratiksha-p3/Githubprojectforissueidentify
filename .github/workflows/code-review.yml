@@ -30,6 +30,10 @@ jobs:
           pip install -r requirements.txt
           pip install semgrep
 
+      # Only written when a GitHub App is actually set up (optional — see
+      # the "Run AI code review" step below). Most setups don't need this:
+      # GITHUB_TOKEN, which Actions injects into every run automatically,
+      # is enough to load the PR and post review comments.
       - name: Write GitHub App private key
         if: env.GITHUB_APP_PRIVATE_KEY != ''
         env:
@@ -38,7 +42,15 @@ jobs:
 
       - name: Run AI code review
         env:
+          # Required: the one secret you actually need to add, at
+          # Settings > Secrets and variables > Actions > New repository secret.
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+          # GITHUB_TOKEN needs no setup — Actions provides it automatically,
+          # scoped to this repo, with the permissions declared above.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # Optional — only used if you've set these up.
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -29,10 +29,16 @@ class Config:
     anthropic_model: str    = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 
     # ── GitHub (optional) ─────────────────────────────────
+    # Two ways to authenticate — GitHubAuth prefers the App flow when it's
+    # configured (github_app_id/github_install_id/github_pem_path all
+    # present), and falls back to a plain token otherwise. In CI, that
+    # fallback is what lets the workflow use the GITHUB_TOKEN Actions
+    # already injects automatically — no GitHub App setup needed there.
     github_app_id: str          = os.getenv("GITHUB_APP_ID", "")
     github_pem_path: str        = os.getenv("GITHUB_APP_PRIVATE_KEY_PATH", "./github_app.pem")
     github_install_id: str      = os.getenv("GITHUB_INSTALLATION_ID", "")
     github_webhook_secret: str  = os.getenv("GITHUB_WEBHOOK_SECRET", "")
+    github_token: str            = os.getenv("GITHUB_TOKEN", "")
 
     # ── GitLab (optional — mirrors the GitHub integration) ────
     gitlab_token: str           = os.getenv("GITLAB_TOKEN", "")

@@ -66,9 +66,25 @@ class GitHubAuth:
     def get_token(self) -> str:
         if self._token and time.time() < self._expires - 60:
             return self._token
+
         pem_path = cfg.github_pem_path
-        if not os.path.exists(pem_path):
-            raise FileNotFoundError(f"PEM key not found: {pem_path}")
+        app_configured = bool(cfg.github_app_id and cfg.github_install_id and os.path.exists(pem_path))
+
+        # A plain token (a PAT, or the GITHUB_TOKEN Actions injects into
+        # every workflow run automatically) is the fallback for contexts
+        # like CI that don't have App credentials configured at all —
+        # only used when the App flow isn't set up, so it never overrides
+        # a working App configuration.
+        if not app_configured:
+            if cfg.github_token:
+                return cfg.github_token
+            raise FileNotFoundError(
+                f"No GitHub auth configured: PEM key not found at {pem_path} and "
+                "GITHUB_TOKEN is not set. Set GITHUB_TOKEN (simplest — in Actions this "
+                "is secrets.GITHUB_TOKEN, no setup needed) or configure the GitHub App "
+                "(GITHUB_APP_ID/GITHUB_INSTALLATION_ID/GITHUB_APP_PRIVATE_KEY_PATH)."
+            )
+
         with open(pem_path) as f:
             pem_key = f.read()
         now = int(time.time())
