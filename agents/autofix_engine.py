@@ -70,12 +70,21 @@ class AutoFixEngine:
 
     def process_findings(self, findings, pr_files, repo, pr_number, head_sha, loader):
         file_map = {pf.filename: pf for pf in pr_files}
-        results = []
-        unfixed = []
-        already_fixed_locations = set()  # (file, line) already generated+posted a fix for — FIX 2
+        already_fixed_locations = set()  # (file, line) already generated a fix for — FIX 2
 
         targets = [f for f in findings if f.get("severity") in ("critical", "warning")]
         print(f"\n[autofix-engine] Processing {len(targets)} findings...")
+
+        # Generate fixes first WITHOUT posting anything — each fixable
+        # finding becomes a pending (finding, fix_code, explanation, body)
+        # tuple. Posting them one at a time (the old behavior) means one
+        # standalone GitHub API call per finding, and GitHub emails a
+        # separate notification for each one — N fixable findings meant N
+        # emails from a single run. They're posted together as one PR
+        # review below instead, which GitHub notifies about exactly once.
+        pending = []
+        results = []
+        unfixed = []
 
         for finding in targets:
             target_file = finding.get("file", "")
@@ -107,23 +116,83 @@ class AutoFixEngine:
                     unfixed.append(finding)
                 continue
 
-            posted = self._post_suggestion(loader, repo, pr_number, head_sha,
-                                            finding, fix_code, explanation, pf)
-            if posted:
-                already_fixed_locations.add(line_key)  # FIX 2
-            results.append(FixResult(finding=finding, fixable=True, fix_applied=posted,
-                                      fix_code=fix_code, fix_explanation=explanation,
-                                      fix_type=fix_type))
+            already_fixed_locations.add(line_key)  # FIX 2
+            body = self._build_suggestion_body(finding, fix_code, explanation, pf)
+            pending.append({"finding": finding, "fix_code": fix_code, "explanation": explanation,
+                             "fix_type": fix_type, "pf": pf, "body": body})
 
+        posted_map = self._post_findings(loader, repo, pr_number, head_sha, pending)
+
+        for item in pending:
+            finding = item["finding"]
+            line_key = (finding.get("file", ""), finding.get("line", 0))
+            posted = posted_map.get(line_key, False)
+            results.append(FixResult(finding=finding, fixable=True, fix_applied=posted,
+                                      fix_code=item["fix_code"], fix_explanation=item["explanation"],
+                                      fix_type=item["fix_type"]))
             if not posted and finding.get("severity") == "critical":
                 unfixed.append(finding)
-
             print(f"  {'✅ FIX SUGGESTED' if posted else '⚠️ FIX GENERATED (not posted)'}: "
-                  f"{target_file}:L{finding.get('line', 0)} ({fix_type})")
+                  f"{finding.get('file','')}:L{finding.get('line', 0)} ({item['fix_type']})")
 
         fixed = sum(1 for r in results if r.fix_applied)
         print(f"[autofix-engine] {fixed} fixes suggested, {len(unfixed)} critical need manual fix")
         return results, unfixed
+
+    def _post_findings(self, loader, repo, pr_number, head_sha, pending: list[dict]) -> dict:
+        """
+        Posts every pending suggestion as ONE PR review (one GitHub
+        notification total) when possible. GitHub rejects the whole
+        review if any comment's line isn't part of the diff, so on
+        failure this falls back to posting one at a time (the old,
+        noisier behavior) rather than silently dropping every suggestion.
+        Returns {(file, line): posted_bool}.
+        """
+        if not pending:
+            return {}
+        if not hasattr(loader, "auth"):
+            print("[autofix] Skipping post (loader has no GitHub auth — likely mock mode)")
+            return {}
+
+        comments = [
+            {
+                "path": item["finding"].get("file", ""),
+                "line": item["finding"].get("line", 0),
+                "side": "RIGHT",
+                "body": item["body"],
+            }
+            for item in pending
+        ]
+
+        try:
+            resp = self._github_request(
+                method="POST",
+                url=f"https://api.github.com/repos/{repo}/pulls/{pr_number}/reviews",
+                headers=loader.auth.headers(),
+                payload={"commit_id": head_sha, "event": "COMMENT", "comments": comments},
+            )
+            if resp is not None and resp.status_code in (200, 201):
+                print(f"[autofix] ✅ Posted {len(pending)} suggestion(s) as a single review")
+                return {
+                    (item["finding"].get("file", ""), item["finding"].get("line", 0)): True
+                    for item in pending
+                }
+            if resp is not None:
+                print(f"[autofix] Batched review failed ({resp.status_code}), "
+                      f"falling back to posting individually")
+        except Exception as e:
+            print(f"[autofix] Batched review failed ({e}), falling back to posting individually")
+
+        # Fallback: same resilience as before, at the cost of one
+        # notification per finding — only reached when the batch itself
+        # doesn't work (e.g. a line isn't part of this PR's diff).
+        posted_map = {}
+        for item in pending:
+            finding = item["finding"]
+            posted = self._post_suggestion(loader, repo, pr_number, head_sha, finding,
+                                            item["fix_code"], item["explanation"], item["pf"])
+            posted_map[(finding.get("file", ""), finding.get("line", 0))] = posted
+        return posted_map
 
     # ── Fixability ───────────────────────────────────────
 
@@ -290,21 +359,12 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
 
     # ── GitHub suggestion posting ─────────────────────────
 
-    def _post_suggestion(self, loader, repo, pr_number, head_sha, finding, fix_code, explanation, pf=None):
-        # FIX 1: MockGitHubLoader has no .auth — skip cleanly instead of
-        # throwing three different exceptions per finding during --mock runs.
-        if not hasattr(loader, "auth"):
-            print(f"[autofix] Skipping post (loader has no GitHub auth — likely mock mode): "
-                  f"{finding.get('file','')}:{finding.get('line',0)}")
-            return False
-
+    def _build_suggestion_body(self, finding, fix_code, explanation, pf=None) -> str:
         sev = finding.get("severity", "warning").upper()
         line_num = finding.get("line", 0)
-        target_file = finding.get("file", "")
         message = finding.get("message", "")
         category = finding.get("category", "security").replace("_", " ").title()
 
-        # Extract original bad code
         original_code = ""
         m = re.search(r"['\"`](.+?)['\"`]", message)
         if m:
@@ -316,36 +376,33 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
 
         sev_icon = {"CRITICAL": "\U0001f534", "WARNING": "\U0001f7e1", "INFO": "\U0001f535"}.get(sev, "\U0001f535")
 
-        body = f"""---
+        return (
+            "---\n\n"
+            f"## {sev_icon} {sev.capitalize()} — {category}\n\n"
+            "### \U0001f50d Detected\n\n"
+            f"```python\n{original_code}\n```\n\n"
+            "### \U0001f4cb Issue\n\n"
+            f"> {message}\n\n"
+            "### ✅ Auto Fix\n\n"
+            f"```suggestion\n{fix_code}\n```\n\n"
+            "### \U0001f4a1 Or apply manually\n\n"
+            f"```python\n{fix_code}\n```\n\n"
+            f"> {explanation}\n\n"
+            "---\n"
+            "*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to apply instantly*"
+        )
 
-## {sev_icon} {sev.capitalize()} \u2014 {category}
+    def _post_suggestion(self, loader, repo, pr_number, head_sha, finding, fix_code, explanation, pf=None):
+        # FIX 1: MockGitHubLoader has no .auth — skip cleanly instead of
+        # throwing three different exceptions per finding during --mock runs.
+        if not hasattr(loader, "auth"):
+            print(f"[autofix] Skipping post (loader has no GitHub auth — likely mock mode): "
+                  f"{finding.get('file','')}:{finding.get('line',0)}")
+            return False
 
-### \U0001f50d Detected
-
-```python
-{original_code}
-```
-
-### \U0001f4cb Issue
-
-> {message}
-
-### \u2705 Auto Fix
-
-```suggestion
-{fix_code}
-```
-
-### \U0001f4a1 Or apply manually
-
-```python
-{fix_code}
-```
-
-> {explanation}
-
----
-*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to apply instantly*"""
+        line_num = finding.get("line", 0)
+        target_file = finding.get("file", "")
+        body = self._build_suggestion_body(finding, fix_code, explanation, pf)
 
         print(f"[autofix] Posting suggestion {target_file}:{line_num}")
 
