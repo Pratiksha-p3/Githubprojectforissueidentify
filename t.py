@@ -34,7 +34,10 @@ except sqlite3.Error as e:
         cursor.execute(query, (username,))
 
         return cursor.fetchall()
-
+try:
+    result = subprocess.run(cmd, shell=False, capture_output=True, text=True, check=True)
+except subprocess.CalledProcessError as e:
+    raise ValueError("Command failed") from e
     finally:
         conn.close()
 
