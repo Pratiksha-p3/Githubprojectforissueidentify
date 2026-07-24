@@ -44,7 +44,10 @@ except subprocess.CalledProcessError as e:
 
 # Safer subprocess usage
 def run_command(cmd):
-    if isinstance(cmd, str):
+try:
+    return ast.literal_eval(expression)
+except (SyntaxError, ValueError) as e:
+    raise ValueError("Invalid expression") from e
         cmd = cmd.split()
 
     result = subprocess.run(
@@ -54,7 +57,9 @@ def run_command(cmd):
         text=True,
         check=True,
     )
-
+if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+    raise TypeError("Both a and b must be numbers")
+return a / b
     return result.stdout
 
 
@@ -67,8 +72,14 @@ def calculate(expression):
 def divide(a, b):
     if b == 0:
         raise ValueError("Division by zero is not allowed")
-
-    return a / b
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+except FileNotFoundError:
+    raise FileNotFoundError(path)
+if b == 0:
+    raise ValueError("Division by zero")
+return a / b
 
 
 # Safe list access
@@ -76,7 +87,9 @@ def get_item(index):
     items = [1, 2, 3]
 
     if index < 0 or index >= len(items):
-        raise IndexError("Index out of range")
+if not isinstance(name, str):
+    raise TypeError("Name must be a string")
+print(name)
 
     return items[index]
 
@@ -86,7 +99,10 @@ def read_file(path):
     if not os.path.exists(path):
         raise FileNotFoundError(path)
 
-    with open(path, "r", encoding="utf-8") as f:
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
+with open(path, "r") as f:
+    data = f.read()
         return f.read()
 
 
@@ -95,9 +111,14 @@ def print_name(name):
     if not name:
         raise ValueError("Name cannot be empty")
 
-    print(name)
+if variable_name is None:
+    raise ValueError("Undefined variable")
+print(variable_name)
 
-
+if not isinstance(amount, (int, float)):
+    raise TypeError("Amount must be a number")
+if amount <= 0:
+    raise ValueError("Amount must be positive")
 # Correct factorial
 def factorial(n):
     if n < 0:
@@ -107,7 +128,10 @@ def factorial(n):
         return 1
 
     return n * factorial(n - 1)
-
+try:
+    return int(a) + int(b)
+except ValueError:
+    raise TypeError("Both a and b must be strings that can be converted to integers")
 
 # Controlled recursion example
 def recursive_loop(n):
@@ -163,5 +187,5 @@ if __name__ == "__main__":
         print(add_numbers(10, 20))
         print(is_adult(25))
 
-    except Exception as e:
+Catch specific exceptions instead of the broad `Exception`.
         print(f"Error: {e}")
