@@ -1,5 +1,5 @@
 def divide(a, b):
-return a / b  # fix indentation to match the surrounding block
+return a / b  # fix indentation to match the surrounding block  # SyntaxError: expected an indented block after function definition on line 1 — needs manual review
 
 numbers = [1, 2, 3]
 
