@@ -7,7 +7,7 @@ import ast
 
 
 # Secrets from environment variables
-No fix needed, as the code is compliant with the ADR.
+# No code changes are required for this line as it is a comment.
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 JWT_SECRET = os.getenv("JWT_SECRET")
 
