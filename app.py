@@ -386,6 +386,24 @@ def run_review(
     # ─────────────────────────────────────────────
     findings = report.setdefault("findings", [])
     posted_locations: set[tuple] = set()
+
+    # A finding that was already there last review and is still unresolved
+    # already has its suggestion sitting in the PR from that run — running
+    # this manually several times while a fix sits unapplied doesn't need
+    # to re-post the identical suggestion each time. Only feed genuinely
+    # new findings (or everything, on the first-ever review) to AutoFix.
+    findings_for_autofix = findings
+    if previous_review is not None:
+        autofix_comparison = incremental.compare_reviews(previous_review, report)
+        persisted_keys = {
+            (f.get("file"), f.get("line")) for f in autofix_comparison["persisted_issues"]
+        }
+        findings_for_autofix = [f for f in findings if (f.get("file"), f.get("line")) not in persisted_keys]
+        skipped_autofix = len(findings) - len(findings_for_autofix)
+        if skipped_autofix:
+            print(f"[app] Skipping auto-fix for {skipped_autofix} finding(s) already "
+                  f"suggested in a previous review and still unresolved")
+
     try:
         from agents.auto_fix_orchestrator import AutoFixOrchestrator
         print("[app] Running Auto Fix Agent...")
@@ -394,7 +412,7 @@ def run_review(
         auto_result_raw = auto_fix.execute(
             repo      = repo,
             branch    = pr_ctx.head_branch,
-            findings  = report.get("findings", []),
+            findings  = findings_for_autofix,
             pr_files  = files,
             pr_number = pr_number,
             head_sha  = pr_ctx.head_sha,
