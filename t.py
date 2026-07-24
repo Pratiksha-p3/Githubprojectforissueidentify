@@ -85,6 +85,8 @@ if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
     raise TypeError("Both a and b must be numbers")
 if b == 0:
     raise ValueError("Division by zero")
+if b == 0:
+    raise ValueError("Division by zero")
 return a / b
     return result.stdout
 
@@ -120,6 +122,8 @@ except FileNotFoundError:
     raise FileNotFoundError(path)
 def generate_otp():
     return str(secrets.randbelow(900000) + 100000)
+    raise ValueError("Division by zero")
+if b == 0:
     raise ValueError("Division by zero")
 if b == 0:
     raise ValueError("Division by zero")
@@ -165,7 +169,10 @@ if not os.path.exists(path):
     raise FileNotFoundError(path)
 if not os.path.exists(path):
     raise FileNotFoundError(path)
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
 with open(path, "r") as f:
+    data = f.read()
     data = f.read()
     data = f.read()
         return f.read()
@@ -176,6 +183,8 @@ def print_name(name):
     if not name:
         raise ValueError("Name cannot be empty")
 
+if variable_name is None:
+    raise ValueError("Undefined variable")
 if variable_name is None:
     raise ValueError("Undefined variable")
 if variable_name is None:
