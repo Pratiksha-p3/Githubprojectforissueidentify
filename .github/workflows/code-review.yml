@@ -2,8 +2,20 @@ name: AI Code Review
 
 # Runs the review agent (app.py) against every PR. This is the "CI/CD
 # pipeline hooks" piece of the automation workflow — the same review that
-# runs via the /webhook/github endpoint also runs here, so protected
-# branches can require this check to pass before merge.
+# runs via the /webhook/github endpoint also runs here.
+#
+# This job intentionally succeeds even when the review finds critical
+# issues — "Run AI code review" completing successfully means the review
+# ran, not that the code is clean. The actual merge block is the separate
+# "ai-code-review/security" commit status app.py sets on the PR (see
+# agents/pr_gate.py), so critical findings don't need to fail this job to
+# stop the merge. Making this job "fail" for expected findings would also
+# make GitHub's own "only notify on failed workflows" email setting fire
+# on every run with an unresolved finding, not just on real errors.
+#
+# For the block to actually be enforced (not just shown as a check),
+# add "ai-code-review/security" as a required status check at
+# Settings > Branches > Branch protection rules.
 
 on:
   pull_request:

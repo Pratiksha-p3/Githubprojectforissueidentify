@@ -836,6 +836,17 @@ def main():
         default="reports",
         help="Output directory for review reports",
     )
+    parser.add_argument(
+        "--fail-on-critical", action="store_true",
+        help="Exit non-zero when critical findings remain unresolved. Off by "
+             "default: the PR is already blocked via the 'ai-code-review/security' "
+             "commit status (agents/pr_gate.py) — the GitHub-native mechanism, "
+             "enforced through a required status check in branch protection, "
+             "independent of whether this process exits 0 or 1. Turning this on "
+             "ALSO fails the Actions job itself, which GitHub Actions email "
+             "settings ('only notify on failed workflows') will then treat as a "
+             "real failure and email about on every run with unresolved findings.",
+    )
     args = parser.parse_args()
 
     if not args.repo and not args.mock:
@@ -850,12 +861,16 @@ def main():
         output_dir=args.output, provider=args.provider,
     )
 
-    # Non-zero exit on unresolved critical findings so CI (GitHub Actions,
-    # Jenkins, etc.) can fail the build/block the merge on this check.
-    if report.get("remaining_critical", report.get("critical_count", 0)) > 0:
-        print(f"[app] BLOCKED — {report.get('remaining_critical', report.get('critical_count'))} "
-              f"unresolved critical finding(s)")
-        sys.exit(1)
+    critical_n = report.get("remaining_critical", report.get("critical_count", 0))
+    if critical_n > 0:
+        if args.fail_on_critical:
+            print(f"[app] BLOCKED — {critical_n} unresolved critical finding(s) — "
+                  f"exiting non-zero (--fail-on-critical)")
+            sys.exit(1)
+        print(f"[app] {critical_n} unresolved critical finding(s) — the PR is "
+              f"blocked via the 'ai-code-review/security' commit status, not via "
+              f"this job's exit code. Require that check in Settings > Branches "
+              f"to enforce the block on merge.")
 
 
 if __name__ == "__main__":
