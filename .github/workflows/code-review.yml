@@ -13,6 +13,16 @@ permissions:
   contents: read
   pull-requests: write
 
+# Applying several suggestions one at a time (or pushing a few commits in
+# quick succession) fires one workflow run per commit. Without this, every
+# one of those runs completes and posts/notifies independently. With it,
+# starting a new run for this PR cancels whatever run for this same PR is
+# still in progress — only the run for the latest commit actually finishes
+# and posts, so a burst of pushes ends in one notification, not one per push.
+concurrency:
+  group: ai-code-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     runs-on: ubuntu-latest

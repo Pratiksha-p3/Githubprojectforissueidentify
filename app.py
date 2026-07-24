@@ -154,6 +154,13 @@ def run_review(
 
     files = pr_ctx.files
 
+    # Loaded now, before anything from this run gets saved to reports/ —
+    # loading it later (right before posting) would find this run's own
+    # already-saved snapshot instead of the genuinely previous one.
+    from agents.incremental_agent import IncrementalAgent
+    incremental = IncrementalAgent()
+    previous_review = incremental.load_previous_review(repo, pr_number)
+
     # ─────────────────────────────────────────────
     # Syntax / Runtime / Logic Analysis
     # ─────────────────────────────────────────────
@@ -470,20 +477,36 @@ def run_review(
         if skipped:
             print(f"[app] Skipping {skipped} finding(s) already posted by Auto Fix Agent")
 
-        try:
-            loader.post_review_comments(
-                repo=repo,
-                pr_number=pr_number,
-                head_sha=pr_ctx.head_sha,
-                findings=remaining_findings,
-                summary=exec_summary,
-                approved=report.get("approved", False),
-            )
+        # Compared against the FULLY assembled findings (secret scan,
+        # architecture/compliance, etc. all included, not just what
+        # LangGraph's own pass found) — if nothing is new and nothing got
+        # resolved since the last review, posting again is just repeating
+        # the same comment and triggering another GitHub notification for
+        # no new information. Every push still updates the PR gate status
+        # below regardless — only the comment/notification is skipped.
+        has_changes = True
+        if previous_review is not None:
+            comparison = incremental.compare_reviews(previous_review, report)
+            has_changes = bool(comparison["new_issues"]) or bool(comparison["resolved"])
 
-            print("[app] Review posted to GitHub successfully!")
+        if not has_changes:
+            print("[app] No new or resolved findings since the last review — "
+                  "skipping the review comment (nothing new to say)")
+        else:
+            try:
+                loader.post_review_comments(
+                    repo=repo,
+                    pr_number=pr_number,
+                    head_sha=pr_ctx.head_sha,
+                    findings=remaining_findings,
+                    summary=exec_summary,
+                    approved=report.get("approved", False),
+                )
 
-        except Exception as e:
-            print(f"[app] Could not post to GitHub: {e}")
+                print("[app] Review posted to GitHub successfully!")
+
+            except Exception as e:
+                print(f"[app] Could not post to GitHub: {e}")
 
         try:
             from agents.pr_gate import PRGate
