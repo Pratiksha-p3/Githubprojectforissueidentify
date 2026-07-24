@@ -14,7 +14,8 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 
 # Secure password hashing
 def hash_password(password):
-    return bcrypt.hashpw(
+username = 'some_username'
+cursor.execute(query, (username,))
         password.encode(),
         bcrypt.gensalt(rounds=12)
     ).decode()
