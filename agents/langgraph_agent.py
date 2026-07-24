@@ -424,6 +424,14 @@ def publisher_node(state: AdvancedReviewState) -> AdvancedReviewState:
     posted     = False
     comparison = None
 
+    # Diff against the previous review whenever there is one — this is
+    # cheap (pure in-memory fingerprint comparison, no network call) and
+    # is what lets the notifier below tell "still the same 3 critical
+    # findings from last run" apart from "a new one just showed up",
+    # regardless of whether we're posting to GitHub this run.
+    if state["is_rereview"] and state["previous_review"]:
+        comparison = incremental.compare_reviews(state["previous_review"], report)
+
     if state.get("post_to_github") and state.get("repo"):
         try:
             from ingestion.github_loader import GitHubLoader
@@ -450,10 +458,7 @@ def publisher_node(state: AdvancedReviewState) -> AdvancedReviewState:
             )
 
             # Feature 5: post comparison if this is a re-review
-            if state["is_rereview"] and state["previous_review"]:
-                comparison = incremental.compare_reviews(
-                    state["previous_review"], report
-                )
+            if comparison is not None:
                 incremental.post_comparison_comment(
                     state["repo"], state["pr_number"], comparison
                 )
@@ -494,6 +499,7 @@ def notifier_node(state: AdvancedReviewState) -> AdvancedReviewState:
         report     = state["report"],
         repo       = state["repo"],
         pr_number  = state["pr_number"],
+        comparison = state.get("comparison"),
     )
     return state
 

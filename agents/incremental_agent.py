@@ -16,6 +16,20 @@ from datetime import datetime
 REVIEWS_DIR = Path("./reports")
 
 
+def fingerprint(f: dict) -> str:
+    """
+    Identifies a finding across two review runs regardless of exact line
+    number (a line shifting by a couple lines shouldn't count as a "new"
+    finding) — shared by compare_reviews() and Notifier so both agree on
+    what counts as "the same finding".
+    """
+    return (
+        f"{f.get('file', '')}"
+        f":{f.get('category', '')}"
+        f":{(f.get('message') or '')[:60]}"
+    )
+
+
 class IncrementalAgent:
 
     def __init__(self):
@@ -49,13 +63,6 @@ class IncrementalAgent:
           new       — issues that appeared in current but not previous
           persisted — issues that appear in both (not fixed)
         """
-        def fingerprint(f: dict) -> str:
-            return (
-                f"{f.get('file','')}"
-                f":{f.get('category','')}"
-                f":{(f.get('message') or '')[:60]}"
-            )
-
         prev_fps = {fingerprint(f): f for f in previous.get("findings", [])}
         curr_fps = {fingerprint(f): f for f in current.get("findings", [])}
 

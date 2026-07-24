@@ -14,28 +14,47 @@ Setup in .env:
 """
 from __future__ import annotations
 
-import os
-import json
+import html
 import smtplib
 import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
 
-load_dotenv()
+from config import cfg
 
-SLACK_WEBHOOK  = os.getenv("SLACK_WEBHOOK_URL", "")
-NOTIFY_EMAIL   = os.getenv("NOTIFY_EMAIL", "")
-SMTP_HOST      = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT      = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER      = os.getenv("SMTP_USER", "")
-SMTP_PASS      = os.getenv("SMTP_PASS", "")
+_MAX_FINDINGS_SHOWN = 5
+_MAX_MESSAGE_CHARS = 150
+_MAX_FIX_CHARS = 100
+_MAX_CVES_SHOWN = 3
 
 
 class Notifier:
 
-    def notify(self, report: dict, repo: str, pr_number: int) -> None:
-        """Send notifications if critical findings exist."""
+    def __init__(self):
+        self.slack_webhook = cfg.slack_webhook_url
+        self.notify_email  = cfg.notify_email
+        self.smtp_host     = cfg.smtp_host
+        self.smtp_port     = cfg.smtp_port
+        self.smtp_user     = cfg.smtp_user
+        self.smtp_pass     = cfg.smtp_pass
+
+    def notify(
+        self,
+        report: dict,
+        repo: str,
+        pr_number: int,
+        comparison: dict | None = None,
+    ) -> None:
+        """
+        Send notifications if critical findings exist.
+
+        `comparison` (from IncrementalAgent.compare_reviews, when this PR
+        has been reviewed before) narrows the alert to only critical
+        findings that are new since the last run — without it, every
+        re-run of the same PR re-sends an alert for the same unresolved
+        findings, which is noisy when iterating on a PR over several
+        commits.
+        """
         critical = [
             f for f in report.get("findings", [])
             if f.get("severity") == "critical"
@@ -45,18 +64,32 @@ class Notifier:
             print("[notifier] No critical findings — notifications skipped")
             return
 
+        if comparison is not None:
+            from agents.incremental_agent import fingerprint
+
+            new_fingerprints = {
+                fingerprint(f) for f in comparison.get("new_issues", [])
+                if f.get("severity") == "critical"
+            }
+            still_new = [f for f in critical if fingerprint(f) in new_fingerprints]
+            if not still_new:
+                print("[notifier] All critical findings already notified in a "
+                      "previous run — skipping (no new critical findings)")
+                return
+            critical = still_new
+
         pr_url = f"https://github.com/{repo}/pull/{pr_number}"
         score  = report.get("overall_score", 0)
 
         print(f"[notifier] {len(critical)} critical findings — sending alerts")
 
-        if SLACK_WEBHOOK:
+        if self.slack_webhook:
             self._send_slack(critical, repo, pr_number, pr_url, score)
 
-        if NOTIFY_EMAIL and SMTP_USER:
+        if self.notify_email and self.smtp_user:
             self._send_email(critical, repo, pr_number, pr_url, score)
 
-        if not SLACK_WEBHOOK and not (NOTIFY_EMAIL and SMTP_USER):
+        if not self.slack_webhook and not (self.notify_email and self.smtp_user):
             print("[notifier] No notification channels configured.")
             print("[notifier] Add SLACK_WEBHOOK_URL or SMTP settings to .env")
 
@@ -71,17 +104,18 @@ class Notifier:
         score: float,
     ) -> None:
         findings_text = "\n".join(
-            f"• `{f.get('file','?')}:L{f.get('line',0)}` — {f.get('message','')[:100]}"
-            for f in critical[:5]
+            f"• `{_slack_escape(f.get('file', '?'))}:L{f.get('line', 0)}` — "
+            f"{_slack_escape(f.get('message', '')[:_MAX_MESSAGE_CHARS])}"
+            for f in critical[:_MAX_FINDINGS_SHOWN]
         )
 
         cve_text = ""
         for f in critical:
             if f.get("cve_ids"):
-                cve_text += f"\n🔗 CVEs: {', '.join(f['cve_ids'][:3])}"
+                cve_text += f"\n🔗 CVEs: {', '.join(f['cve_ids'][:_MAX_CVES_SHOWN])}"
 
         payload = {
-            "text": f"🚨 *Critical Security Issues Found in PR*",
+            "text": "🚨 Critical Security Issues Found in PR",
             "blocks": [
                 {
                     "type": "header",
@@ -93,7 +127,7 @@ class Notifier:
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": f"*Repository:*\n`{repo}`"},
+                        {"type": "mrkdwn", "text": f"*Repository:*\n`{_slack_escape(repo)}`"},
                         {"type": "mrkdwn", "text": f"*PR Number:*\n<{pr_url}|PR #{pr_number}>"},
                         {"type": "mrkdwn", "text": f"*Review Score:*\n{score:.2f} / 1.0"},
                         {"type": "mrkdwn", "text": f"*Critical Issues:*\n{len(critical)}"},
@@ -122,12 +156,12 @@ class Notifier:
 
         try:
             resp = requests.post(
-                SLACK_WEBHOOK,
+                self.slack_webhook,
                 json=payload,
                 timeout=10,
             )
             resp.raise_for_status()
-            print(f"[notifier] Slack alert sent ✅")
+            print("[notifier] Slack alert sent ✅")
         except Exception as e:
             print(f"[notifier] Slack failed: {e}")
 
@@ -147,26 +181,28 @@ class Notifier:
             f"""
             <tr>
                 <td style="padding:8px;border:1px solid #ddd;color:#c00;">
-                    {f.get('file','?')}:L{f.get('line',0)}
-                </td>
-                <td style="padding:8px;border:1px solid #ddd;">{f.get('message','')[:150]}</td>
-                <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:12px;">
-                    {f.get('fix','')[:100]}
+                    {html.escape(f.get('file', '?'))}:L{f.get('line', 0)}
                 </td>
                 <td style="padding:8px;border:1px solid #ddd;">
-                    {', '.join(f.get('cve_ids', [])) or '—'}
+                    {html.escape(f.get('message', '')[:_MAX_MESSAGE_CHARS])}
+                </td>
+                <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:12px;">
+                    {html.escape(f.get('fix', '')[:_MAX_FIX_CHARS])}
+                </td>
+                <td style="padding:8px;border:1px solid #ddd;">
+                    {html.escape(', '.join(f.get('cve_ids', [])) or '—')}
                 </td>
             </tr>
             """
             for f in critical
         )
 
-        html = f"""
+        html_body = f"""
         <html><body style="font-family:sans-serif;max-width:800px;margin:0 auto;">
         <h2 style="color:#c00;">🚨 Critical Security Issues Found</h2>
         <table style="border-collapse:collapse;width:100%;margin-bottom:16px;">
             <tr>
-                <td><strong>Repository:</strong></td><td>{repo}</td>
+                <td><strong>Repository:</strong></td><td>{html.escape(repo)}</td>
             </tr>
             <tr>
                 <td><strong>Pull Request:</strong></td>
@@ -201,16 +237,21 @@ class Notifier:
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"]    = SMTP_USER
-        msg["To"]      = NOTIFY_EMAIL
-        msg.attach(MIMEText(html, "html"))
+        msg["From"]    = self.smtp_user
+        msg["To"]      = self.notify_email
+        msg.attach(MIMEText(html_body, "html"))
 
         try:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
                 server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_USER, NOTIFY_EMAIL, msg.as_string())
-            print(f"[notifier] Email sent to {NOTIFY_EMAIL} ✅")
+                server.login(self.smtp_user, self.smtp_pass)
+                server.sendmail(self.smtp_user, self.notify_email, msg.as_string())
+            print(f"[notifier] Email sent to {self.notify_email} ✅")
         except Exception as e:
             print(f"[notifier] Email failed: {e}")
-            
+
+
+def _slack_escape(text: str) -> str:
+    """Slack mrkdwn requires &, <, > to be escaped or formatting breaks —
+    see https://api.slack.com/reference/surfaces/formatting#escaping"""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

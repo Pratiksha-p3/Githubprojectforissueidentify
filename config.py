@@ -44,6 +44,14 @@ class Config:
     sonar_host_url: str          = os.getenv("SONAR_HOST_URL", "")
     sonar_project_key: str       = os.getenv("SONAR_PROJECT_KEY", "")
 
+    # ── Notifications (optional — Slack/email alerts on critical findings) ──
+    slack_webhook_url: str       = os.getenv("SLACK_WEBHOOK_URL", "")
+    notify_email: str            = os.getenv("NOTIFY_EMAIL", "")
+    smtp_host: str                = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port: int                = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str                = os.getenv("SMTP_USER", "")
+    smtp_pass: str                = os.getenv("SMTP_PASS", "")
+
     # ── ChromaDB (default, free, local) ───────────────────
     chroma_dir: str             = os.getenv("CHROMA_PERSIST_DIR", "./vectordb/chroma_data")
     chroma_collection: str      = "code_review"
