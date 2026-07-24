@@ -1,38 +1,41 @@
 name: AI Code Review
 
-# Runs the review agent (app.py) against every PR. This is the "CI/CD
-# pipeline hooks" piece of the automation workflow — the same review that
-# runs via the /webhook/github endpoint also runs here.
+# Manual only — does NOT run automatically on every commit/push. Trigger it
+# from the Actions tab ("Run workflow", enter the PR number), or just run
+# `python app.py --repo owner/repo --pr N` locally, which is equivalent and
+# doesn't need this workflow at all. Every commit auto-triggering this used
+# to mean a notification per commit (comments, workflow-run emails) even
+# while just iterating on a PR — this makes reviewing/notifying an explicit
+# action instead of a side effect of pushing.
+#
+# Trade-off: the "ai-code-review/security" merge-gate status (see
+# agents/pr_gate.py) also only updates when this runs, so it won't
+# auto-refresh on every commit anymore — only when you trigger a review.
 #
 # This job intentionally succeeds even when the review finds critical
 # issues — "Run AI code review" completing successfully means the review
 # ran, not that the code is clean. The actual merge block is the separate
-# "ai-code-review/security" commit status app.py sets on the PR (see
-# agents/pr_gate.py), so critical findings don't need to fail this job to
-# stop the merge. Making this job "fail" for expected findings would also
-# make GitHub's own "only notify on failed workflows" email setting fire
-# on every run with an unresolved finding, not just on real errors.
-#
-# For the block to actually be enforced (not just shown as a check),
-# add "ai-code-review/security" as a required status check at
-# Settings > Branches > Branch protection rules.
+# "ai-code-review/security" commit status, so critical findings don't need
+# to fail this job to stop the merge. For the block to actually be
+# enforced (not just shown as a check), add "ai-code-review/security" as
+# a required status check at Settings > Branches > Branch protection rules.
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: number
 
 permissions:
   contents: read
   pull-requests: write
 
-# Applying several suggestions one at a time (or pushing a few commits in
-# quick succession) fires one workflow run per commit. Without this, every
-# one of those runs completes and posts/notifies independently. With it,
-# starting a new run for this PR cancels whatever run for this same PR is
-# still in progress — only the run for the latest commit actually finishes
-# and posts, so a burst of pushes ends in one notification, not one per push.
+# If you happen to trigger two runs for the same PR close together, only
+# the newer one finishes — the earlier one is cancelled before it can post.
 concurrency:
-  group: ai-code-review-${{ github.event.pull_request.number }}
+  group: ai-code-review-${{ github.event.inputs.pr_number }}
   cancel-in-progress: true
 
 jobs:
@@ -84,7 +87,7 @@ jobs:
         run: |
           python -m cli review \
             --repo "${{ github.repository }}" \
-            --pr "${{ github.event.pull_request.number }}" \
+            --pr "${{ github.event.inputs.pr_number }}" \
             --output reports
 
       - name: Upload review report
