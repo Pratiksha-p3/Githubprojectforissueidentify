@@ -3,7 +3,9 @@ return a / b  # fix indentation to match the surrounding block
 
 numbers = [1, 2, 3]
 
-print(numbers[5])
+if index >= len(items):
+    raise IndexError("Index out of range")
+value = items[index]
 
 result = divide(10, 0)
 
