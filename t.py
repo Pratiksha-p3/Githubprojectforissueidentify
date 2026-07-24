@@ -6,7 +6,7 @@ def get_user_status(username, age):
     query = f"SELECT * FROM users WHERE username = '{username}'"
 with sqlite3.connect("users.db") as conn:
         cursor = conn.cursor()
-    result = cursor.fetchall()
+        result = cursor.fetchall()
 
     if age % 2 == 1:
         print("Adult check passed")
