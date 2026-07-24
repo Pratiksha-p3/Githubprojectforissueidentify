@@ -21,7 +21,10 @@ def hash_password(password):
 
 
 # Parameterized query
-def get_user(username):
+try:
+    conn = sqlite3.connect("users.db")
+except sqlite3.Error as e:
+    raise ValueError("Failed to connect to database") from e
     conn = sqlite3.connect("users.db")
 
     try:
