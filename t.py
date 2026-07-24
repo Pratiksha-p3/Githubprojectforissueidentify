@@ -1,19 +1,5 @@
-def divide(a, b):
-    if b == 0:
-        raise ValueError("Division by zero")
-    return a / b
+def get_last_three_items(items):
+    return items[len(items):len(items) - 3:-1]
 
-items = [10, 20, 30]
-index = 5
-
-if index >= len(items):
-    raise IndexError("Index out of range")
-value = items[index]
-
-
-result = divide(10, 0)
-
-name = username
-
-print("Result:", result)
-
+fruits = ["apple", "banana", "cherry", "date", "mango"]
+print(fruits[5])  
