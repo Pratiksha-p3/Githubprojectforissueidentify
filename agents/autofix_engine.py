@@ -242,6 +242,7 @@ class AutoFixEngine:
         # 1. Rule-based first — free, deterministic, no LLM call.
         rule_fix = self._rule_fix(target, fix_type, indent)
         if rule_fix and self._is_valid_fix(rule_fix, indent):
+            rule_fix = self._ensure_imports(rule_fix, pf, indent)
             return rule_fix, self._explain(fix_type)
 
         # 2. Reuse a fix the finding already carries (semgrep/ai_review/
@@ -252,6 +253,7 @@ class AutoFixEngine:
             existing = (finding.get("fix") or "").rstrip()
             if existing and self._is_valid_fix(existing, indent):
                 explanation = finding.get("reason") or finding.get("message", "")
+                existing = self._ensure_imports(existing, pf, indent)
                 return existing, explanation
             print(f"[autofix] Existing fix failed validation for "
                   f"{finding.get('file')}:{line_num}, falling back to LLM")
@@ -262,7 +264,40 @@ class AutoFixEngine:
             print(f"[autofix] Discarding invalid LLM fix for "
                   f"{finding.get('file')}:{line_num}: {fix_code!r}")
             return "", "Generated fix failed syntax validation"
+        if fix_code:
+            fix_code = self._ensure_imports(fix_code, pf, indent)
         return fix_code, explanation
+
+    # Modules our own rule-based fixes can introduce a reference to
+    # (os.getenv, bcrypt.hashpw, subprocess.run, ast.literal_eval) — also
+    # applied to LLM/reused fixes since those can just as easily reach for
+    # one of these without the file having imported it.
+    _KNOWN_MODULES = ("os", "subprocess", "bcrypt", "ast")
+
+    def _ensure_imports(self, fix_code: str, pf, indent: str) -> str:
+        """
+        A fix can be syntactically valid and still be wrong the moment it
+        runs, if it references a module (os.getenv, bcrypt.hashpw, ...)
+        the file never imported — that's a NameError, not a fix. Prepend
+        the missing import(s) at the same indentation as the fix itself
+        (legal even inside a function body) rather than silently shipping
+        a suggestion that can't actually run.
+        """
+        if not pf:
+            return fix_code
+        content = pf.full_content or ""
+        used = {
+            m for m in self._KNOWN_MODULES
+            if re.search(rf'\b{m}\.', fix_code)
+        }
+        missing = [
+            m for m in sorted(used)
+            if not re.search(rf'^\s*(import\s+{m}\b|from\s+{m}\s+import\b)', content, re.MULTILINE)
+        ]
+        if not missing:
+            return fix_code
+        import_lines = "\n".join(f"{indent}import {m}" for m in missing)
+        return f"{import_lines}\n{fix_code}"
 
     def _is_valid_fix(self, code: str, indent: str) -> bool:
         """
