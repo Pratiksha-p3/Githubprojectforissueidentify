@@ -13,7 +13,7 @@ from ingestion.github_loader import GitHubLoader, MockGitHubLoader
 from ingestion.parser import Parser
 from ingestion.chunker import Chunker
 from embeddings.embed import Embedder
-from mcp.codeintel_mcp import CodeIntelMCP
+from mcp_tools.codeintel_mcp import CodeIntelMCP
 
 from vectordb.factory import get_vector_store
 from agents.reviewer_agent import ReviewerAgent
@@ -165,7 +165,7 @@ def run_review(
     # Syntax / Runtime / Logic Analysis
     # ─────────────────────────────────────────────
 
-    from mcp.codeintel_mcp import CodeIntelMCP
+    from mcp_tools.codeintel_mcp import CodeIntelMCP
 
     codeintel = CodeIntelMCP()
 
@@ -277,7 +277,7 @@ def run_review(
 
         print("[app] Running Secret Scan...")
 
-        from mcp.security_mcp import SecurityMCP
+        from mcp_tools.security_mcp import SecurityMCP
 
         scanner = SecretScanner()
         repo_path = getattr(pr_ctx, "repo_path", ".")

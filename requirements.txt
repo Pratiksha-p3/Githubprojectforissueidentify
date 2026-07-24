@@ -33,6 +33,10 @@ python-dotenv==1.0.1
 # ── Utilities ─────────────────────────────────────────────
 rich==13.7.1
 
+# ── MCP server (mcp_server.py) — exposes this project's tools to
+#    Claude Desktop / Cursor / other MCP clients over stdio ──────
+mcp>=1.28,<2
+
 # ── Optional paid LLM providers (LLM_PROVIDER=openai|anthropic) ──
 openai>=1.54,<2
 anthropic>=0.34,<1
