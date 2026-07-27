@@ -108,7 +108,10 @@ task = {
     def import_from_json(self, filename):
 if not os.path.exists(path):
     raise FileNotFoundError(path)
+if not os.path.exists(path):
+    raise FileNotFoundError(path)
 with open(path, "r") as f:
+    data = f.read()
     data = f.read()
             import ast
             data = ast.literal_eval(f.read())
