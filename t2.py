@@ -64,7 +64,7 @@ class TaskManager:
         return completed / len(self.tasks) * 100
 
     def search_tasks_by_title(self, keyword):
-        query = f"SELECT * FROM tasks WHERE title LIKE '%{keyword}%'"
+        query = "SELECT * FROM tasks WHERE title LIKE ?"; keyword = f"%{keyword}%"
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute(query)
