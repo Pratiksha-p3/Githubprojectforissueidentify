@@ -10,6 +10,7 @@ from pathlib import Path
 
 import jwt, requests
 from config import cfg
+from analyzers.unused_imports import DELETE_LINE_SENTINEL
 
 
 @dataclass
@@ -228,7 +229,10 @@ class GitHubLoader:
                 if manual_reason:
                     sections += [f"**Why:** {manual_reason}", ""]
 
-                if fix:
+                if fix == DELETE_LINE_SENTINEL:
+                    sections += ["### \U0001f4a1 Suggested change", "",
+                                 "Remove this line manually.", ""]
+                elif fix:
                     sections += [
                         "### \U0001f4a1 Suggested change (review and apply manually)", "",
                         "```python", fix, "```", "",
@@ -244,6 +248,7 @@ class GitHubLoader:
                 msg      = f.get("message", "")
                 bad_code = f.get("bad_code", "").strip()
                 reason   = f.get("reason", "").strip()
+                is_delete = fix == DELETE_LINE_SENTINEL
 
                 sections = [f"{icon} **{severity}** \u2014 {cat}", ""]
 
@@ -253,21 +258,31 @@ class GitHubLoader:
                         "```python", bad_code, "```", "",
                     ]
 
-                sections += [
-                    "### \U0001f4cb Issue", "",
-                    f"> {msg}", "",
-                    "### \u2705 Auto Fix", "",
-                    "```suggestion", fix, "```", "",
-                    "### \U0001f4a1 Or apply manually", "",
-                    "```python", fix, "```", "",
-                ]
+                if is_delete:
+                    sections += [
+                        "### \U0001f4cb Issue", "",
+                        f"> {msg}", "",
+                        "### \u2705 Auto Fix \u2014 Remove this line", "",
+                        "```suggestion", "```", "",
+                    ]
+                else:
+                    sections += [
+                        "### \U0001f4cb Issue", "",
+                        f"> {msg}", "",
+                        "### \u2705 Auto Fix", "",
+                        "```suggestion", fix, "```", "",
+                        "### \U0001f4a1 Or apply manually", "",
+                        "```python", fix, "```", "",
+                    ]
 
                 if reason:
                     sections += [f"> {reason}", ""]
 
                 sections += [
                     "---",
-                    "*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to apply instantly*",
+                    ("*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to remove it instantly*"
+                     if is_delete else
+                     "*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to apply instantly*"),
                 ]
                 body = "\n".join(sections)
             else:

@@ -26,6 +26,8 @@ import re
 import requests
 from dataclasses import dataclass
 
+from analyzers.unused_imports import DELETE_LINE_SENTINEL
+
 FIXABLE_PATTERNS = [
     {"id": "hardcoded-secret", "pattern": r'(password|passwd|pwd|secret|api_key|apikey|token|db_pass)\s*=\s*["\'][^"\']+["\']', "flags": re.IGNORECASE, "fix_type": "env_var"},
     {"id": "sql-fstring",      "pattern": r'\.execute\s*\(\s*f["\']',                        "flags": 0, "fix_type": "parameterized_query"},
@@ -295,8 +297,13 @@ class AutoFixEngine:
             print(f"[autofix] Existing fix failed validation for "
                   f"{finding.get('file')}:{line_num}, falling back to LLM")
 
-        # 3. LLM fallback — last resort, and validated before use.
-        fix_code, explanation = self._llm_fix(finding, pf, target, line_num, fix_type)
+        # 3. LLM fallback — last resort, and validated before use. Given
+        # whole-file context (imports already present, the enclosing
+        # function/class body, the file's own quote convention) instead
+        # of just a same-line ±3-line window, so the model isn't guessing
+        # at surrounding code it can't see.
+        ctx = self._file_context(pf)
+        fix_code, explanation = self._llm_fix(finding, pf, target, line_num, fix_type, ctx)
         if fix_code and not self._is_valid_fix(fix_code, indent):
             print(f"[autofix] Discarding invalid LLM fix for "
                   f"{finding.get('file')}:{line_num}: {fix_code!r}")
@@ -304,6 +311,76 @@ class AutoFixEngine:
         if fix_code:
             fix_code = self._ensure_imports(fix_code, pf, indent)
         return fix_code, explanation
+
+    # ── Whole-file context ────────────────────────────────
+
+    def _file_context(self, pf) -> dict:
+        """
+        File-level facts a single-line/single-window view can't see:
+        every import already present (so a fix doesn't ask for one that
+        exists under a different alias, or duplicate one that's already
+        there), and the file's dominant quote style (so a generated fix
+        doesn't clash with the surrounding code's convention). `tree` is
+        the parsed AST when the file parses cleanly, used to find the
+        enclosing function/class for a given line — None otherwise, in
+        which case callers fall back to a smaller line-window view.
+        """
+        content = pf.full_content or ""
+        ctx = {"imports": [], "quote_style": "double", "tree": None}
+        try:
+            tree = ast.parse(content)
+            ctx["tree"] = tree
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    names = ", ".join(
+                        a.name if not a.asname else f"{a.name} as {a.asname}"
+                        for a in node.names
+                    )
+                    ctx["imports"].append(f"import {names}")
+                elif isinstance(node, ast.ImportFrom):
+                    mod = "." * node.level + (node.module or "")
+                    names = ", ".join(
+                        a.name if not a.asname else f"{a.name} as {a.asname}"
+                        for a in node.names
+                    )
+                    ctx["imports"].append(f"from {mod} import {names}")
+        except SyntaxError:
+            pass
+
+        if content.count("'") > content.count('"'):
+            ctx["quote_style"] = "single"
+        return ctx
+
+    def _enclosing_scope(self, tree, lineno: int):
+        """Innermost function/class AST node whose span covers `lineno`, or None."""
+        best = None
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                start = node.lineno
+                end = getattr(node, "end_lineno", start)
+                if start <= lineno <= end and (best is None or start > best.lineno):
+                    best = node
+        return best
+
+    def _context_snippet(self, ctx: dict, line_num: int, lines: list[str]) -> str:
+        """
+        The enclosing function/class body when one exists and isn't
+        unreasonably large (so the model sees the real surrounding logic
+        it must stay consistent with) — falls back to a small ±3-line
+        window when the file didn't parse, the line is at module level,
+        or the enclosing scope is too big to usefully include whole.
+        """
+        tree = ctx.get("tree")
+        if tree is not None:
+            scope = self._enclosing_scope(tree, line_num)
+            if scope is not None:
+                start, end = scope.lineno, getattr(scope, "end_lineno", scope.lineno)
+                if end - start <= 60:
+                    return "\n".join(f"{i+1}: {lines[i]}" for i in range(start - 1, min(end, len(lines))))
+
+        start = max(0, line_num - 3)
+        end = min(len(lines), line_num + 3)
+        return "\n".join(f"{i+1}: {lines[i]}" for i in range(start, end))
 
     # Modules our own rule-based fixes can introduce a reference to
     # (os.getenv, bcrypt.hashpw, subprocess.run, ast.literal_eval) — also
@@ -344,6 +421,8 @@ class AutoFixEngine:
         physical line with semicolons (e.g. an invalid one-line
         try/except) instead of the multi-line block it actually needs.
         """
+        if code == DELETE_LINE_SENTINEL:
+            return True  # "delete this line" — trivially valid, nothing to parse
         if not code.strip():
             return False
         try:
@@ -399,17 +478,25 @@ class AutoFixEngine:
             "proper_except":       "Bare except catches everything including SystemExit — be specific.",
         }.get(fix_type, "Apply secure coding best practices.")
 
-    def _llm_fix(self, finding, pf, target_line, line_num, fix_type):
+    def _llm_fix(self, finding, pf, target_line, line_num, fix_type, ctx: dict | None = None):
         lines = (pf.full_content or "").splitlines()
-        start = max(0, line_num - 3)
-        end = min(len(lines), line_num + 3)
-        snippet = "\n".join(f"{i+1}: {lines[i]}" for i in range(start, end))
+        ctx = ctx or self._file_context(pf)
+        snippet = self._context_snippet(ctx, line_num, lines)
+        imports_block = "\n".join(ctx["imports"]) or "(none)"
         prompt = f"""Fix this security issue. Return JSON only, no markdown.
 
 Issue: {finding.get('message', '')}
 Fix type: {fix_type}
 
-Code (lines {start+1}-{end}):
+Imports already present in this file (don't suggest adding one of these
+again, and don't introduce a new dependency that isn't already imported
+unless the fix genuinely requires it):
+{imports_block}
+
+This file's dominant string-quote convention is {ctx['quote_style']} quotes —
+match it in your replacement.
+
+Surrounding code for context (line numbers shown, target line marked):
 {snippet}
 
 Target line {line_num}: {target_line}
@@ -447,6 +534,24 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
                 original_code = file_lines[line_num - 1].strip()
 
         sev_icon = {"CRITICAL": "\U0001f534", "WARNING": "\U0001f7e1", "INFO": "\U0001f535"}.get(sev, "\U0001f535")
+
+        if fix_code == DELETE_LINE_SENTINEL:
+            # An empty ```suggestion``` block is GitHub's native "delete
+            # this line" — no replacement text to show, so skip the
+            # "apply manually" code block a real replacement would get.
+            return (
+                "---\n\n"
+                f"## {sev_icon} {sev.capitalize()} — {category}\n\n"
+                "### \U0001f50d Detected\n\n"
+                f"```python\n{original_code}\n```\n\n"
+                "### \U0001f4cb Issue\n\n"
+                f"> {message}\n\n"
+                "### ✅ Auto Fix — Remove this line\n\n"
+                "```suggestion\n```\n\n"
+                f"> {explanation}\n\n"
+                "---\n"
+                "*\U0001f916 AI Code Review \xb7 Click **Commit suggestion** above to remove it instantly*"
+            )
 
         return (
             "---\n\n"
@@ -527,6 +632,7 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
                     print(f"[autofix] Position comment failed: {e}")
 
         # Try 3: Post as a PR Review (most reliable for suggestions)
+        suggestion_text = "" if fix_code == DELETE_LINE_SENTINEL else fix_code
         try:
             review_resp = self._github_request(
                 method="POST",
@@ -540,7 +646,7 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
                             "path": target_file,
                             "line": line_num,
                             "side": "RIGHT",
-                            "body": f"```suggestion\n{fix_code}\n```",
+                            "body": f"```suggestion\n{suggestion_text}\n```",
                         }
                     ],
                 },

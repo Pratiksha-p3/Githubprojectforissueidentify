@@ -481,6 +481,31 @@ def run_review(
         print(f"[app] Complexity scoring failed: {e}")
 
     # ─────────────────────────────────────────────
+    # UNUSED IMPORTS
+    # ─────────────────────────────────────────────
+
+    try:
+        from analyzers.unused_imports import detect_unused_imports
+        print("[app] Checking for unused imports...")
+
+        unused_import_findings = []
+        for pf in files:
+            if getattr(pf, "language", "") != "python":
+                continue
+            content = getattr(pf, "full_content", "") or ""
+            if not content.strip():
+                continue
+            unused_import_findings.extend(detect_unused_imports(content, pf.filename))
+
+        report.setdefault("findings", [])
+        report["findings"].extend(unused_import_findings)
+
+        print(f"[app] Unused import findings: {len(unused_import_findings)}")
+
+    except Exception as e:
+        print(f"[app] Unused-import check failed: {e}")
+
+    # ─────────────────────────────────────────────
     # DEDUPE — one finding per (file, line) before anything gets posted
     # ─────────────────────────────────────────────
     report["findings"] = _dedupe_by_location(report.get("findings", []))
