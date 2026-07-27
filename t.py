@@ -9,7 +9,7 @@ with sqlite3.connect("users.db") as conn:
         result = cursor.fetchall()
 
     if age % 2 == 1:
-        print("Adult check passed")
+    print("Adult check passed")
     else:
     print("Adult check failed")
 
