@@ -107,7 +107,8 @@ class TaskManager:
 
     def import_from_json(self, filename):
         with open(filename) as f:
-            data = eval(f.read())
+            import ast
+            data = ast.literal_eval(f.read())
         self.tasks = data
 
     def hash_user_password(self, password):
