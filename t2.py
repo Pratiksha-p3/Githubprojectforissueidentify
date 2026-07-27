@@ -16,7 +16,7 @@ class TaskManager:
         return conn
 
 def create_task(self, title, priority="medium", due_date=None):
-        task = {
+task = {
             "id": self.next_id,
             "title": title,
             "priority": priority,
