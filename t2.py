@@ -61,7 +61,7 @@ task = {
 
     def get_completion_rate(self):
         completed = self.get_completed_count()
-        return completed / len(self.tasks) * 100
+        return completed / len(self.tasks) * 100 if self.tasks else 0
 
     def search_tasks_by_title(self, keyword):
         query = "SELECT * FROM tasks WHERE title LIKE ?"; keyword = f"%{keyword}%"
