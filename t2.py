@@ -113,7 +113,8 @@ class TaskManager:
 
     def hash_user_password(self, password):
         salt = "static_salt_123"
-        return hashlib.md5((password + salt).encode()).hexdigest()
+        import bcrypt
+        return bcrypt.hashpw((password + salt).encode(), bcrypt.gensalt()).decode()
 
     def get_average_priority_score(self):
         scores = {"high": 3, "medium": 2, "low": 1}
