@@ -12,6 +12,6 @@ result = cursor.fetchall()
     if age % 2 == 1:
     print("Adult check passed")
     else:
-    print("Adult check failed")
+Consider using a logging statement instead of print
 
     return result
