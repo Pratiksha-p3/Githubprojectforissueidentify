@@ -197,8 +197,49 @@ class GitHubLoader:
             severity = f.get("severity", "info").upper()
             icon = {"CRITICAL": "🔴", "WARNING": "🟡", "INFO": "🔵"}.get(severity, "🔵")
             fix = f.get("fix", "").strip()
+            needs_manual = bool(f.get("needs_manual_review"))
+            manual_reason = (f.get("manual_review_reason") or "").strip()
 
-            if fix:
+            if needs_manual:
+                # AutoFix looked at this and decided a human has to apply
+                # the change - never show a ```suggestion``` block (a
+                # one-click "Commit suggestion" button) for something that
+                # was never cleared for auto-apply, even if an earlier
+                # stage attached a candidate `fix` to the finding.
+                cat      = f.get("category", "general")
+                msg      = f.get("message", "")
+                bad_code = f.get("bad_code", "").strip()
+
+                sections = [f"{icon} **{severity}** \u2014 {cat}", ""]
+
+                if bad_code:
+                    sections += [
+                        "### \U0001f50d Detected", "",
+                        "```python", bad_code, "```", "",
+                    ]
+
+                sections += [
+                    "### \U0001f4cb Issue", "",
+                    f"> {msg}", "",
+                    "### \u270b Manual Review Required", "",
+                    "No automatic fix was applied for this issue.", "",
+                ]
+
+                if manual_reason:
+                    sections += [f"**Why:** {manual_reason}", ""]
+
+                if fix:
+                    sections += [
+                        "### \U0001f4a1 Suggested change (review and apply manually)", "",
+                        "```python", fix, "```", "",
+                    ]
+
+                sections += [
+                    "---",
+                    "*\U0001f916 AI Code Review \xb7 Requires human review \u2014 please apply a fix manually*",
+                ]
+                body = "\n".join(sections)
+            elif fix:
                 cat      = f.get("category", "general")
                 msg      = f.get("message", "")
                 bad_code = f.get("bad_code", "").strip()

@@ -85,6 +85,11 @@ class AutoFixEngine:
         pending = []
         results = []
         unfixed = []
+        # (file, line) -> human-readable reason a person needs to apply this
+        # one manually. Threaded out to app.py/github_loader so the PR
+        # comment can say *why* instead of silently showing (or hiding) a
+        # Commit-suggestion box for something that was never auto-applied.
+        manual_reasons: dict[tuple, str] = {}
 
         for finding in targets:
             target_file = finding.get("file", "")
@@ -100,8 +105,10 @@ class AutoFixEngine:
             fixable, fix_type = self._is_fixable(finding, pf)
 
             if not fixable:
+                reason = self._unfixable_reason(finding)
                 results.append(FixResult(finding=finding, fixable=False, fix_applied=False,
-                                          error="Requires human judgment"))
+                                          error=reason))
+                manual_reasons[line_key] = reason
                 if finding.get("severity") == "critical":
                     unfixed.append(finding)
                 print(f"  ❌ UNFIXABLE: {target_file}:L{finding.get('line', 0)} — {finding.get('message', '')[:60]}")
@@ -110,8 +117,10 @@ class AutoFixEngine:
             fix_code, explanation = self._generate_fix(finding, pf, fix_type)
 
             if not fix_code:
+                reason = explanation or "No safe automatic fix could be generated for this issue."
                 results.append(FixResult(finding=finding, fixable=True, fix_applied=False,
-                                          fix_type=fix_type, error="Could not generate fix"))
+                                          fix_type=fix_type, error=reason))
+                manual_reasons[line_key] = reason
                 if finding.get("severity") == "critical":
                     unfixed.append(finding)
                 continue
@@ -130,14 +139,19 @@ class AutoFixEngine:
             results.append(FixResult(finding=finding, fixable=True, fix_applied=posted,
                                       fix_code=item["fix_code"], fix_explanation=item["explanation"],
                                       fix_type=item["fix_type"]))
-            if not posted and finding.get("severity") == "critical":
-                unfixed.append(finding)
+            if not posted:
+                manual_reasons[line_key] = (
+                    "A fix was generated but could not be posted to GitHub as a "
+                    "suggestion — apply the change shown below manually."
+                )
+                if finding.get("severity") == "critical":
+                    unfixed.append(finding)
             print(f"  {'✅ FIX SUGGESTED' if posted else '⚠️ FIX GENERATED (not posted)'}: "
                   f"{finding.get('file','')}:L{finding.get('line', 0)} ({item['fix_type']})")
 
         fixed = sum(1 for r in results if r.fix_applied)
         print(f"[autofix-engine] {fixed} fixes suggested, {len(unfixed)} critical need manual fix")
-        return results, unfixed
+        return results, unfixed, manual_reasons
 
     def _post_findings(self, loader, repo, pr_number, head_sha, pending: list[dict]) -> dict:
         """
@@ -226,6 +240,29 @@ class AutoFixEngine:
             return True, "existing_fix"
 
         return False, ""
+
+    def _unfixable_reason(self, finding) -> str:
+        """Human-readable explanation for why this finding was routed to
+        manual review instead of an auto-applied fix — shown verbatim in
+        the PR comment so a reviewer isn't just told "no" with no reason."""
+        category = (finding.get("category") or "").lower()
+        msg = (finding.get("message") or "").lower()
+
+        if category in UNFIXABLE_CATEGORIES:
+            return (
+                f"This is a '{category}' finding — fixing it correctly requires "
+                f"understanding the surrounding design or business intent, which "
+                f"can't be safely inferred automatically."
+            )
+
+        hit = next((kw for kw in UNFIXABLE_KEYWORDS if kw in msg), None)
+        if hit:
+            return (
+                f"This involves {hit} — an incorrect automatic change here risks "
+                f"introducing a new security hole rather than closing one."
+            )
+
+        return "No automatic fix could be safely generated for this issue."
 
     # ── Fix generation ───────────────────────────────────
 

@@ -531,6 +531,20 @@ def run_review(
         report["auto_fix"] = auto_result
         posted_locations = set(auto_result_raw.get("posted_locations", []))
 
+        # Tag findings AutoFix decided need a human to apply the change —
+        # the GitHub posting step below uses this to render a "Manual
+        # Review Required" block with the reason, instead of a Commit
+        # -suggestion box the finding was never actually cleared for.
+        manual_review_map = {
+            (m["file"], m["line"]): m["reason"]
+            for m in auto_result_raw.get("manual_review", [])
+        }
+        for f in findings:
+            key = (f.get("file"), f.get("line"))
+            if key in manual_review_map:
+                f["needs_manual_review"] = True
+                f["manual_review_reason"] = manual_review_map[key]
+
         print(
             f"[app] Auto fixed "
             f"{auto_result.get('fixed_count', 0)} issues"

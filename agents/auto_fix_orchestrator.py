@@ -39,7 +39,7 @@ class AutoFixOrchestrator:
         """
         safe_findings = [f for f in findings if isinstance(f, dict)]
 
-        fixed, unresolved = self.engine.process_findings(
+        fixed, unresolved, manual_reasons = self.engine.process_findings(
             findings=safe_findings,
             pr_files=pr_files,
             repo=repo,
@@ -59,5 +59,12 @@ class AutoFixOrchestrator:
             "posted_locations": [
                 (f.finding.get("file"), f.finding.get("line"))
                 for f in fixed if f.fix_applied
+            ],
+            # Findings that need a human to apply the fix manually, and why —
+            # the main review pass uses this to label the PR comment instead
+            # of showing (or silently omitting) a one-click suggestion box.
+            "manual_review": [
+                {"file": file, "line": line, "reason": reason}
+                for (file, line), reason in manual_reasons.items()
             ],
         }
