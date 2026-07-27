@@ -3,6 +3,7 @@
 import re
 
 from analyzers.ai_review import get_ai_findings
+from analyzers.index_bounds_checker import detect_index_bounds_issues
 
 
 def detect_runtime_errors(code, filename):
@@ -41,17 +42,15 @@ with open(path, "r") as f:
     data = f.read()
 """,
         ),
-        (
-            r"\[[0-9]+\]",
-            "Possible IndexError",
-            "index_guard",
-            """
-if index >= len(items):
-    raise IndexError("Index out of range")
-value = items[index]
-""",
-        ),
     ]
+    # Literal-index subscript access (parts[0], parts[1], ...) used to be
+    # matched here too via a bare `\[[0-9]+\]` regex — one finding per
+    # bracket, each with a non-contextual "items[index]" fix template
+    # that referenced names that didn't exist in the code being fixed.
+    # detect_index_bounds_issues() replaces it: it's AST-based, groups
+    # every access to the same variable in the same scope into a single
+    # finding with one real bounds-check fix, and skips variables a
+    # fixed-length literal already proves are safe.
 
     # ── Fast, deterministic pass — free, catches the common shapes ──────
     for line_no, line in enumerate(code.splitlines(), start=1):
@@ -68,6 +67,10 @@ value = items[index]
                     "fix": fix_code.strip(),
                 })
                 seen_lines.add(line_no)
+
+    for f in detect_index_bounds_issues(code, filename):
+        findings.append(f)
+        seen_lines.add(f["line"])
 
     # ── LLM pass — senior-engineer review for anything the patterns
     #    above don't shape-match (not limited to a fixed checklist) ────
