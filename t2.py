@@ -179,7 +179,9 @@ def get_overdue_percentage(manager):
     for task in manager.tasks:
         if manager.is_overdue(task):
             overdue_count =+ 1
-    return (overdue_count / len(manager.tasks)) * 100
+if b == 0:
+    raise ValueError("Division by zero")
+return a / b
 
 
 def main():
