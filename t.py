@@ -10,7 +10,7 @@ result = cursor.fetchall()
         result = cursor.fetchall()
 
 Consider using a more descriptive variable name instead of 'age' and a more Pythonic way to check for odd numbers, e.g., 'if age % 2:'
-    print("Adult check passed")
+Consider using a logging statement instead of print, e.g., 'import logging; logging.info("Adult check passed")'
     else:
 Consider using a logging statement instead of print
 
