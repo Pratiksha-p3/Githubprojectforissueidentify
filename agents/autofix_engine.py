@@ -310,7 +310,7 @@ class AutoFixEngine:
         # regex-matched substitution for a known vulnerability shape is
         # as close to "certain" as this engine gets.
         rule_fix = self._rule_fix(target, fix_type, indent)
-        if rule_fix and self._is_valid_fix(rule_fix, indent):
+        if rule_fix and self._is_valid_fix(rule_fix, indent, pf, line_num):
             rule_fix = self._ensure_imports(rule_fix, pf, indent)
             return rule_fix, self._explain(fix_type), "high"
 
@@ -325,7 +325,7 @@ class AutoFixEngine:
         #    generated with full context ourselves.
         if fix_type == "existing_fix":
             existing = (finding.get("fix") or "").rstrip()
-            if existing and self._is_valid_fix(existing, indent):
+            if existing and self._is_valid_fix(existing, indent, pf, line_num):
                 explanation = finding.get("reason") or finding.get("message", "")
                 confidence = "high" if existing == DELETE_LINE_SENTINEL else "medium"
                 existing = self._ensure_imports(existing, pf, indent)
@@ -342,7 +342,7 @@ class AutoFixEngine:
         # to auto-suggest or route to manual review instead.
         ctx = self._file_context(pf)
         fix_code, explanation, confidence = self._llm_fix(finding, pf, target, line_num, fix_type, ctx)
-        if fix_code and not self._is_valid_fix(fix_code, indent):
+        if fix_code and not self._is_valid_fix(fix_code, indent, pf, line_num):
             print(f"[autofix] Discarding invalid LLM fix for "
                   f"{finding.get('file')}:{line_num}: {fix_code!r}")
             return "", "Generated fix failed syntax validation", "low"
@@ -451,13 +451,28 @@ class AutoFixEngine:
         import_lines = "\n".join(f"{indent}import {m}" for m in missing)
         return f"{import_lines}\n{fix_code}"
 
-    def _is_valid_fix(self, code: str, indent: str) -> bool:
+    def _is_valid_fix(self, code: str, indent: str, pf=None, line_num: int = 0) -> bool:
         """
         Best-effort syntax check: does this fix parse as valid Python when
         dropped into a block at the target line's indentation? Catches the
         failure mode where a fix jams multiple statements onto one
         physical line with semicolons (e.g. an invalid one-line
         try/except) instead of the multi-line block it actually needs.
+
+        A fix that legitimately needs content from later, UNCHANGED lines
+        can never parse checked in isolation — there's no way for a
+        single replaced line to "know" about content that isn't part of
+        it. Two shapes of this come up:
+          - it opens a bracket closed further down (reindenting
+            `task = {` where the dict's contents and `}` are untouched
+            lines below it)
+          - its last line opens a new block (`with open(x) as f:`) whose
+            body is the following, untouched lines (e.g. a fix that
+            inserts a guard *and* rewraps the guarded line into a `with`)
+        When the isolated check fails and pf/line_num are given, this
+        retries with the file's own subsequent lines appended — through
+        wherever the bracket actually closes, or through the indented
+        body that follows a block-opening last line.
         """
         if code == DELETE_LINE_SENTINEL:
             return True  # "delete this line" — trivially valid, nothing to parse
@@ -468,7 +483,67 @@ class AutoFixEngine:
             ast.parse(wrapped)
             return True
         except SyntaxError:
+            pass
+
+        if pf is None or not line_num:
             return False
+
+        lines = (pf.full_content or "").splitlines()
+        if not (0 < line_num <= len(lines)):
+            return False
+        tail = self._lookahead_context(code, lines, line_num)
+        if tail is None:
+            return False
+
+        try:
+            combined = code + "\n" + tail
+            wrapped = ("if True:\n" + combined) if indent else combined
+            ast.parse(wrapped)
+            return True
+        except SyntaxError:
+            return False
+
+    def _lookahead_context(self, code: str, lines: list[str], line_num: int) -> str | None:
+        """
+        Extra ORIGINAL lines (from immediately after the line being
+        replaced) a fix needs alongside it to parse — see _is_valid_fix.
+        Returns None when the fix doesn't need any, so the caller knows
+        the isolated check's failure was real, not an artifact of
+        checking one line without its surrounding file.
+        """
+        from analyzers.syntax_checker import _bracket_delta, _strip_comment
+
+        depth = _bracket_delta(code)
+        code_lines = code.splitlines()
+        last_line = code_lines[-1] if code_lines else ""
+        opens_block = _strip_comment(last_line).rstrip().endswith(":")
+        if depth <= 0 and not opens_block:
+            return None
+
+        tail: list[str] = []
+        if depth > 0:
+            for i in range(line_num, min(len(lines), line_num + 200)):  # bounded lookahead
+                tail.append(lines[i])
+                depth += _bracket_delta(lines[i])
+                if depth <= 0:
+                    break
+            if depth > 0:
+                return None  # never closes within the lookahead — genuinely broken
+        else:
+            block_indent = len(last_line) - len(last_line.lstrip(" "))
+            for i in range(line_num, min(len(lines), line_num + 200)):
+                candidate = lines[i]
+                if not candidate.strip():
+                    tail.append(candidate)
+                    continue
+                cand_indent = len(candidate) - len(candidate.lstrip(" "))
+                if cand_indent <= block_indent:
+                    break
+                tail.append(candidate)
+            if not tail:
+                return None
+
+        return "\n".join(tail)
 
     def _rule_fix(self, line, fix_type, indent):
         if fix_type == "env_var":
