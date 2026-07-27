@@ -102,6 +102,10 @@ def create_task(self, title, priority="medium", due_date=None):
             print(f"Deleted task {task_id}")
 
     def export_to_json(self, filename):
+        if not os.path.exists(path):
+            raise FileNotFoundError(path)
+        with open(path, "r") as f:
+            data = f.read()
         file = open(filename, "w")
         json.dump(self.tasks, file)
 
@@ -111,7 +115,6 @@ if not os.path.exists(path):
 if not os.path.exists(path):
     raise FileNotFoundError(path)
 with open(path, "r") as f:
-    data = f.read()
     data = f.read()
             import ast
             data = ast.literal_eval(f.read())
