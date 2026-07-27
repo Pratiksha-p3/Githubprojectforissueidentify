@@ -44,6 +44,14 @@ UNFIXABLE_CATEGORIES = {"architecture", "performance", "docs"}
 UNFIXABLE_KEYWORDS = ["authentication bypass", "authorization", "csrf", "ssrf",
                        "missing validation", "business logic", "race condition"]
 
+# A generated fix only gets auto-suggested at this confidence or above;
+# anything lower is routed to manual review instead — "the system
+# generated a candidate but isn't sure enough to put a one-click apply
+# button in front of a developer" is a materially different, safer
+# claim than silently posting it anyway.
+_CONFIDENCE_RANK = {"low": 0, "medium": 1, "high": 2}
+MIN_AUTO_APPLY_CONFIDENCE = "medium"
+
 
 @dataclass
 class FixResult:
@@ -53,6 +61,7 @@ class FixResult:
     fix_code:        str = ""
     fix_explanation: str = ""
     fix_type:        str = ""
+    confidence:      str = ""
     error:           str = ""
 
 
@@ -116,13 +125,28 @@ class AutoFixEngine:
                 print(f"  ❌ UNFIXABLE: {target_file}:L{finding.get('line', 0)} — {finding.get('message', '')[:60]}")
                 continue
 
-            fix_code, explanation = self._generate_fix(finding, pf, fix_type)
+            fix_code, explanation, confidence = self._generate_fix(finding, pf, fix_type)
 
             if not fix_code:
                 reason = explanation or "No safe automatic fix could be generated for this issue."
                 results.append(FixResult(finding=finding, fixable=True, fix_applied=False,
-                                          fix_type=fix_type, error=reason))
+                                          fix_type=fix_type, confidence=confidence, error=reason))
                 manual_reasons[line_key] = reason
+                if finding.get("severity") == "critical":
+                    unfixed.append(finding)
+                continue
+
+            if _CONFIDENCE_RANK.get(confidence, 0) < _CONFIDENCE_RANK[MIN_AUTO_APPLY_CONFIDENCE]:
+                reason = (
+                    f"A fix was generated ({explanation}) but confidence was too low "
+                    f"to auto-suggest — please review and apply manually if correct."
+                )
+                results.append(FixResult(finding=finding, fixable=True, fix_applied=False,
+                                          fix_code=fix_code, fix_explanation=explanation,
+                                          fix_type=fix_type, confidence=confidence, error=reason))
+                manual_reasons[line_key] = reason
+                print(f"  ⚠️ LOW CONFIDENCE, routed to manual review: "
+                      f"{target_file}:L{finding.get('line', 0)}")
                 if finding.get("severity") == "critical":
                     unfixed.append(finding)
                 continue
@@ -130,7 +154,7 @@ class AutoFixEngine:
             already_fixed_locations.add(line_key)  # FIX 2
             body = self._build_suggestion_body(finding, fix_code, explanation, pf)
             pending.append({"finding": finding, "fix_code": fix_code, "explanation": explanation,
-                             "fix_type": fix_type, "pf": pf, "body": body})
+                             "fix_type": fix_type, "confidence": confidence, "pf": pf, "body": body})
 
         posted_map = self._post_findings(loader, repo, pr_number, head_sha, pending)
 
@@ -140,7 +164,7 @@ class AutoFixEngine:
             posted = posted_map.get(line_key, False)
             results.append(FixResult(finding=finding, fixable=True, fix_applied=posted,
                                       fix_code=item["fix_code"], fix_explanation=item["explanation"],
-                                      fix_type=item["fix_type"]))
+                                      fix_type=item["fix_type"], confidence=item["confidence"]))
             if not posted:
                 manual_reasons[line_key] = (
                     "A fix was generated but could not be posted to GitHub as a "
@@ -269,31 +293,43 @@ class AutoFixEngine:
     # ── Fix generation ───────────────────────────────────
 
     def _generate_fix(self, finding, pf, fix_type):
+        """Returns (fix_code, explanation, confidence) — confidence is one
+        of "high"/"medium"/"low", used by process_findings to decide
+        whether this is safe to auto-suggest or should go to manual
+        review despite a fix having been generated."""
         if not pf:
-            return "", "No file content"
+            return "", "No file content", "low"
         lines = (pf.full_content or "").splitlines()
         line_num = finding.get("line", 0)
         if not (0 < line_num <= len(lines)):
-            return "", "Line out of range"
+            return "", "Line out of range", "low"
         target = lines[line_num - 1]
         indent = " " * (len(target) - len(target.lstrip()))
 
-        # 1. Rule-based first — free, deterministic, no LLM call.
+        # 1. Rule-based first — free, deterministic, no LLM call. A
+        # regex-matched substitution for a known vulnerability shape is
+        # as close to "certain" as this engine gets.
         rule_fix = self._rule_fix(target, fix_type, indent)
         if rule_fix and self._is_valid_fix(rule_fix, indent):
             rule_fix = self._ensure_imports(rule_fix, pf, indent)
-            return rule_fix, self._explain(fix_type)
+            return rule_fix, self._explain(fix_type), "high"
 
         # 2. Reuse a fix the finding already carries (semgrep/ai_review/
         #    architecture/compliance guards already spent an LLM call on
         #    this, if it used one at all) — validate it, then use it
-        #    directly instead of regenerating from scratch.
+        #    directly instead of regenerating from scratch. A line-
+        #    deletion from the unused-import checker is a verified AST
+        #    fact (the name truly isn't referenced), not a guess, so it
+        #    gets "high" too; any other reused fix is "medium" — it came
+        #    from an earlier LLM/static pass we're trusting, not one we
+        #    generated with full context ourselves.
         if fix_type == "existing_fix":
             existing = (finding.get("fix") or "").rstrip()
             if existing and self._is_valid_fix(existing, indent):
                 explanation = finding.get("reason") or finding.get("message", "")
+                confidence = "high" if existing == DELETE_LINE_SENTINEL else "medium"
                 existing = self._ensure_imports(existing, pf, indent)
-                return existing, explanation
+                return existing, explanation, confidence
             print(f"[autofix] Existing fix failed validation for "
                   f"{finding.get('file')}:{line_num}, falling back to LLM")
 
@@ -301,16 +337,18 @@ class AutoFixEngine:
         # whole-file context (imports already present, the enclosing
         # function/class body, the file's own quote convention) instead
         # of just a same-line ±3-line window, so the model isn't guessing
-        # at surrounding code it can't see.
+        # at surrounding code it can't see. The model self-reports its
+        # own confidence; process_findings decides whether that's enough
+        # to auto-suggest or route to manual review instead.
         ctx = self._file_context(pf)
-        fix_code, explanation = self._llm_fix(finding, pf, target, line_num, fix_type, ctx)
+        fix_code, explanation, confidence = self._llm_fix(finding, pf, target, line_num, fix_type, ctx)
         if fix_code and not self._is_valid_fix(fix_code, indent):
             print(f"[autofix] Discarding invalid LLM fix for "
                   f"{finding.get('file')}:{line_num}: {fix_code!r}")
-            return "", "Generated fix failed syntax validation"
+            return "", "Generated fix failed syntax validation", "low"
         if fix_code:
             fix_code = self._ensure_imports(fix_code, pf, indent)
-        return fix_code, explanation
+        return fix_code, explanation, confidence
 
     # ── Whole-file context ────────────────────────────────
 
@@ -501,7 +539,15 @@ Surrounding code for context (line numbers shown, target line marked):
 
 Target line {line_num}: {target_line}
 
-Return exactly: {{"fixed_line": "<replacement code for the target line, as valid Python matching its indentation. Use one line when one line is enough. When the correct fix genuinely needs more than one statement (e.g. wrapping in try/except), return multiple lines separated by \\n at the same indentation — never join statements with semicolons across a compound-statement boundary.>", "explanation": "<one sentence why>"}}"""
+Also rate your own confidence that this fix is *correct and safe to apply
+automatically without a human reviewing it first*:
+  "high"   — you're certain; the fix is mechanical and can't plausibly break anything
+  "medium" — you're reasonably confident, but the fix required judgment calls
+             a reviewer should still be able to spot-check
+  "low"    — you're not confident this is fully correct, or the surrounding
+             code context wasn't enough to be sure
+
+Return exactly: {{"fixed_line": "<replacement code for the target line, as valid Python matching its indentation. Use one line when one line is enough. When the correct fix genuinely needs more than one statement (e.g. wrapping in try/except), return multiple lines separated by \\n at the same indentation — never join statements with semicolons across a compound-statement boundary.>", "explanation": "<one sentence why>", "confidence": "high|medium|low"}}"""
         try:
             from agents.llm_client import chat_completion
             text = chat_completion(
@@ -512,9 +558,12 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
             ).strip()
             text = re.sub(r'```[a-z]*\n?', '', text).strip('`').strip()
             data = json.loads(text)
-            return data.get("fixed_line", ""), data.get("explanation", "")
+            confidence = data.get("confidence", "medium")
+            if confidence not in ("high", "medium", "low"):
+                confidence = "medium"
+            return data.get("fixed_line", ""), data.get("explanation", ""), confidence
         except Exception as e:
-            return "", str(e)
+            return "", str(e), "low"
 
     # ── GitHub suggestion posting ─────────────────────────
 
