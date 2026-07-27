@@ -112,8 +112,6 @@ def create_task(self, title, priority="medium", due_date=None):
     def import_from_json(self, filename):
 if not os.path.exists(path):
     raise FileNotFoundError(path)
-if not os.path.exists(path):
-    raise FileNotFoundError(path)
 with open(path, "r") as f:
     data = f.read()
             import ast
