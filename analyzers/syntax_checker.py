@@ -173,17 +173,90 @@ def _logical_line_end_idx(depths: list[int], start_idx: int, limit_idx: int) -> 
     return end_idx
 
 
+_COMPOUND_TYPES = (
+    ast.If, ast.For, ast.AsyncFor, ast.While, ast.Try, ast.With, ast.AsyncWith,
+    ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+)
+if hasattr(ast, "TryStar"):  # Python 3.11+ except*
+    _COMPOUND_TYPES = _COMPOUND_TYPES + (ast.TryStar,)
+
+_BODY_FIELDS = ("body", "orelse", "finalbody")
+
+
+def _is_simple_stmt(node: ast.AST) -> bool:
+    """True for leaf statements (Assign, Return, Expr, Pass, ...) that
+    can't themselves contain a nested block — i.e. the actual innermost
+    thing a file position can point into."""
+    return not any(getattr(node, f, None) for f in _BODY_FIELDS) and not getattr(node, "handlers", None)
+
+
+def _ast_expected_indent(lines: list[str], lineno: int) -> int | None:
+    """
+    Real structure-aware version of the indent calculation: parses
+    everything before the broken line and uses the actual AST — parent/
+    child block relationships, not text patterns — to find which block
+    the line belongs to. This is immune to the false positives a text
+    scan for a trailing ':' can hit (a lambda, a dict literal, a slice, a
+    variable annotation all end a line in ':' without opening a block).
+
+    Returns None when the prefix doesn't parse on its own — most notably
+    when the previous line is itself an unterminated block opener (e.g.
+    "if x:" with no body yet), which is invalid Python in isolation. The
+    caller falls back to the bracket/colon text heuristic in that case.
+    """
+    prefix = "\n".join(lines[:lineno - 1])
+    if not prefix.strip():
+        return 0
+    try:
+        tree = ast.parse(prefix)
+    except SyntaxError:
+        return None
+
+    unit = _detect_indent_unit(lines)
+    target_line_no = lineno - 1  # last real line number covered by prefix
+
+    parent_map: dict[int, ast.AST] = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent_map[id(child)] = node
+
+    candidates = [
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.stmt) and _is_simple_stmt(n)
+        and getattr(n, "end_lineno", n.lineno) <= target_line_no
+    ]
+    if not candidates:
+        return 0
+    last_stmt = max(candidates, key=lambda n: (getattr(n, "end_lineno", n.lineno), n.col_offset))
+
+    current_stripped = lines[lineno - 1].strip()
+    first_word_match = re.match(r"[A-Za-z_]+", current_stripped)
+    first_word = first_word_match.group(0) if first_word_match else ""
+
+    if first_word in _DEDENT_KEYWORDS:
+        enclosing = parent_map.get(id(last_stmt))
+        indent = getattr(enclosing, "col_offset", None)
+        return indent if indent is not None else 0
+
+    return last_stmt.col_offset
+
+
 def _expected_indent(lines: list[str], lineno: int) -> int:
     """
-    Best-effort correct indentation (in spaces) for lines[lineno - 1]:
-      - one indent unit deeper than the previous logical line, if that
-        line opens a block (ends with ':')
-      - the enclosing block's indent, if this line is a dedent keyword
-        (else/elif/except/finally)
-      - otherwise, the same indent as the previous logical line
+    Best-effort correct indentation (in spaces) for lines[lineno - 1].
+    Tries the AST-based structural analysis first (_ast_expected_indent);
+    falls back to a bracket/colon text heuristic only when the prefix
+    can't be parsed at all — one indent unit deeper than the previous
+    logical line if that line opens a block (ends with ':'), the
+    enclosing block's indent for a dedent keyword (else/elif/except/
+    finally), otherwise the same indent as the previous logical line.
     "Logical line" skips blanks, comment-only lines, and continuation
     lines still inside an open bracket from an earlier line.
     """
+    ast_result = _ast_expected_indent(lines, lineno)
+    if ast_result is not None:
+        return ast_result
+
     unit = _detect_indent_unit(lines)
     depths = _line_start_depths(lines)
     target_idx = lineno - 1
@@ -249,9 +322,19 @@ def _suggest_fix(lines: list[str], lineno: int, msg: str) -> str:
                 return stripped + close_ch * (stripped.count(open_ch) - stripped.count(close_ch))
         return stripped + "  # add the missing closing bracket/quote"
 
+    first_word_match = re.match(r"\s*([A-Za-z_]+)", bad_line)
+    first_word = first_word_match.group(1) if first_word_match else ""
+
     if ("expected an indented block" in lower_msg
             or "unindent" in lower_msg
-            or "unexpected indent" in lower_msg):
+            or "unexpected indent" in lower_msg
+            # A dedent keyword sitting at the *same* depth as the block
+            # body it should be closing (rather than genuinely dedented
+            # to some other level) doesn't trigger an INDENT/DEDENT
+            # token at all — ast.parse reports it as plain "invalid
+            # syntax", not an indentation-specific message, even though
+            # it's exactly the same class of bug.
+            or (first_word in _DEDENT_KEYWORDS and "invalid syntax" in lower_msg)):
         expected = _expected_indent(lines, lineno)
         return _reindent(bad_line, expected)
 
