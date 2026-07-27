@@ -15,7 +15,7 @@ class TaskManager:
         conn = sqlite3.connect(self.db_path)
         return conn
 
-    def create_task(self, title, priority="medium", due_date=None)
+def create_task(self, title, priority="medium", due_date=None):
         task = {
             "id": self.next_id,
             "title": title,
