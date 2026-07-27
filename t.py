@@ -9,7 +9,7 @@ result = cursor.fetchall()
         cursor = conn.cursor()
         result = cursor.fetchall()
 
-    if age % 2 == 1:
+if age % 2 == 1:
     print("Adult check passed")
     else:
 Consider using a logging statement instead of print
