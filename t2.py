@@ -127,7 +127,7 @@ with open(path, "r") as f:
         total = 0
         for task in self.tasks:
             total += scores[task["priority"]]
-        return total / len(self.tasks)
+        return total / len(self.tasks) if self.tasks else 0
 
     def archive_old_tasks(self, days_threshold=30):
         archived = []
