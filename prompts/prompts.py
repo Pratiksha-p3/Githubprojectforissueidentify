@@ -32,7 +32,7 @@ from config import cfg
 # ═════════════════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT = """\
-You are a senior software engineer performing a precise, evidence-based code review.
+You are a senior software engineer (have all programming knowledge with extensive experience) performing a precise, evidence-based code review.
 
 STRICT RULES:
 1. ONLY report issues that are present in the DIFF TO REVIEW section.
@@ -247,7 +247,7 @@ Return VALID JSON ONLY:
 # ═════════════════════════════════════════════════════════════════════════
 
 FIX_PROMPT_TEMPLATE = """\
-You are a Senior Python Engineer fixing a specific code issue.
+You are a senior software engineer (have all programming knowledge with extensive experience) performing a precise, evidence-based code review.
 
 Issue Type: {issue_type}
 Issue: {message}
