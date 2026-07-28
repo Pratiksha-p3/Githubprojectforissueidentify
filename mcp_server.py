@@ -690,37 +690,10 @@ Be clear and practical."""
 
 async def _tool_fix_issue(code: str, issue: str, language: str) -> str:
     """Generate a fix for a specific issue."""
-    from groq import Groq
+    from mcp_tools.fix_mcp import FixMCP
 
-    client = Groq(api_key=cfg.groq_api_key)
-    prompt = f"""Fix this issue in the code. Return JSON only.
-
-Language: {language}
-Issue: {issue}
-
-Code:
-{code}
-
-Return:
-{{
-  "fixed_code": "<complete corrected code>",
-  "explanation": "<what you changed and why>",
-  "confidence": <0.0-1.0>
-}}"""
-
-    resp = client.chat.completions.create(
-        model       = cfg.review_model,
-        temperature = 0,
-        max_tokens  = 1024,
-        messages    = [
-            {"role": "system", "content": "Fix code issues. Return JSON only."},
-            {"role": "user",   "content": prompt},
-        ],
-    )
-    text = resp.choices[0].message.content.strip()
-    import re as _re
-    text = _re.sub(r'```[a-z]*\n?', '', text).strip('`').strip()
-    return text
+    result = FixMCP().generate_fix(code=code, issue=issue, language=language)
+    return json.dumps(result)
 
 
 async def _tool_ask_copilot(question: str) -> str:
