@@ -124,7 +124,7 @@ def _validate(raw_findings) -> list[dict]:
 
         bad_code = str(f.get("bad_code", ""))
         fix = str(f.get("fix", ""))
-        if fix and not _is_valid_fix(fix, bad_code):
+        if fix and not _is_valid_fix(fix):
             print(f"[ai_review] Discarding invalid fix at line {line}: {fix!r}")
             fix = ""
 
@@ -140,20 +140,24 @@ def _validate(raw_findings) -> list[dict]:
     return clean
 
 
-def _is_valid_fix(fix: str, bad_code: str) -> bool:
+def _is_valid_fix(fix: str) -> bool:
     """
-    Best-effort syntax check: does this fix parse as valid Python when
-    dropped into a block at the same indentation as the line it replaces?
-    Guards against the LLM jamming multiple statements onto one physical
-    line with semicolons (e.g. an invalid one-line try/except) — a real
-    failure mode this prompt used to hit before fixes were allowed to
-    span multiple lines.
+    Best-effort syntax check: does this fix parse as valid Python? Wraps
+    in `if True:` when the fix's OWN first line starts indented — NOT
+    based on bad_code's indentation, which is frequently zero precisely
+    when zero indentation is the bug the fix corrects (using bad_code's
+    indent there would wrongly skip the wrapper and reject an otherwise-
+    correct reindent as "unexpected indent"). Also guards against the
+    LLM jamming multiple statements onto one physical line with
+    semicolons (e.g. an invalid one-line try/except) — a real failure
+    mode this prompt used to hit before fixes were allowed to span
+    multiple lines.
     """
     if not fix.strip():
         return False
-    indent = len(bad_code) - len(bad_code.lstrip()) if bad_code else 0
+    first_line = fix.splitlines()[0]
     try:
-        wrapped = ("if True:\n" + fix) if indent > 0 else fix
+        wrapped = ("if True:\n" + fix) if first_line[:1] in (" ", "\t") else fix
         ast.parse(wrapped)
         return True
     except SyntaxError:

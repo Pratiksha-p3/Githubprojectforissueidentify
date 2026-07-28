@@ -13,6 +13,7 @@ from prompts.prompts import SYSTEM_PROMPT, build_prompt, build_summary_prompt,bu
 from rag.retriever import Retriever
 from ingestion.github_loader import PRFile
 from agents.security_agent import SecurityAgent, merge_findings
+from analyzers.ai_review import _is_valid_fix
 
 _REQUIRED_KEYS  = {"findings", "summary", "overall_score", "test_coverage_gaps"}
 _VALID_SEVERITY = {"critical", "warning", "info"}
@@ -228,7 +229,20 @@ class ReviewerAgent:
                 f["line"] = 0
             if not f.get("message"):
                 continue
-            f.setdefault("fix", "")
+
+            # This prompt's schema doesn't even ask for a "steps, not
+            # code" fix, but nothing enforced that — an LLM returning
+            # prose ("Consider adding error handling for...") instead of
+            # actual replacement code used to sail straight through and
+            # get shown as a "Suggested change" code block later, when
+            # it's really just a sentence. Same check ai_review.py's
+            # pipeline already applies to its own findings.
+            fix = str(f.get("fix", "")).strip()
+            if fix and not _is_valid_fix(fix):
+                print(f"[reviewer] Discarding non-code fix at line {f.get('line')}: {fix!r}")
+                fix = ""
+            f["fix"] = fix
+
             f.setdefault("category", "style")
             f["file"] = filename
             clean.append(f)

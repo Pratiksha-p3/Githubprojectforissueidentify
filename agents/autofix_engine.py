@@ -28,6 +28,17 @@ from dataclasses import dataclass
 
 from analyzers.unused_imports import DELETE_LINE_SENTINEL
 
+
+def _starts_indented(code: str) -> bool:
+    """Does this fix's own first line start with leading whitespace? Used
+    to decide whether an ast.parse() check needs an `if True:` wrapper —
+    based on the fix text itself, NOT the original (possibly-zero, since
+    that's often exactly the bug being fixed) indentation of the line it
+    replaces."""
+    first_line = code.splitlines()[0] if code else ""
+    return first_line[:1] in (" ", "\t")
+
+
 FIXABLE_PATTERNS = [
     {"id": "hardcoded-secret", "pattern": r'(password|passwd|pwd|secret|api_key|apikey|token|db_pass)\s*=\s*["\'][^"\']+["\']', "flags": re.IGNORECASE, "fix_type": "env_var"},
     {"id": "sql-fstring",      "pattern": r'\.execute\s*\(\s*f["\']',                        "flags": 0, "fix_type": "parameterized_query"},
@@ -310,7 +321,7 @@ class AutoFixEngine:
         # regex-matched substitution for a known vulnerability shape is
         # as close to "certain" as this engine gets.
         rule_fix = self._rule_fix(target, fix_type, indent)
-        if rule_fix and self._is_valid_fix(rule_fix, indent, pf, line_num):
+        if rule_fix and self._is_valid_fix(rule_fix, pf, line_num):
             rule_fix = self._ensure_imports(rule_fix, pf, indent)
             return rule_fix, self._explain(fix_type), "high"
 
@@ -325,7 +336,7 @@ class AutoFixEngine:
         #    generated with full context ourselves.
         if fix_type == "existing_fix":
             existing = (finding.get("fix") or "").rstrip()
-            if existing and self._is_valid_fix(existing, indent, pf, line_num):
+            if existing and self._is_valid_fix(existing, pf, line_num):
                 explanation = finding.get("reason") or finding.get("message", "")
                 confidence = "high" if existing == DELETE_LINE_SENTINEL else "medium"
                 existing = self._ensure_imports(existing, pf, indent)
@@ -342,7 +353,7 @@ class AutoFixEngine:
         # to auto-suggest or route to manual review instead.
         ctx = self._file_context(pf)
         fix_code, explanation, confidence = self._llm_fix(finding, pf, target, line_num, fix_type, ctx)
-        if fix_code and not self._is_valid_fix(fix_code, indent, pf, line_num):
+        if fix_code and not self._is_valid_fix(fix_code, pf, line_num):
             print(f"[autofix] Discarding invalid LLM fix for "
                   f"{finding.get('file')}:{line_num}: {fix_code!r}")
             return "", "Generated fix failed syntax validation", "low"
@@ -451,12 +462,14 @@ class AutoFixEngine:
         import_lines = "\n".join(f"{indent}import {m}" for m in missing)
         return f"{import_lines}\n{fix_code}"
 
-    def _is_valid_fix(self, code: str, indent: str, pf=None, line_num: int = 0) -> bool:
+    def _is_valid_fix(self, code: str, pf=None, line_num: int = 0) -> bool:
         """
-        Best-effort syntax check: does this fix parse as valid Python when
-        dropped into a block at the target line's indentation? Catches the
-        failure mode where a fix jams multiple statements onto one
-        physical line with semicolons (e.g. an invalid one-line
+        Best-effort syntax check: does this fix parse as valid Python?
+        Wraps in `if True:` when the fix itself starts indented (its OWN
+        leading whitespace — not the original line's, which is often
+        zero precisely when zero indentation is the bug being fixed).
+        Catches the failure mode where a fix jams multiple statements
+        onto one physical line with semicolons (e.g. an invalid one-line
         try/except) instead of the multi-line block it actually needs.
 
         A fix that legitimately needs content from later, UNCHANGED lines
@@ -479,7 +492,7 @@ class AutoFixEngine:
         if not code.strip():
             return False
         try:
-            wrapped = ("if True:\n" + code) if indent else code
+            wrapped = ("if True:\n" + code) if _starts_indented(code) else code
             ast.parse(wrapped)
             return True
         except SyntaxError:
@@ -497,7 +510,7 @@ class AutoFixEngine:
 
         try:
             combined = code + "\n" + tail
-            wrapped = ("if True:\n" + combined) if indent else combined
+            wrapped = ("if True:\n" + combined) if _starts_indented(combined) else combined
             ast.parse(wrapped)
             return True
         except SyntaxError:
