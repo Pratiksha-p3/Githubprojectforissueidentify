@@ -366,6 +366,8 @@ class AutoFixEngine:
             rule_fix = self._ensure_imports(rule_fix, pf, indent)
             return rule_fix, self._explain(fix_type), "high"
 
+        blocked_line = self._blocked_by_next_line(rule_fix, lines, line_num) if rule_fix else None
+
         # 2. Reuse a fix the finding already carries (semgrep/ai_review/
         #    architecture/compliance guards already spent an LLM call on
         #    this, if it used one at all) — validate it, then use it
@@ -382,8 +384,26 @@ class AutoFixEngine:
                 confidence = "high" if existing == DELETE_LINE_SENTINEL else "medium"
                 existing = self._ensure_imports(existing, pf, indent)
                 return existing, explanation, confidence
+            blocked_line = blocked_line or (
+                self._blocked_by_next_line(existing, lines, line_num) if existing else None
+            )
             print(f"[autofix] Existing fix failed validation for "
                   f"{finding.get('file')}:{line_num}, falling back to LLM")
+
+        # This fix opens a block (ends with ':') but the very next line,
+        # as it currently exists in the file, isn't indented enough to
+        # be its body — meaning the REAL reason validation keeps failing
+        # is that a second, separate bug on that next line hasn't been
+        # fixed yet, not that this fix is wrong. No LLM retry can change
+        # that fact (it'd hit the identical wall), so say so directly
+        # instead of burning a call to end up back here with a vaguer
+        # message.
+        if blocked_line:
+            return "", (
+                f"This also requires line {blocked_line} to be corrected — its "
+                f"indentation doesn't match what this change needs. Check for a "
+                f"separate finding on that line and apply both suggestions together."
+            ), "low"
 
         # 3. LLM fallback — last resort, and validated before use. Given
         # whole-file context (imports already present, the enclosing
@@ -613,6 +633,38 @@ class AutoFixEngine:
                 return None
 
         return "\n".join(tail)
+
+    def _blocked_by_next_line(self, code: str, lines: list[str], line_num: int) -> int | None:
+        """
+        If `code` opens a new block (ends with ':') and the physical line
+        right after it — as it actually exists in the file right now —
+        isn't indented deeper than this fix's own line, that next line
+        can't serve as this block's body. Returns that line's 1-indexed
+        number so the caller can say why validation is failing in terms
+        a person can act on, instead of a generic "invalid fix". Two
+        lines each needing the other to be valid first is a real
+        (if unusual) shape: fixing either one in isolation, checked
+        against the file as it stands today, can't be verified — both
+        need to be applied together.
+        """
+        if not code:
+            return None
+        from analyzers.syntax_checker import _strip_comment
+
+        code_lines = code.splitlines()
+        last_line = code_lines[-1] if code_lines else ""
+        if not _strip_comment(last_line).rstrip().endswith(":"):
+            return None
+        if not (0 < line_num < len(lines)):
+            return None
+        next_line = lines[line_num]  # lines[] is 0-indexed; this is line_num+1 in 1-indexed terms
+        if not next_line.strip():
+            return None
+        block_indent = len(last_line) - len(last_line.lstrip(" "))
+        next_indent = len(next_line) - len(next_line.lstrip(" "))
+        if next_indent <= block_indent:
+            return line_num + 1
+        return None
 
     def _rule_fix(self, line, fix_type, indent):
         if fix_type == "env_var":

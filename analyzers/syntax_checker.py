@@ -33,6 +33,7 @@ def detect_syntax_errors(code, filename, max_errors=25):
             seen_lines.add(lineno)
 
             bad_line = lines[lineno - 1]
+            fix = _suggest_fix(lines, lineno, str(e.msg))
             findings.append({
                 "file": filename,
                 "line": lineno,
@@ -40,14 +41,29 @@ def detect_syntax_errors(code, filename, max_errors=25):
                 "category": "syntax",
                 "message": e.msg,
                 "bad_code": bad_line.strip(),
-                "fix": _suggest_fix(lines, lineno, str(e.msg)),
+                "fix": fix,
             })
 
             # Neutralize the offending line so re-parsing can surface
-            # other, independent errors elsewhere in the file. Using
-            # "pass" preserves line numbers for anything below it.
-            indent = len(lines[lineno - 1]) - len(lines[lineno - 1].lstrip())
-            lines[lineno - 1] = " " * indent + "pass  # [syntax error stubbed]"
+            # other, independent errors elsewhere in the file. Prefer
+            # substituting the actual suggested fix over a generic
+            # "pass" stub: unconditionally stubbing to "pass" can
+            # accidentally make a SECOND, real bug disappear instead of
+            # surfacing it — e.g. adding the missing ':' to a `for`/`if`
+            # header would (correctly) trigger "expected an indented
+            # block" on the next line if THAT line's indentation is also
+            # broken, but replacing the header with bare `pass` makes
+            # that next line a perfectly valid top-level statement on
+            # its own, silently hiding the second bug from this scan.
+            # Only trust the fix as a stand-in when it's a genuine
+            # correction, not the "needs manual review" fallback text
+            # (which wouldn't actually change anything and would just
+            # re-trigger the identical error at the identical line).
+            if fix and "needs manual review" not in fix:
+                lines[lineno - 1] = fix
+            else:
+                indent = len(bad_line) - len(bad_line.lstrip())
+                lines[lineno - 1] = " " * indent + "pass  # [syntax error stubbed]"
 
     return findings
 
