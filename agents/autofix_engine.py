@@ -276,6 +276,19 @@ class AutoFixEngine:
         if (finding.get("fix") or "").strip():
             return True, "existing_fix"
 
+        # No regex pattern matched and there's no pre-existing fix to
+        # reuse (including one that got discarded upstream for being
+        # prose instead of code) — that doesn't mean this can't be
+        # fixed, only that nothing generated a candidate yet. The
+        # category/keyword checks above already ruled out the cases
+        # that genuinely need human judgment; for everything else,
+        # "attempt to auto-fix every issue first" means asking the LLM
+        # fallback in _generate_fix() to write a real fix from scratch,
+        # with full file context, rather than giving up immediately.
+        line_num = finding.get("line", 0)
+        if pf and 0 < line_num <= len((pf.full_content or "").splitlines()):
+            return True, "llm_generate"
+
         return False, ""
 
     def _unfixable_reason(self, finding) -> str:
@@ -609,8 +622,12 @@ class AutoFixEngine:
         ctx = ctx or self._file_context(pf)
         snippet = self._context_snippet(ctx, line_num, lines)
         imports_block = "\n".join(ctx["imports"]) or "(none)"
-        prompt = f"""Fix this security issue. Return JSON only, no markdown.
+        category = finding.get("category", "issue")
+        prompt = f"""You are a senior software engineer fixing a real defect in production
+code — not offering a suggestion in prose, an actual replacement for the
+target line below. Return JSON only, no markdown.
 
+Category: {category}
 Issue: {finding.get('message', '')}
 Fix type: {fix_type}
 
@@ -639,7 +656,12 @@ Return exactly: {{"fixed_line": "<replacement code for the target line, as valid
         try:
             from agents.llm_client import chat_completion
             text = chat_completion(
-                system="You fix security vulnerabilities. Return JSON only, no markdown fences.",
+                system=(
+                    "You are a senior software engineer with 20 years of production "
+                    "experience. You fix real defects (security, runtime, logic, quality) "
+                    "with concrete, working code — never a prose description of what "
+                    "someone else should do. Return JSON only, no markdown fences."
+                ),
                 user=prompt,
                 temperature=0,
                 max_tokens=256,
