@@ -66,9 +66,22 @@ FIXABLE_PATTERNS = [
     {"id": "syntax-missing-colon", "pattern": r"^(def|if|for|while|class|except).*[^:]$",     "flags": 0, "fix_type": "add_colon"},
 ]
 
-UNFIXABLE_CATEGORIES = {"architecture", "performance", "docs"}
+
+# These are the ONLY findings routed to manual review before an attempt
+# is even made — reserved for what genuinely can't be safely inferred
+# without human context (a design call, or a security fix where a
+# confident-sounding but subtly wrong change is worse than no change).
+# Everything else attempts a real fix (rule-based, reused, or LLM-
+# generated) and lets the confidence-scoring gate in process_findings
+# decide whether that specific attempt is trustworthy enough to
+# auto-suggest — "docs", "performance", and "missing validation" (a
+# bounds/null check, usually) used to skip the attempt entirely despite
+# being exactly the kind of thing this engine is good at; they no
+# longer get a blanket exclusion, just the same confidence check as
+# everything else.
+UNFIXABLE_CATEGORIES = {"architecture"}
 UNFIXABLE_KEYWORDS = ["authentication bypass", "authorization", "csrf", "ssrf",
-                       "missing validation", "business logic", "race condition"]
+                       "business logic", "race condition"]
 
 # A generated fix only gets auto-suggested at this confidence or above;
 # anything lower is routed to manual review instead — "the system
