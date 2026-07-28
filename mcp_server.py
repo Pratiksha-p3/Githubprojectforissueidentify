@@ -585,36 +585,27 @@ async def _tool_check_complexity(code: str, filename: str) -> str:
 
 async def _tool_generate_tests(code: str, function_name: str, language: str) -> str:
     """Generate tests for a function."""
-    from groq import Groq
+    from agents.test_generator import TestGeneratorAgent
 
-    client = Groq(api_key=cfg.groq_api_key)
-    prompt = f"""Generate comprehensive pytest tests for this {language} function.
-
-Function name: {function_name}
-
-Code:
-```{language}
-{code}
-```
-
-Generate tests covering:
-1. Happy path
-2. Edge cases (empty, None, boundary values)
-3. Error cases
-4. Security cases (if applicable)
-
-Return ONLY the test code, no explanation."""
-
-    resp = client.chat.completions.create(
-        model       = cfg.review_model,
-        temperature = 0.1,
-        max_tokens  = 2048,
-        messages    = [
-            {"role": "system", "content": "You write pytest tests. Return ONLY test code."},
-            {"role": "user",   "content": prompt},
-        ],
-    )
-    return resp.choices[0].message.content.strip()
+    func = {
+        "name":       function_name,
+        "class":      "",
+        "filename":   f"snippet.{ {'python': 'py', 'javascript': 'js', 'typescript': 'ts'}.get(language, 'py') }",
+        "source":     code,
+        "args":       [],
+        "returns":    "",
+        "docstring":  "",
+        "language":   language,
+    }
+    result = TestGeneratorAgent()._generate_tests(func, None)
+    if result is None:
+        return json.dumps({"test_code": "", "test_cases": [], "estimated_coverage_gain": 0.0,
+                            "error": "Test generation failed — see server logs."})
+    return json.dumps({
+        "test_code":               result.test_code,
+        "test_cases":              result.test_cases,
+        "estimated_coverage_gain": result.estimated_coverage_gain,
+    })
 
 
 async def _tool_check_licenses(requirements: str, ecosystem: str) -> str:

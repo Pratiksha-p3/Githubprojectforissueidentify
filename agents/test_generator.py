@@ -287,7 +287,11 @@ Generate at least 4 test cases."""
             ).strip()
             text = re.sub(r'```[a-z]*\n?', '', text).strip('`').strip()
 
-            data = json.loads(text)
+            # strict=False: test_code is naturally multi-line, and the
+            # model embeds it with raw newlines rather than escaped \n —
+            # strict JSON parsing rejects unescaped control characters
+            # inside a string, which made this fail on every real response.
+            data = json.loads(text, strict=False)
 
             return GeneratedTest(
                 function_name            = func["name"],

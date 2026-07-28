@@ -361,8 +361,6 @@ def run_review(
 
         print("[app] Running Secret Scan...")
 
-        from mcp_tools.security_mcp import SecurityMCP
-
         scanner = SecretScanner()
         repo_path = getattr(pr_ctx, "repo_path", ".")
 
