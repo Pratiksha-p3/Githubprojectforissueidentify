@@ -59,6 +59,29 @@ def detect_language(filename: str) -> str:
     return EXTENSION_MAP.get(Path(filename).suffix.lower(), "unknown")
 
 
+def _reconstruct_new_file_from_patch(patch: str) -> str:
+    """
+    For a brand-new file, the diff patch's hunk *is* the complete file —
+    every line is a '+' addition against nothing. Strips the hunk
+    header(s) and '+' prefixes to recover the real source text. Only
+    valid when every content line in the patch is prefixed '+' (true for
+    a new file, false for a modified one — a modified file's patch is a
+    partial diff with unchanged context lines and possibly '-' removals,
+    which this can't and shouldn't try to turn into "the file").
+    """
+    lines = []
+    for line in patch.splitlines():
+        if line.startswith("@@"):
+            continue
+        if line.startswith("+"):
+            lines.append(line[1:])
+        elif line.startswith("-"):
+            # A '-' line means this wasn't actually a clean new-file
+            # patch (or GitHub truncated it) — bail rather than guess.
+            return ""
+    return "\n".join(lines)
+
+
 class GitHubAuth:
     def __init__(self):
         self._token = ""
@@ -140,23 +163,43 @@ class GitHubLoader:
             patch = rf.get("patch", "")
 
             if not content:
-                print(f"  [loader] Using patch fallback for {fname}")
-                content = patch
-               
+                # A raw diff patch is NOT source code — it has hunk
+                # headers ("@@ -0,0 +1,6 @@") and +/- line prefixes mixed
+                # into what would otherwise be real lines, so handing it
+                # to a syntax/AST-based checker produces exactly what
+                # you'd expect from parsing diff syntax as Python:
+                # nonsense findings anchored to the wrong lines ("Detected:
+                # @@ -0,0 +1,6 @@ ... invalid syntax"). For a brand-new
+                # file, the patch happens to BE the complete file (every
+                # line is a '+' addition, nothing to reconstruct around),
+                # so it can be safely recovered by stripping the diff
+                # formatting. For anything else, the patch is only a
+                # partial hunk of a larger file — there's no reliable way
+                # to recover the real content from it, so leave it empty
+                # and let each analyzer's own "no content" guard skip the
+                # file cleanly instead of analyzing garbage.
+                if rf.get("status") == "added":
+                    print(f"  [loader] Content fetch failed for {fname} — "
+                          f"reconstructing from patch (new file)")
+                    content = _reconstruct_new_file_from_patch(patch)
+                else:
+                    print(f"  [loader] Content fetch failed for {fname} — "
+                          f"leaving empty (patch is a partial diff, not the full file)")
+                    content = ""
 
             ctx.files.append(
-                        PRFile(
-        filename=fname,
-        status=rf.get("status", "modified"),
-        additions=adds,
-        deletions=dels,
-        patch=patch,
-        full_content=content,
-        language=detect_language(fname),
-    )
-)
-        print(f"[loader] Loaded: {fname}")
-        print(f"[loader] Content length: {len(str(content))}")    
+                PRFile(
+                    filename=fname,
+                    status=rf.get("status", "modified"),
+                    additions=adds,
+                    deletions=dels,
+                    patch=patch,
+                    full_content=content,
+                    language=detect_language(fname),
+                )
+            )
+            print(f"  [loader] Loaded: {fname} (content length: {len(content)})")
+
         print(f"  [loader] PR #{pr_number}: {len(ctx.files)} files loaded")
         return ctx
 
