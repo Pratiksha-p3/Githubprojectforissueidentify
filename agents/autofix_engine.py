@@ -39,6 +39,21 @@ def _starts_indented(code: str) -> bool:
     return first_line[:1] in (" ", "\t")
 
 
+def _first_word(code: str) -> str:
+    first_line = code.splitlines()[0] if code else ""
+    m = re.match(r"\s*([A-Za-z_]+)", first_line)
+    return m.group(1) if m else ""
+
+
+# elif/else/except/finally can never parse standalone, no matter how
+# they're wrapped — they're only legal immediately after their matching
+# opener (if/for/while, or specifically try for except/finally), and
+# that opener is an earlier, UNCHANGED line, not part of the fix being
+# validated. Checked against a synthetic matching opener instead.
+_CONTINUATION_OPENERS = {"elif": "if True:", "else": "if True:",
+                          "except": "try:", "finally": "try:"}
+
+
 FIXABLE_PATTERNS = [
     {"id": "hardcoded-secret", "pattern": r'(password|passwd|pwd|secret|api_key|apikey|token|db_pass)\s*=\s*["\'][^"\']+["\']', "flags": re.IGNORECASE, "fix_type": "env_var"},
     {"id": "sql-fstring",      "pattern": r'\.execute\s*\(\s*f["\']',                        "flags": 0, "fix_type": "parameterized_query"},
@@ -504,6 +519,21 @@ class AutoFixEngine:
             return True  # "delete this line" — trivially valid, nothing to parse
         if not code.strip():
             return False
+
+        first_word = _first_word(code)
+        if first_word in _CONTINUATION_OPENERS:
+            import textwrap
+            dedented = textwrap.dedent(code).rstrip()
+            if not dedented.endswith(":"):
+                return False  # malformed — a continuation keyword must open a block
+            opener = _CONTINUATION_OPENERS[first_word]
+            synthetic = f"{opener}\n    pass\n{dedented}\n    pass"
+            try:
+                ast.parse(synthetic)
+                return True
+            except SyntaxError:
+                return False
+
         try:
             wrapped = ("if True:\n" + code) if _starts_indented(code) else code
             ast.parse(wrapped)
