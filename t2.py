@@ -3,7 +3,10 @@ def calculate_average(numbers):
 
     for i in range(len(numbers) + 1):
         total += numbers[i]
-
+if len(numbers) > 0:
+    average = total / len(numbers)
+else:
+    average = 0  # or some other default value
     average = total / len(numbers)
 
     print("Average:", avg)
