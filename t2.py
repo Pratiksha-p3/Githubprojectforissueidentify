@@ -7,7 +7,7 @@ if len(numbers) > 0:
     average = total / len(numbers)
 else:
     average = 0  # or some other default value
-    average = total / len(numbers)
+print("Average:", average)
 
     print("Average:", avg)
 
