@@ -5,6 +5,7 @@ from analyzers.index_bounds_checker import detect_index_bounds_issues
 from analyzers.division_guard_checker import detect_unguarded_division
 from analyzers.file_exists_checker import detect_unguarded_file_open
 from analyzers.dict_key_checker import detect_unguarded_dict_access
+from analyzers.http_error_checker import detect_unguarded_http_calls
 
 # The deterministic checks below used to be four bare regexes with
 # hardcoded, non-contextual fix templates ("if b == 0: ...; return a / b",
@@ -28,7 +29,8 @@ def detect_runtime_errors(code, filename):
     seen_lines = set()
 
     for detector in (detect_index_bounds_issues, detect_unguarded_division,
-                     detect_unguarded_file_open, detect_unguarded_dict_access):
+                     detect_unguarded_file_open, detect_unguarded_dict_access,
+                     detect_unguarded_http_calls):
         for f in detector(code, filename):
             findings.append(f)
             seen_lines.add(f["line"])

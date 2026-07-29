@@ -24,19 +24,32 @@ def _mode_of(call: ast.Call) -> str:
     return "r"  # open()'s own default
 
 
+def _exception_names(h_type) -> list[str]:
+    """Handler exception name(s) — handles bare (`OSError`) and dotted
+    (`os.error`, unlikely but possible) forms, plus tuples."""
+    if isinstance(h_type, ast.Name):
+        return [h_type.id]
+    if isinstance(h_type, ast.Attribute):
+        return [h_type.attr]
+    if isinstance(h_type, ast.Tuple):
+        names = []
+        for e in h_type.elts:
+            if isinstance(e, ast.Name):
+                names.append(e.id)
+            elif isinstance(e, ast.Attribute):
+                names.append(e.attr)
+        return names
+    return []
+
+
 def _already_guarded(parent_map: dict, call_node: ast.AST) -> bool:
     """Already inside a try/except that catches FileNotFoundError/OSError/IOError."""
     n = parent_map.get(id(call_node))
     while n is not None:
         if isinstance(n, ast.Try):
-            for h in n.handlers:
-                names = []
-                if isinstance(h.type, ast.Name):
-                    names = [h.type.id]
-                elif isinstance(h.type, ast.Tuple):
-                    names = [e.id for e in h.type.elts if isinstance(e, ast.Name)]
-                if any(nm in ("FileNotFoundError", "OSError", "IOError") for nm in names):
-                    return True
+            names = [nm for h in n.handlers for nm in _exception_names(h.type)]
+            if any(nm in ("FileNotFoundError", "OSError", "IOError") for nm in names):
+                return True
         n = parent_map.get(id(n))
     return False
 

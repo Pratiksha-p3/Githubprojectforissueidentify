@@ -45,6 +45,24 @@ def _param_names(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return names
 
 
+def _exception_names(h_type) -> list[str]:
+    """Handler exception name(s) — handles bare (`KeyError`) and dotted
+    (e.g. `custom.errors.KeyError`) forms, plus tuples."""
+    if isinstance(h_type, ast.Name):
+        return [h_type.id]
+    if isinstance(h_type, ast.Attribute):
+        return [h_type.attr]
+    if isinstance(h_type, ast.Tuple):
+        names = []
+        for e in h_type.elts:
+            if isinstance(e, ast.Name):
+                names.append(e.id)
+            elif isinstance(e, ast.Attribute):
+                names.append(e.attr)
+        return names
+    return []
+
+
 def _already_guarded(func: ast.AST, var_name: str, key: str) -> bool:
     """Any `key in var` / `key not in var` test, a `.get(` call on var,
     or a surrounding try/except (KeyError | Exception), anywhere in the
@@ -66,14 +84,9 @@ def _already_guarded(func: ast.AST, var_name: str, key: str) -> bool:
                     and isinstance(node.func.value, ast.Name) and node.func.value.id == var_name):
                 return True
         if isinstance(node, ast.Try):
-            for h in node.handlers:
-                names = []
-                if isinstance(h.type, ast.Name):
-                    names = [h.type.id]
-                elif isinstance(h.type, ast.Tuple):
-                    names = [e.id for e in h.type.elts if isinstance(e, ast.Name)]
-                if any(nm in ("KeyError", "Exception") for nm in names):
-                    return True
+            names = [nm for h in node.handlers for nm in _exception_names(h.type)]
+            if any(nm in ("KeyError", "Exception") for nm in names):
+                return True
     return False
 
 
