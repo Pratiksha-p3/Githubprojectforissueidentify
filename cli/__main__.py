@@ -23,6 +23,13 @@ import inspect
 import importlib
 import sys
 
+# Windows consoles default to cp1252, which can't encode the arrows/symbols
+# (→, ≥, emoji) that several agents print — crashing mid-review with a
+# UnicodeEncodeError. Force UTF-8 on stdout/stderr before anything else runs.
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 COMMANDS = {
     "review":         "app",
     "analyze":        "analyze_file",

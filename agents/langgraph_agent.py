@@ -622,7 +622,7 @@ def _call_llm_safe(prompt: str) -> dict:
         is_rate = "rate_limit" in str(e) or "429" in str(e)
         return {
             "findings": [],
-            "summary":  f"[RATE LIMITED] {e}" if is_rate else f"Failed: {e}",
+            "summary":  f"[RATE LIMITED] {e}" if is_rate else f"Review failed: {e}",
             "overall_score": 0.5 if is_rate else 0.0,
             "test_coverage_gaps": [],
         }
