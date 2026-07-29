@@ -4,7 +4,7 @@ class Student:
         self.name = name
 
     def display(self):
-    print("Name:", self.nam)
+        print("Name:", self.nam)
         print("Age:", self.age)
 
 student = Student("John")
