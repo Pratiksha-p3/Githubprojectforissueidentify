@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     review_model: str = "llama-3.1-8b-instant"
+    openai_model: str = "gpt-4o"
+    anthropic_model: str = "claude-sonnet-4-20250514"
     max_review_tokens: int = 4000
 
     # GitHub App (Stage 5)

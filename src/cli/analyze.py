@@ -3,8 +3,10 @@ src/cli/analyze.py
 
 `review-cli analyze <file>` — runs every deterministic checker in
 src/analyzers/registry.py against a single local file and prints the
-findings. No LLM, no network calls, no GitHub — this is the fastest way
-to manually verify a checker's behavior against a real file.
+findings. No LLM, no network calls, no GitHub by default — this is the
+fastest way to manually verify a checker's behavior against a real file.
+Pass --llm to also run the Stage 2 LLM supplement (requires a configured
+provider key).
 """
 from __future__ import annotations
 
@@ -22,14 +24,14 @@ _SEVERITY_ICON = {
 }
 
 
-def analyze_file(filepath: str) -> int:
+def analyze_file(filepath: str, *, include_llm: bool = False) -> int:
     path = Path(filepath)
     if not path.exists():
         print(f"File not found: {filepath}")
         return 1
 
     code = path.read_text(encoding="utf-8")
-    findings = run_all_checkers(code, str(path))
+    findings = run_all_checkers(code, str(path), include_llm=include_llm)
 
     print(f"\n{'=' * 60}")
     print(f"  File Analysis: {path}")
@@ -54,8 +56,12 @@ def analyze_file(filepath: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="review-cli analyze")
     parser.add_argument("file", help="Path to the file to analyze")
+    parser.add_argument(
+        "--llm", action="store_true",
+        help="Also run the LLM supplement pass (requires a configured provider key)",
+    )
     args = parser.parse_args(argv)
-    return analyze_file(args.file)
+    return analyze_file(args.file, include_llm=args.llm)
 
 
 if __name__ == "__main__":
