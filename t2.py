@@ -1,7 +1,7 @@
 def calculate_average(numbers):
     total = 0
 
-    for i in range(len(numbers) + 1):
+for i in range(len(numbers)):
         total += numbers[i]
 if len(numbers) > 0:
     average = total / len(numbers)
