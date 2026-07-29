@@ -1,11 +1,11 @@
-def calculate_average(numbers):
-    total = 0
+class Student:
 
-    for i in range(len(numbers) + 1):
-        total += numbers[i]
+    def __init__(self, name, age)
+        self.name = name
 
-    average = total / len(numbers)
+    def display(self):
+    print("Name:", self.nam)
+        print("Age:", self.age)
 
-    print("Average:", avg)
-
-calculate_average([10, 20, 30])
+student = Student("John")
+student.show()
