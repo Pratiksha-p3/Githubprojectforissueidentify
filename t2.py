@@ -8,4 +8,4 @@ print("Name:", self.name)
         print("Age:", self.age)
 
 student = Student("John")
-student.show()
+student.display()
