@@ -372,15 +372,22 @@ def publisher_node(state: AdvancedReviewState) -> AdvancedReviewState:
 
     critical_count = sum(1 for f in findings if f.get("severity") == "critical")
 
+    # A file whose review didn't actually run (rate limited / API
+    # failure) reports 0 findings — identical, from a pure finding-count
+    # view, to a file that was reviewed and found clean. Approving on
+    # that basis means "we don't know" gets silently treated as "passed",
+    # so this has to gate approval directly, not just skip the summary call.
+    any_failed = any(
+        "RATE LIMITED" in fr["review"].get("summary", "")
+        or "Review failed" in fr["review"].get("summary", "")
+        for fr in file_reviews
+    )
+
     # Feature 4: PR approval gate
-    approved = overall_score >= 0.85 and critical_count == 0
+    approved = not any_failed and overall_score >= 0.85 and critical_count == 0
 
     # Executive summary
     executive = {}
-    any_failed = any(
-        "RATE LIMITED" in fr["review"].get("summary", "")
-        for fr in file_reviews
-    )
     if not any_failed:
         try:
             prompt    = build_summary_prompt(file_reviews, state["pr_title"])

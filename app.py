@@ -765,7 +765,24 @@ def run_review(
     report["remaining_warning"] = remaining_warning
 
     # Gate decision
-    if remaining_critical > 0:
+    from agents.pr_gate import review_incomplete_reason
+    incomplete_reason = review_incomplete_reason(report)
+
+    if incomplete_reason:
+        # The LLM review didn't actually run for at least one file (rate
+        # limited / API failure) — 0 findings here means "we don't know",
+        # not "clean". Counting findings alone can't tell those apart, so
+        # this has to be checked first: without it, a rate-limited run
+        # reports 0 critical/0 warning findings and falls through to
+        # APPROVE below, silently treating "never reviewed" as "passed
+        # review" — which is exactly what happened on PR #4 (score 0.5,
+        # 0 findings, "[RATE LIMITED]" in the summary, approved anyway).
+        report["gate_decision"] = "REVIEW_REQUIRED"
+        report["gate_decision_reason"] = (
+            f"AI review did not complete for at least one file — {incomplete_reason} "
+            f"Re-run the review once the underlying issue clears; do not treat this as a clean pass."
+        )
+    elif remaining_critical > 0:
         report["gate_decision"] = "BLOCK"
 
     elif remaining_warning > 5:

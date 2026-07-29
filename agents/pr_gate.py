@@ -23,6 +23,29 @@ from dataclasses import dataclass
 
 REPORTS_DIR = Path("./reports")
 
+_INCOMPLETE_MARKERS = ("RATE LIMITED", "Review failed")
+
+
+def review_incomplete_reason(report: dict) -> str | None:
+    """
+    Detects when the LLM review didn't actually run for at least one
+    file (rate limited, API error, ...) instead of genuinely finding
+    nothing — both look IDENTICAL in raw finding counts (zero either
+    way), so a gate decision based purely on counting findings can't
+    tell "clean" from "never actually reviewed" apart. That gap is what
+    let a rate-limited run report 0 findings and get silently approved
+    for code that didn't even run. Returns a short human-readable
+    reason when incomplete, None when the review genuinely completed.
+    """
+    for fr in report.get("files", []) or []:
+        summary = (fr.get("review") or {}).get("summary") or ""
+        if any(m in summary for m in _INCOMPLETE_MARKERS):
+            return summary[:200]
+    top_summary = report.get("summary", "") or ""
+    if any(m in top_summary for m in _INCOMPLETE_MARKERS):
+        return top_summary[:200]
+    return None
+
 
 @dataclass
 class GateResult:
@@ -76,7 +99,25 @@ class PRGate:
         # Load previous review
         prev = self._load_previous_review(repo, pr_number)
 
-        if prev:
+        incomplete_reason = review_incomplete_reason(report)
+        if incomplete_reason:
+            # The review didn't actually run for at least one file (rate
+            # limited / API failure) — 0 findings here means "unknown",
+            # not "clean". Never let that silently unblock a merge: block
+            # with a reason a human can act on (re-run once the
+            # underlying issue clears), the same way a real critical
+            # finding would, rather than approving on missing information.
+            gate_result = GateResult(
+                blocked         = True,
+                reason          = f"AI review did not complete — {incomplete_reason}",
+                resolved_issues = [],
+                new_issues      = [],
+                still_present   = [],
+                score_before    = prev.get("overall_score", 0.0) if prev else 0.0,
+                score_after     = overall_score,
+            )
+            has_changes = True
+        elif prev:
             gate_result = self._compare_and_decide(prev, report)
             # Nothing resolved and nothing new since the last evaluation —
             # same blocked/approved state, same reason. Re-posting the
