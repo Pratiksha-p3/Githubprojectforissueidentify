@@ -1,6 +1,11 @@
-for i in range(5)
-print(numbers[i])
+def calculate_average(numbers)
+    total = 0
 
-numbers = [10, 20, 30]
+    for i in range(len(numbers) + 1):
+    total += numbers[i]
 
-print("Done")
+    average = total / len(numbers)
+
+    print("Average:", avg)
+
+calculate_average([10, 20, 30])
