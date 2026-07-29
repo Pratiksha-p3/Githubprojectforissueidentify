@@ -1,0 +1,33 @@
+# Local dev/staging substitute for real cloud infrastructure (see the
+# rewrite plan's "infra substitutions" section). Services are stubbed here
+# in Stage 0 and given real working config/volumes starting Stage 4
+# (redis, postgres) and Stage 6 (chroma) — listed now so the compose file
+# grows incrementally instead of appearing all at once later.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_code_review
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+volumes:
+  postgres_data:
+  chroma_data:

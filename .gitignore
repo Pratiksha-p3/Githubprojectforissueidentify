@@ -1,16 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Env / secrets
 .env
 secrets/
-*.pem
-venv/
-__pycache__/
-*.pyc
-vectordb/chroma_data/
-gitleaks.exe
-*.sqlite3
 
-vectordb/repo_index_cache.json
-vectordb/repo_index.json
-vectordb/memory.json
-vectordb/skill_profiles.json
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Data / local infra
+chroma_data/
+*.sqlite3
+postgres_data/
+redis_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reports (generated at runtime, not source)
 reports/*.json
-*_analysis.json
