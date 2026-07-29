@@ -2,7 +2,7 @@ def calculate_average(numbers):
     total = 0
 
 for i in range(len(numbers)):
-total += numbers[i]
+    total += numbers[i]
 if i >= len(numbers):
     break
 if len(numbers) > 0:
