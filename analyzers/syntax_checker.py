@@ -206,6 +206,34 @@ def _is_simple_stmt(node: ast.AST) -> bool:
     return not any(getattr(node, f, None) for f in _BODY_FIELDS) and not getattr(node, "handlers", None)
 
 
+_METHOD_DEF_RE = re.compile(r"(async\s+)?def\s+\w+\s*\(\s*(self|cls)\b")
+
+
+def _enclosing_class_method_indent(tree: ast.AST, lineno: int) -> int | None:
+    """
+    Indentation of an enclosing class's existing methods — used when the
+    target line looks like a method definition (`def foo(self, ...):`
+    or `def foo(cls, ...):`). A bare `def foo(self):` is essentially
+    never intentional at module level, so if the file contains a class
+    whose body doesn't yet reach this line, the line overwhelmingly
+    means "this belongs to that class" — regardless of what the
+    immediately preceding statement suggests, which matters when THAT
+    statement is itself the bug (e.g. a stray line that wrongly dedented
+    out of the class right before this one, making the general
+    last-logical-statement heuristic copy the wrong indent forward).
+    """
+    best = None  # (last_body_end, class_node)
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.ClassDef) and node.body):
+            continue
+        last_body_end = max(getattr(n, "end_lineno", n.lineno) for n in node.body)
+        if last_body_end < lineno and (best is None or last_body_end > best[0]):
+            best = (last_body_end, node)
+    if best is None:
+        return None
+    return best[1].body[0].col_offset
+
+
 def _ast_expected_indent(lines: list[str], lineno: int) -> int | None:
     """
     Real structure-aware version of the indent calculation: parses
@@ -253,6 +281,11 @@ def _ast_expected_indent(lines: list[str], lineno: int) -> int | None:
         enclosing = parent_map.get(id(last_stmt))
         indent = getattr(enclosing, "col_offset", None)
         return indent if indent is not None else 0
+
+    if _METHOD_DEF_RE.match(current_stripped):
+        class_indent = _enclosing_class_method_indent(tree, lineno)
+        if class_indent is not None:
+            return class_indent
 
     return last_stmt.col_offset
 

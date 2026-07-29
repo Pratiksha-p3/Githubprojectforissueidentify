@@ -366,7 +366,8 @@ class AutoFixEngine:
             rule_fix = self._ensure_imports(rule_fix, pf, indent)
             return rule_fix, self._explain(fix_type), "high"
 
-        blocked_line = self._blocked_by_next_line(rule_fix, lines, line_num) if rule_fix else None
+        blocked_by_next = self._blocked_by_next_line(rule_fix, lines, line_num) if rule_fix else None
+        blocked_by_prev = self._breaks_on_real_predecessor(rule_fix, lines, line_num) if rule_fix else None
 
         # 2. Reuse a fix the finding already carries (semgrep/ai_review/
         #    architecture/compliance guards already spent an LLM call on
@@ -384,8 +385,11 @@ class AutoFixEngine:
                 confidence = "high" if existing == DELETE_LINE_SENTINEL else "medium"
                 existing = self._ensure_imports(existing, pf, indent)
                 return existing, explanation, confidence
-            blocked_line = blocked_line or (
+            blocked_by_next = blocked_by_next or (
                 self._blocked_by_next_line(existing, lines, line_num) if existing else None
+            )
+            blocked_by_prev = blocked_by_prev or (
+                self._breaks_on_real_predecessor(existing, lines, line_num) if existing else None
             )
             print(f"[autofix] Existing fix failed validation for "
                   f"{finding.get('file')}:{line_num}, falling back to LLM")
@@ -397,12 +401,22 @@ class AutoFixEngine:
         # fixed yet, not that this fix is wrong. No LLM retry can change
         # that fact (it'd hit the identical wall), so say so directly
         # instead of burning a call to end up back here with a vaguer
-        # message.
-        if blocked_line:
+        # message. Same idea in the other direction: this fix needs to be
+        # indented, but the real line right before it can't support that
+        # (doesn't open a block, isn't itself deep enough) — meaning THAT
+        # line needs fixing too before this one can actually apply.
+        if blocked_by_next:
             return "", (
-                f"This also requires line {blocked_line} to be corrected — its "
+                f"This also requires line {blocked_by_next} to be corrected — its "
                 f"indentation doesn't match what this change needs. Check for a "
                 f"separate finding on that line and apply both suggestions together."
+            ), "low"
+        if blocked_by_prev:
+            return "", (
+                f"This depends on line {blocked_by_prev} being corrected first — as "
+                f"that line currently stands, it can't support this one being indented "
+                f"under it. Check for a separate finding on that line and apply both "
+                f"suggestions together."
             ), "low"
 
         # 3. LLM fallback — last resort, and validated before use. Given
@@ -570,9 +584,28 @@ class AutoFixEngine:
         try:
             wrapped = ("if True:\n" + code) if _starts_indented(code) else code
             ast.parse(wrapped)
-            return True
+            isolated_ok = True
         except SyntaxError:
-            pass
+            isolated_ok = False
+
+        if isolated_ok:
+            # The synthetic `if True:` wrapper supplies a fake block
+            # opener that the REAL file might not actually have right
+            # before this line — so a fix can be well-formed in
+            # isolation and still be unpostable, if the real preceding
+            # line can't support this indent (doesn't end with ':' and
+            # isn't itself at an equal-or-deeper level). Confirmed this
+            # exact failure mode: a correctly re-indented `def method
+            # (self):` validated fine standalone, but the real line
+            # before it in the file was an unrelated statement sitting
+            # at column 0 — inserting an indented line right after that
+            # is "unexpected indent" no synthetic wrapper would catch.
+            if pf is not None and line_num:
+                real_lines = (pf.full_content or "").splitlines()
+                if self._breaks_on_real_predecessor(code, real_lines, line_num):
+                    isolated_ok = False
+            if isolated_ok:
+                return True
 
         if pf is None or not line_num:
             return False
@@ -588,9 +621,44 @@ class AutoFixEngine:
             combined = code + "\n" + tail
             wrapped = ("if True:\n" + combined) if _starts_indented(combined) else combined
             ast.parse(wrapped)
-            return True
         except SyntaxError:
             return False
+
+        if self._breaks_on_real_predecessor(code, lines, line_num):
+            return False
+        return True
+
+    def _breaks_on_real_predecessor(self, code: str, lines: list[str], line_num: int) -> int | None:
+        """
+        Returns the 1-indexed line number of the real preceding line
+        that conflicts with inserting `code` here, or None if there's
+        no conflict. `code` is indented (needs SOME enclosing block)
+        but the real previous non-blank line neither opens one (ends
+        with ':') nor sits at an equal-or-deeper indent (a plausible
+        sibling or dedent target). That's exactly the shape of
+        "unexpected indent": Python can only indent deeper right after
+        a line that ends in ':' — a synthetic `if True:` wrapper
+        supplies a fake one of those, so it can't catch a fix that's
+        well-formed on its own but structurally impossible where it
+        actually sits (e.g. because THAT line needs its own, separate
+        fix applied too).
+        """
+        if not _starts_indented(code):
+            return None
+        from analyzers.syntax_checker import _strip_comment
+
+        code_indent = len(code) - len(code.lstrip(" "))
+        for i in range(line_num - 2, -1, -1):
+            if i >= len(lines):
+                continue
+            text = _strip_comment(lines[i]).rstrip()
+            if not text.strip():
+                continue
+            prev_indent = len(lines[i]) - len(lines[i].lstrip(" "))
+            if text.endswith(":") or prev_indent >= code_indent:
+                return None
+            return i + 1  # shallower indent, no ':' — can't support this indent
+        return None
 
     def _lookahead_context(self, code: str, lines: list[str], line_num: int) -> str | None:
         """
