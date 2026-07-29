@@ -16,6 +16,9 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
+[project.scripts]
+review-cli = "src.cli.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.2",
