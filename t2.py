@@ -11,6 +11,6 @@ else:
     average = 0  # or some other default value
 print("Average:", average)
 print("Average:", average)  # Use the correct variable name
-    print("Average:", avg)
+print("Average:", avg)
 
 calculate_average([10, 20, 30])
