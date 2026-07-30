@@ -23,11 +23,19 @@ already catches SyntaxError internally and returns []) — otherwise a file
 that doesn't even parse would look identical to "reviewed everything,
 found 0 issues", which is the exact same class of bug ReviewStatus exists
 to prevent, just one level earlier.
+
+use_multi_agent (Stage 11, opt-in, default False) swaps the single
+runtime/logic LLM supplement for src/agents/coordinator.py's four
+specialized agents (runtime/logic, security, style, test_coverage).
+Off by default because it multiplies LLM calls per file 4x — a real
+cost/rate-limit concern, not something every review should pay for
+without an explicit choice to do so.
 """
 from __future__ import annotations
 
 import ast
 
+from src.agents.coordinator import run_all_agents
 from src.agents.llm_supplement import get_llm_findings_with_status
 from src.analyzers.registry import run_deterministic_checkers
 from src.core.grounding import is_trustworthy
@@ -41,6 +49,7 @@ def review_code(
     repo: str,
     commit_sha: str,
     include_llm: bool = True,
+    use_multi_agent: bool = False,
 ) -> ReviewResult:
     try:
         ast.parse(code)
@@ -66,7 +75,10 @@ def review_code(
     status = ReviewStatus.COMPLETED
 
     if include_llm:
-        llm_findings, llm_succeeded = get_llm_findings_with_status(code, filename)
+        if use_multi_agent:
+            llm_findings, llm_succeeded = run_all_agents(code, filename)
+        else:
+            llm_findings, llm_succeeded = get_llm_findings_with_status(code, filename)
         findings.extend(f for f in llm_findings if is_trustworthy(f, code))
         if not llm_succeeded:
             status = ReviewStatus.DEGRADED

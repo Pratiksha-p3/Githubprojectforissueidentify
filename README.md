@@ -6,8 +6,8 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 10 — secrets abstraction + audit log.** See the
-assistant's staged roadmap for what's next.
+**Current stage: Stage 11 — multi-agent specialization + guard-LLM.**
+See the assistant's staged roadmap for what's next.
 
 ## Running tests locally
 
@@ -48,6 +48,18 @@ review-cli review <file>             # full orchestrator + PR-gate decision
 review-cli review <file> --no-llm    # deterministic-only, no API key needed
 review-cli index <directory>         # index a local directory into the RAG vector store
 ```
+
+## Multi-agent review (opt-in, src/agents/coordinator.py)
+
+`review_code(..., use_multi_agent=True)` swaps the single runtime/logic
+LLM pass for four specialized agents (runtime/logic, security, style,
+test_coverage) — `False` by default, since it multiplies LLM calls per
+file 4x (a real cost/rate-limit concern, not a decision to make silently
+on every review's behalf). `src/agents/guard_agent.py` is a separate,
+also-opt-in secondary LLM pass that checks findings themselves for signs
+of prompt-injection manipulation before they're posted anywhere — wire
+it in wherever that extra scrutiny is worth the added LLM call (e.g.
+before publishing to GitHub for a high-security repo).
 
 ## Semgrep (optional, src/tools/semgrep_runner.py)
 

@@ -73,6 +73,73 @@ def test_include_llm_false_never_calls_llm(monkeypatch):
     assert result.status == ReviewStatus.COMPLETED
 
 
+def test_use_multi_agent_calls_coordinator_instead_of_single_agent(monkeypatch):
+    single_agent_calls = []
+    multi_agent_calls = []
+
+    monkeypatch.setattr(
+        orchestrator,
+        "get_llm_findings_with_status",
+        lambda code, filename: (single_agent_calls.append(1), ([], True))[1],
+    )
+    monkeypatch.setattr(
+        orchestrator,
+        "run_all_agents",
+        lambda code, filename: (multi_agent_calls.append(1), ([], True))[1],
+    )
+
+    orchestrator.review_code(
+        "def add(a, b):\n    return a + b\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+        use_multi_agent=True,
+    )
+
+    assert multi_agent_calls == [1]
+    assert single_agent_calls == []
+
+
+def test_use_multi_agent_false_still_uses_single_agent_by_default(monkeypatch):
+    single_agent_calls = []
+    multi_agent_calls = []
+
+    monkeypatch.setattr(
+        orchestrator,
+        "get_llm_findings_with_status",
+        lambda code, filename: (single_agent_calls.append(1), ([], True))[1],
+    )
+    monkeypatch.setattr(
+        orchestrator,
+        "run_all_agents",
+        lambda code, filename: (multi_agent_calls.append(1), ([], True))[1],
+    )
+
+    orchestrator.review_code(
+        "def add(a, b):\n    return a + b\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+    )
+
+    assert single_agent_calls == [1]
+    assert multi_agent_calls == []
+
+
+def test_use_multi_agent_degraded_when_coordinator_reports_failure(monkeypatch):
+    monkeypatch.setattr(orchestrator, "run_all_agents", lambda code, filename: ([], False))
+
+    result = orchestrator.review_code(
+        "def add(a, b):\n    return a + b\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+        use_multi_agent=True,
+    )
+
+    assert result.status == ReviewStatus.DEGRADED
+
+
 def test_review_code_is_idempotent_for_identical_input(monkeypatch):
     monkeypatch.setattr(
         orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], True)

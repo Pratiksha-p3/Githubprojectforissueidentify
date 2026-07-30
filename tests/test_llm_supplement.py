@@ -1,138 +1,56 @@
 import json
 
-from src.agents import llm_supplement
-from src.core.models import ConfidenceTier
+from src.agents import _llm_finding_agent, llm_supplement
 
 
-def test_parses_valid_llm_response_into_findings(monkeypatch):
+def test_wires_runtime_and_logic_as_the_valid_categories():
+    assert llm_supplement._VALID_CATEGORIES == {"runtime", "logic"}
+
+
+def test_get_llm_findings_calls_run_finding_agent_with_correct_source_name(monkeypatch):
+    captured = {}
+
+    def fake_run_finding_agent(code, filename, **kwargs):
+        captured.update(kwargs)
+        return [], True
+
+    monkeypatch.setattr(llm_supplement, "run_finding_agent", fake_run_finding_agent)
+
+    llm_supplement.get_llm_findings("code", "app.py")
+
+    assert captured["source_name"] == "llm_supplement"
+    assert captured["valid_categories"] == {"runtime", "logic"}
+
+
+def test_end_to_end_parses_a_real_response_through_the_shared_agent(monkeypatch):
     response = json.dumps(
         {
             "findings": [
                 {
-                    "line": 2,
-                    "category": "logic",
-                    "severity": "warning",
-                    "message": "inverted condition",
-                    "bad_code": "if x > 0: return False",
-                    "fix": "if x <= 0: return False",
+                    "line": 3,
+                    "category": "runtime",
+                    "severity": "critical",
+                    "message": "division by zero",
                 }
             ]
         }
     )
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: response)
+    monkeypatch.setattr(_llm_finding_agent, "call_llm", lambda **kwargs: response)
 
-    findings = llm_supplement.get_llm_findings("code here", "app.py")
+    findings = llm_supplement.get_llm_findings("code", "app.py")
 
     assert len(findings) == 1
-    assert findings[0].line == 2
-    assert findings[0].confidence == ConfidenceTier.LOW
     assert findings[0].source == "llm_supplement"
+    assert findings[0].line == 3
 
 
-def test_strips_markdown_fences_before_parsing(monkeypatch):
-    response = '```json\n{"findings": []}\n```'
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: response)
-
-    assert llm_supplement.get_llm_findings("code", "app.py") == []
-
-
-def test_malformed_json_returns_empty_list(monkeypatch):
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: "not json at all")
-
-    assert llm_supplement.get_llm_findings("code", "app.py") == []
-
-
-def test_llm_call_exception_returns_empty_list_not_raise(monkeypatch):
+def test_end_to_end_with_status_reports_failure_when_call_raises(monkeypatch):
     def _raise(**kwargs):
         raise RuntimeError("rate limited")
 
-    monkeypatch.setattr(llm_supplement, "call_llm", _raise)
+    monkeypatch.setattr(_llm_finding_agent, "call_llm", _raise)
 
-    assert llm_supplement.get_llm_findings("code", "app.py") == []
-
-
-def test_invalid_category_is_dropped(monkeypatch):
-    response = json.dumps(
-        {
-            "findings": [
-                {"line": 1, "category": "style", "severity": "info", "message": "nitpick"},
-            ]
-        }
-    )
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: response)
-
-    assert llm_supplement.get_llm_findings("code", "app.py") == []
-
-
-def test_empty_code_short_circuits_without_calling_llm(monkeypatch):
-    calls = []
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: calls.append(1))
-
-    assert llm_supplement.get_llm_findings("   \n  ", "app.py") == []
-    assert calls == []
-
-
-def test_with_status_reports_success_on_clean_valid_response(monkeypatch):
-    monkeypatch.setattr(
-        llm_supplement, "call_llm", lambda **kwargs: json.dumps({"findings": []})
-    )
     findings, succeeded = llm_supplement.get_llm_findings_with_status("code", "app.py")
-    assert findings == []
-    assert succeeded is True
 
-
-def test_with_status_reports_failure_when_call_raises(monkeypatch):
-    def _raise(**kwargs):
-        raise RuntimeError("rate limited")
-
-    monkeypatch.setattr(llm_supplement, "call_llm", _raise)
-    findings, succeeded = llm_supplement.get_llm_findings_with_status("code", "app.py")
     assert findings == []
     assert succeeded is False
-
-
-def test_with_status_reports_failure_on_unparseable_response(monkeypatch):
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: "not json at all")
-    findings, succeeded = llm_supplement.get_llm_findings_with_status("code", "app.py")
-    assert findings == []
-    assert succeeded is False
-
-
-def test_with_status_empty_code_reports_success_without_calling_llm(monkeypatch):
-    calls = []
-    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: calls.append(1))
-    findings, succeeded = llm_supplement.get_llm_findings_with_status("   \n  ", "app.py")
-    assert findings == []
-    assert succeeded is True
-    assert calls == []
-
-
-def test_context_is_included_in_the_prompt_sent_to_the_llm(monkeypatch):
-    captured = {}
-
-    def fake_call_llm(**kwargs):
-        captured["user"] = kwargs["user"]
-        return json.dumps({"findings": []})
-
-    monkeypatch.setattr(llm_supplement, "call_llm", fake_call_llm)
-
-    llm_supplement.get_llm_findings(
-        "code", "app.py", context="--- Context 1 | other.py ---\ndef helper(): pass"
-    )
-
-    assert "SIMILAR CODE ELSEWHERE IN THE REPO" in captured["user"]
-    assert "def helper(): pass" in captured["user"]
-
-
-def test_no_context_section_when_context_is_empty(monkeypatch):
-    captured = {}
-
-    def fake_call_llm(**kwargs):
-        captured["user"] = kwargs["user"]
-        return json.dumps({"findings": []})
-
-    monkeypatch.setattr(llm_supplement, "call_llm", fake_call_llm)
-
-    llm_supplement.get_llm_findings("code", "app.py")
-
-    assert "SIMILAR CODE ELSEWHERE IN THE REPO" not in captured["user"]
