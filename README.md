@@ -6,10 +6,8 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 4 — async queue (webhook receiver, Celery/Redis
-worker, idempotency, dead-letter queue).** GitHub App integration (real
-diff/file fetching) is Stage 5 — see the assistant's staged roadmap for
-what's next.
+**Current stage: Stage 7 — Semgrep + NVD/OSV CVE enrichment + SBOM +
+license policy.** See the assistant's staged roadmap for what's next.
 
 ## Running tests locally
 
@@ -45,4 +43,25 @@ review-cli analyze <file>            # deterministic checkers only, no LLM/netwo
 review-cli analyze <file> --llm      # + LLM supplement pass
 review-cli review <file>             # full orchestrator + PR-gate decision
 review-cli review <file> --no-llm    # deterministic-only, no API key needed
+review-cli index <directory>         # index a local directory into the RAG vector store
 ```
+
+## Semgrep (optional, src/tools/semgrep_runner.py)
+
+`pip install semgrep` **into this project's own venv is not recommended** —
+confirmed during development that it pulls in an incompatible
+`opentelemetry` version and breaks chromadb's import entirely. Instead:
+
+```
+pipx install semgrep       # isolated, recommended
+```
+
+or install it into a separate venv/container and just make sure the
+`semgrep` binary ends up on PATH — `semgrep_runner.py` only shells out to
+it, it doesn't need to share Python dependencies with this project.
+
+Also note: `semgrep --config auto` run without `semgrep login` first
+returns the literal string `"requires login"` for some registry rules'
+matched-code snippet instead of the real code — handled in
+`semgrep_runner.py`, but worth knowing if you're inspecting raw semgrep
+output yourself.
