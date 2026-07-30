@@ -6,8 +6,8 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 8 — dashboard, per-repo risk scoring, PDF/JSON
-export.** See the assistant's staged roadmap for what's next.
+**Current stage: Stage 9 — Slack/Teams/JIRA notifications.** See the
+assistant's staged roadmap for what's next.
 
 ## Running tests locally
 

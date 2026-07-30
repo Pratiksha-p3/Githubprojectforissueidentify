@@ -3,10 +3,13 @@ src/worker/tasks.py
 
 The Celery task wrapping the Stage 3 orchestrator, plus idempotency and
 dead-letter handling — the durable async path that replaces the previous
-implementation's in-process BackgroundTasks. As of Stage 5, it also
-closes the loop by posting the result to GitHub (src/integrations/
-publisher.py) when a pr_number is supplied and a token is configured —
-webhook (Stage 4) -> Celery task -> orchestrator (Stage 3) -> GitHub.
+implementation's in-process BackgroundTasks. Stage 5 closes the loop by
+posting the result to GitHub (src/integrations/publisher.py) when a
+pr_number is supplied and a token is configured; Stage 9 additionally
+fires Slack/Teams/JIRA alerts (src/notifications/notifier.py) — the
+notifier's own should_notify() gates on significance (DEGRADED/FAILED or
+any critical finding), so this call is unconditional here rather than
+duplicating that gating logic.
 
 _execute_review() is deliberately plain business logic with no Celery
 machinery in it (no `self`, no retry calls) so it's directly unit-
@@ -26,6 +29,7 @@ from src.core.config import settings
 from src.core.orchestrator import review_code
 from src.core.pr_gate import decide, gate_reason
 from src.integrations.publisher import publish_review
+from src.notifications.notifier import Notifier
 from src.storage.dlq_store import DLQStore
 from src.storage.idempotency_store import IdempotencyStore
 from src.worker.celery_app import celery_app
@@ -68,6 +72,8 @@ def _execute_review(
 
     if pr_number is not None and settings.github_token:
         outcome["publish"] = publish_review(result, pr_number)
+
+    outcome["notification"] = Notifier().notify(result)
 
     return outcome
 

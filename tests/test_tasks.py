@@ -161,3 +161,59 @@ def test_does_not_publish_when_no_github_token_configured(monkeypatch, fake_idem
 
     assert publish_calls == []
     assert "publish" not in outcome
+
+
+def test_notifier_is_always_invoked_with_the_review_result(monkeypatch, fake_idempotency_store):
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    notify_calls = []
+
+    class _FakeNotifier:
+        def notify(self, result):
+            notify_calls.append(result)
+            return {"notified": False, "reason": "not significant enough to alert on"}
+
+    monkeypatch.setattr(tasks, "Notifier", _FakeNotifier)
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert len(notify_calls) == 1
+    assert notify_calls[0] is clean_result
+    assert outcome["notification"]["notified"] is False
+
+
+def test_notification_outcome_is_included_when_channels_fire(
+    monkeypatch, fake_idempotency_store
+):
+    from src.core.models import Finding, Severity
+
+    blocked_result = ReviewResult(
+        repo="acme/widgets",
+        commit_sha="abc123",
+        status=ReviewStatus.COMPLETED,
+        findings=[
+            Finding(
+                file="app.py", line=1, category="runtime",
+                severity=Severity.CRITICAL, message="bad",
+            )
+        ],
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: blocked_result)
+
+    class _FakeNotifier:
+        def notify(self, result):
+            return {"notified": True, "channels": {"slack": True}}
+
+    monkeypatch.setattr(tasks, "Notifier", _FakeNotifier)
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert outcome["notification"]["notified"] is True
+    assert outcome["notification"]["channels"]["slack"] is True
