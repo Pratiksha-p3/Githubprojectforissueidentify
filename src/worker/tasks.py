@@ -3,7 +3,10 @@ src/worker/tasks.py
 
 The Celery task wrapping the Stage 3 orchestrator, plus idempotency and
 dead-letter handling — the durable async path that replaces the previous
-implementation's in-process BackgroundTasks.
+implementation's in-process BackgroundTasks. As of Stage 5, it also
+closes the loop by posting the result to GitHub (src/integrations/
+publisher.py) when a pr_number is supplied and a token is configured —
+webhook (Stage 4) -> Celery task -> orchestrator (Stage 3) -> GitHub.
 
 _execute_review() is deliberately plain business logic with no Celery
 machinery in it (no `self`, no retry calls) so it's directly unit-
@@ -15,10 +18,14 @@ function body.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from celery import Task
 
+from src.core.config import settings
 from src.core.orchestrator import review_code
 from src.core.pr_gate import decide, gate_reason
+from src.integrations.publisher import publish_review
 from src.storage.dlq_store import DLQStore
 from src.storage.idempotency_store import IdempotencyStore
 from src.worker.celery_app import celery_app
@@ -30,6 +37,7 @@ def _execute_review(
     commit_sha: str,
     filename: str,
     code: str,
+    pr_number: int | None = None,
     include_llm: bool = True,
 ) -> dict:
     idempotency = IdempotencyStore()
@@ -47,7 +55,7 @@ def _execute_review(
     idempotency.mark_processed(repo, commit_sha)
 
     decision = decide(result)
-    return {
+    outcome: dict[str, Any] = {
         "status": "completed",
         "repo": repo,
         "commit_sha": commit_sha,
@@ -57,6 +65,11 @@ def _execute_review(
         "findings_count": len(result.findings),
         "critical_count": result.critical_count,
     }
+
+    if pr_number is not None and settings.github_token:
+        outcome["publish"] = publish_review(result, pr_number)
+
+    return outcome
 
 
 class _DLQOnFailureTask(Task):
@@ -86,6 +99,7 @@ def review_commit_task(
     commit_sha: str,
     filename: str,
     code: str,
+    pr_number: int | None = None,
     include_llm: bool = True,
 ) -> dict:
     return _execute_review(
@@ -93,5 +107,6 @@ def review_commit_task(
         commit_sha=commit_sha,
         filename=filename,
         code=code,
+        pr_number=pr_number,
         include_llm=include_llm,
     )

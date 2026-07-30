@@ -1,6 +1,7 @@
 import fakeredis
 import pytest
 
+from src.core.config import settings
 from src.core.models import ReviewResult, ReviewStatus
 from src.storage.idempotency_store import IdempotencyStore
 from src.worker import tasks
@@ -94,3 +95,69 @@ def test_review_commit_task_is_configured_with_retry_and_backoff():
     assert tasks.review_commit_task.max_retries == 3
     assert tasks.review_commit_task.autoretry_for == (Exception,)
     assert tasks.review_commit_task.retry_backoff is True
+
+
+def test_publishes_when_pr_number_given_and_token_configured(
+    monkeypatch, fake_idempotency_store
+):
+    monkeypatch.setattr(settings, "github_token", "test-token")
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    publish_calls = []
+
+    def fake_publish(result, pr_number, **_kwargs):
+        publish_calls.append((result, pr_number))
+        return {"comment_action": "created"}
+
+    monkeypatch.setattr(tasks, "publish_review", fake_publish)
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n", pr_number=7
+    )
+
+    assert len(publish_calls) == 1
+    assert publish_calls[0][1] == 7
+    assert outcome["publish"]["comment_action"] == "created"
+
+
+def test_does_not_publish_when_pr_number_is_none(monkeypatch, fake_idempotency_store):
+    monkeypatch.setattr(settings, "github_token", "test-token")
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    publish_calls = []
+    monkeypatch.setattr(
+        tasks, "publish_review", lambda *a, **k: publish_calls.append(1)
+    )
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert publish_calls == []
+    assert "publish" not in outcome
+
+
+def test_does_not_publish_when_no_github_token_configured(monkeypatch, fake_idempotency_store):
+    monkeypatch.setattr(settings, "github_token", "")
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    publish_calls = []
+    monkeypatch.setattr(
+        tasks, "publish_review", lambda *a, **k: publish_calls.append(1)
+    )
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n", pr_number=7
+    )
+
+    assert publish_calls == []
+    assert "publish" not in outcome

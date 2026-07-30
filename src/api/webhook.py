@@ -7,11 +7,11 @@ provider's signature before trusting the payload, enqueues a Celery task
 waits for a review to actually run, satisfying the "async, not blocking"
 nonfunctional requirement by construction rather than by convention.
 
-Real diff/file-content fetching from the GitHub/GitLab API is Stage 5's
-job (that's where GitHub App auth lands). For now the payload is expected
-to carry file content directly (a `files: [{filename, content}, ...]`
-key) — enough to prove the queue/idempotency/DLQ mechanics end to end
-without Stage 5's ingestion machinery existing yet.
+Real diff/file-content fetching from the GitHub/GitLab Contents API is a
+later ingestion concern — the payload here still carries file content
+directly (a `files: [{filename, content}, ...]` key), plus an optional
+`pr_number` used by Stage 5's publisher (src/integrations/publisher.py)
+to know which PR to comment on.
 """
 from __future__ import annotations
 
@@ -62,11 +62,16 @@ async def github_webhook(
     data = await request.json()
     repo = data.get("repository", {}).get("full_name", "")
     commit_sha = data.get("after", "")
+    pr_number = data.get("pr_number")
     files = data.get("files", [])
 
     task_ids = [
         review_commit_task.delay(
-            repo=repo, commit_sha=commit_sha, filename=f["filename"], code=f["content"]
+            repo=repo,
+            commit_sha=commit_sha,
+            filename=f["filename"],
+            code=f["content"],
+            pr_number=pr_number,
         ).id
         for f in files
     ]
@@ -88,11 +93,16 @@ async def gitlab_webhook(
     data = await request.json()
     repo = data.get("project", {}).get("path_with_namespace", "")
     commit_sha = data.get("after", "")
+    pr_number = data.get("pr_number")
     files = data.get("files", [])
 
     task_ids = [
         review_commit_task.delay(
-            repo=repo, commit_sha=commit_sha, filename=f["filename"], code=f["content"]
+            repo=repo,
+            commit_sha=commit_sha,
+            filename=f["filename"],
+            code=f["content"],
+            pr_number=pr_number,
         ).id
         for f in files
     ]

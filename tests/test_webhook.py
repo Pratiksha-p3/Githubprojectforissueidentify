@@ -126,6 +126,27 @@ def test_gitlab_push_event_queues_a_task(client, fake_delay):
     assert len(fake_delay) == 1
 
 
+def test_github_webhook_passes_pr_number_through_to_task(client, fake_delay):
+    payload = {
+        "repository": {"full_name": "acme/widgets"},
+        "after": "abc123",
+        "pr_number": 42,
+        "files": [{"filename": "app.py", "content": "x = 1\n"}],
+    }
+    client.post("/webhook/github", json=payload, headers={"X-GitHub-Event": "push"})
+    assert fake_delay[0]["pr_number"] == 42
+
+
+def test_github_webhook_pr_number_defaults_to_none(client, fake_delay):
+    payload = {
+        "repository": {"full_name": "acme/widgets"},
+        "after": "abc123",
+        "files": [{"filename": "app.py", "content": "x = 1\n"}],
+    }
+    client.post("/webhook/github", json=payload, headers={"X-GitHub-Event": "push"})
+    assert fake_delay[0]["pr_number"] is None
+
+
 def test_gitlab_webhook_rejects_wrong_token(client, monkeypatch, fake_delay):
     monkeypatch.setattr(settings, "gitlab_webhook_secret", "expected-token")
     resp = client.post(
