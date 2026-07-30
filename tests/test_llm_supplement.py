@@ -70,3 +70,38 @@ def test_empty_code_short_circuits_without_calling_llm(monkeypatch):
 
     assert llm_supplement.get_llm_findings("   \n  ", "app.py") == []
     assert calls == []
+
+
+def test_with_status_reports_success_on_clean_valid_response(monkeypatch):
+    monkeypatch.setattr(
+        llm_supplement, "call_llm", lambda **kwargs: json.dumps({"findings": []})
+    )
+    findings, succeeded = llm_supplement.get_llm_findings_with_status("code", "app.py")
+    assert findings == []
+    assert succeeded is True
+
+
+def test_with_status_reports_failure_when_call_raises(monkeypatch):
+    def _raise(**kwargs):
+        raise RuntimeError("rate limited")
+
+    monkeypatch.setattr(llm_supplement, "call_llm", _raise)
+    findings, succeeded = llm_supplement.get_llm_findings_with_status("code", "app.py")
+    assert findings == []
+    assert succeeded is False
+
+
+def test_with_status_reports_failure_on_unparseable_response(monkeypatch):
+    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: "not json at all")
+    findings, succeeded = llm_supplement.get_llm_findings_with_status("code", "app.py")
+    assert findings == []
+    assert succeeded is False
+
+
+def test_with_status_empty_code_reports_success_without_calling_llm(monkeypatch):
+    calls = []
+    monkeypatch.setattr(llm_supplement, "call_llm", lambda **kwargs: calls.append(1))
+    findings, succeeded = llm_supplement.get_llm_findings_with_status("   \n  ", "app.py")
+    assert findings == []
+    assert succeeded is True
+    assert calls == []

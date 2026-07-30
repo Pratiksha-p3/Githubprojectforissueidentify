@@ -10,9 +10,17 @@ LLM API was down or rate-limited.
 Code is run through src/core/prompt_sanitizer.py before being
 interpolated into the prompt (defense-in-depth layer 1 against prompt
 injection). Every returned finding is ConfidenceTier.LOW — free-form LLM
-output, never auto-appliable — and is NOT grounding-checked here; that
-happens once, centrally, in src/analyzers/registry.py, which is the only
-place a finding is allowed to leave the analysis layer.
+output, never auto-appliable — and is NOT trust-checked here; that
+happens once, centrally, wherever this module's findings are consumed
+(src/analyzers/registry.py, src/core/orchestrator.py), via
+src/core/grounding.py's is_trustworthy().
+
+get_llm_findings_with_status() exists alongside the simpler
+get_llm_findings() because "zero findings" is ambiguous on its own — it
+means either "the LLM ran and found nothing" or "the LLM call itself
+failed", and src/core/orchestrator.py needs to tell those apart to set an
+honest ReviewStatus (DEGRADED vs. COMPLETED) rather than silently
+treating a failed call as a clean pass.
 """
 from __future__ import annotations
 
@@ -38,13 +46,24 @@ def get_llm_findings(code: str, filename: str) -> list[Finding]:
     """
     Best-effort supplement to the deterministic checks — never a hard
     dependency. An empty list here means "the LLM found nothing" or "the
-    LLM call failed"; those are deliberately indistinguishable at this
-    layer. Stage 3's orchestrator is what turns a failure here into an
-    honest ReviewStatus.DEGRADED rather than silently treating it as a
-    clean pass.
+    LLM call failed"; those are deliberately indistinguishable through
+    this simpler entry point. Callers that need to tell them apart (e.g.
+    src/core/orchestrator.py, to set an honest ReviewStatus) should use
+    get_llm_findings_with_status() instead.
+    """
+    findings, _succeeded = get_llm_findings_with_status(code, filename)
+    return findings
+
+
+def get_llm_findings_with_status(code: str, filename: str) -> tuple[list[Finding], bool]:
+    """
+    Same as get_llm_findings(), but also returns whether the LLM pass
+    actually completed — False if the API call raised, or if the
+    response couldn't be parsed as the expected JSON shape at all. A
+    successful call that genuinely found nothing still returns ([], True).
     """
     if not code.strip():
-        return []
+        return [], True
 
     prompt = _build_prompt(sanitize_for_prompt(code))
 
@@ -57,10 +76,14 @@ def get_llm_findings(code: str, filename: str) -> list[Finding]:
         )
     except Exception as e:
         print(f"[llm_supplement] LLM call failed: {e}")
-        return []
+        return [], False
 
-    data = _safe_json_parse(raw)
-    return _to_findings(data.get("findings", []), filename)
+    data, parsed_ok = _safe_json_parse(raw)
+    if not parsed_ok:
+        print(f"[llm_supplement] Could not parse LLM response as JSON: {raw!r}")
+
+    findings = _to_findings(data.get("findings", []), filename)
+    return findings, parsed_ok
 
 
 def _build_prompt(code: str) -> str:
@@ -91,21 +114,21 @@ Return ONLY valid JSON in this exact shape:
 If there are no issues, return {{"findings": []}}."""
 
 
-def _safe_json_parse(text: str) -> dict:
+def _safe_json_parse(text: str) -> tuple[dict, bool]:
     text = text.strip()
     text = re.sub(r"```[a-zA-Z]*\n?", "", text).strip("`").strip()
     try:
         parsed = json.loads(text)
-        return parsed if isinstance(parsed, dict) else {"findings": []}
+        return (parsed, True) if isinstance(parsed, dict) else ({"findings": []}, False)
     except json.JSONDecodeError:
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
             try:
                 parsed = json.loads(match.group())
-                return parsed if isinstance(parsed, dict) else {"findings": []}
+                return (parsed, True) if isinstance(parsed, dict) else ({"findings": []}, False)
             except json.JSONDecodeError:
                 pass
-        return {"findings": []}
+        return {"findings": []}, False
 
 
 def _to_findings(raw_findings: object, filename: str) -> list[Finding]:

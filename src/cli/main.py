@@ -17,10 +17,11 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
-from src.cli import analyze  # noqa: E402
+from src.cli import analyze, review  # noqa: E402
 
 COMMANDS = {
     "analyze": analyze.main,
+    "review": review.main,
 }
 
 
@@ -30,6 +31,7 @@ def main() -> int:
         print("Usage: review-cli <command> [options]\n")
         print("Commands:")
         print("  analyze <file>   Run deterministic checkers on a local file")
+        print("  review <file>    Full orchestrator + PR-gate decision on a local file")
         return 0 if len(sys.argv) >= 2 else 1
 
     command = sys.argv[1]
