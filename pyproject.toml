@@ -18,6 +18,7 @@ dependencies = [
     "openai>=1.35",
     "anthropic>=0.30",
     "sentence-transformers>=3.0",
+    "reportlab>=4.0",
 ]
 
 [project.scripts]
