@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = "./vectordb/chroma_data"
     min_similarity_score: float = 0.30
     top_k_retrieval: int = 5
+    embedding_provider: str = "local"
+    embedding_model: str = "all-MiniLM-L6-v2"
 
     # Enrichment (Stage 7)
     nvd_api_key: str = ""

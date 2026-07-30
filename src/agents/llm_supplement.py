@@ -42,7 +42,7 @@ _VALID_CATEGORIES = {"runtime", "logic"}
 _VALID_SEVERITIES = {"critical", "warning", "info"}
 
 
-def get_llm_findings(code: str, filename: str) -> list[Finding]:
+def get_llm_findings(code: str, filename: str, *, context: str = "") -> list[Finding]:
     """
     Best-effort supplement to the deterministic checks — never a hard
     dependency. An empty list here means "the LLM found nothing" or "the
@@ -50,12 +50,19 @@ def get_llm_findings(code: str, filename: str) -> list[Finding]:
     this simpler entry point. Callers that need to tell them apart (e.g.
     src/core/orchestrator.py, to set an honest ReviewStatus) should use
     get_llm_findings_with_status() instead.
+
+    `context` is pre-formatted "similar existing code elsewhere in the
+    repo" text (src/rag/retriever.py's format_context_for_prompt()) —
+    optional, since Stage 6's RAG index isn't a hard dependency for a
+    review to run at all.
     """
-    findings, _succeeded = get_llm_findings_with_status(code, filename)
+    findings, _succeeded = get_llm_findings_with_status(code, filename, context=context)
     return findings
 
 
-def get_llm_findings_with_status(code: str, filename: str) -> tuple[list[Finding], bool]:
+def get_llm_findings_with_status(
+    code: str, filename: str, *, context: str = ""
+) -> tuple[list[Finding], bool]:
     """
     Same as get_llm_findings(), but also returns whether the LLM pass
     actually completed — False if the API call raised, or if the
@@ -65,7 +72,7 @@ def get_llm_findings_with_status(code: str, filename: str) -> tuple[list[Finding
     if not code.strip():
         return [], True
 
-    prompt = _build_prompt(sanitize_for_prompt(code))
+    prompt = _build_prompt(sanitize_for_prompt(code), context)
 
     try:
         raw = call_llm(
@@ -86,14 +93,20 @@ def get_llm_findings_with_status(code: str, filename: str) -> tuple[list[Finding
     return findings, parsed_ok
 
 
-def _build_prompt(code: str) -> str:
+def _build_prompt(code: str, context: str = "") -> str:
+    context_section = (
+        f"\n=== SIMILAR CODE ELSEWHERE IN THE REPO (for consistency, not the "
+        f"target of this review) ===\n{context}\n"
+        if context
+        else ""
+    )
     return f"""Review this code the way a senior engineer would: read it line by line
 and find every RUNTIME error and every LOGIC error you can, no matter what
 shape they take. Do not limit yourself to a fixed checklist.
 
 Do NOT report syntax errors or security vulnerabilities — those are
 handled elsewhere.
-
+{context_section}
 ```
 {code}
 ```

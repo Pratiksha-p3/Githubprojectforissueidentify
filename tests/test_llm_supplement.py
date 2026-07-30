@@ -105,3 +105,34 @@ def test_with_status_empty_code_reports_success_without_calling_llm(monkeypatch)
     assert findings == []
     assert succeeded is True
     assert calls == []
+
+
+def test_context_is_included_in_the_prompt_sent_to_the_llm(monkeypatch):
+    captured = {}
+
+    def fake_call_llm(**kwargs):
+        captured["user"] = kwargs["user"]
+        return json.dumps({"findings": []})
+
+    monkeypatch.setattr(llm_supplement, "call_llm", fake_call_llm)
+
+    llm_supplement.get_llm_findings(
+        "code", "app.py", context="--- Context 1 | other.py ---\ndef helper(): pass"
+    )
+
+    assert "SIMILAR CODE ELSEWHERE IN THE REPO" in captured["user"]
+    assert "def helper(): pass" in captured["user"]
+
+
+def test_no_context_section_when_context_is_empty(monkeypatch):
+    captured = {}
+
+    def fake_call_llm(**kwargs):
+        captured["user"] = kwargs["user"]
+        return json.dumps({"findings": []})
+
+    monkeypatch.setattr(llm_supplement, "call_llm", fake_call_llm)
+
+    llm_supplement.get_llm_findings("code", "app.py")
+
+    assert "SIMILAR CODE ELSEWHERE IN THE REPO" not in captured["user"]

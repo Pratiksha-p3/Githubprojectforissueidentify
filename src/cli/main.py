@@ -17,11 +17,12 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
-from src.cli import analyze, review  # noqa: E402
+from src.cli import analyze, index_repo, review  # noqa: E402
 
 COMMANDS = {
     "analyze": analyze.main,
     "review": review.main,
+    "index": index_repo.main,
 }
 
 
@@ -30,8 +31,9 @@ def main() -> int:
         print("review-cli — AI Code Review CLI\n")
         print("Usage: review-cli <command> [options]\n")
         print("Commands:")
-        print("  analyze <file>   Run deterministic checkers on a local file")
-        print("  review <file>    Full orchestrator + PR-gate decision on a local file")
+        print("  analyze <file>       Run deterministic checkers on a local file")
+        print("  review <file>        Full orchestrator + PR-gate decision on a local file")
+        print("  index <directory>    Index a local directory into the RAG vector store")
         return 0 if len(sys.argv) >= 2 else 1
 
     command = sys.argv[1]
