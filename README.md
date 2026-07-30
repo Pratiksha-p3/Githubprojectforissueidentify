@@ -6,7 +6,7 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 11 — multi-agent specialization + guard-LLM.**
+**Current stage: Stage 12 — auto-fix accept/reject UX + decision logging.**
 See the assistant's staged roadmap for what's next.
 
 ## Running tests locally
@@ -37,6 +37,9 @@ celery -A src.worker.celery_app worker --loglevel=info
 
 # Dashboard (risk score, history, JSON/PDF export) -- needs postgres running
 uvicorn src.dashboard.app:app --reload --port 8001
+
+# Fix accept/reject actions (learning-loop decision log) -- needs postgres running
+uvicorn src.api.fix_actions:app --reload --port 8002
 ```
 
 ## CLI
