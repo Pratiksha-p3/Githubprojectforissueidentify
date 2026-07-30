@@ -11,6 +11,15 @@ notifier's own should_notify() gates on significance (DEGRADED/FAILED or
 any critical finding), so this call is unconditional here rather than
 duplicating that gating logic.
 
+Stage 10 adds review-history persistence (src/storage/postgres_store.py)
+and the audit trail (src/core/audit_log.py) — a real gap until now: the
+Postgres store existed since Stage 8 but nothing actually called
+save_review(), so the dashboard had no history to read. Both are
+wrapped in their own try/except: Postgres being unreachable (e.g. no
+docker-compose stack running locally) must never fail a review that
+otherwise completed successfully — this is auxiliary record-keeping,
+not the core correctness path.
+
 _execute_review() is deliberately plain business logic with no Celery
 machinery in it (no `self`, no retry calls) so it's directly unit-
 testable without needing a running broker or Celery's eager-execution
@@ -25,6 +34,7 @@ from typing import Any
 
 from celery import Task
 
+from src.core.audit_log import AuditLog
 from src.core.config import settings
 from src.core.orchestrator import review_code
 from src.core.pr_gate import decide, gate_reason
@@ -32,6 +42,7 @@ from src.integrations.publisher import publish_review
 from src.notifications.notifier import Notifier
 from src.storage.dlq_store import DLQStore
 from src.storage.idempotency_store import IdempotencyStore
+from src.storage.postgres_store import PostgresStore
 from src.worker.celery_app import celery_app
 
 
@@ -74,6 +85,22 @@ def _execute_review(
         outcome["publish"] = publish_review(result, pr_number)
 
     outcome["notification"] = Notifier().notify(result)
+
+    try:
+        PostgresStore().save_review(result)
+    except Exception as e:
+        print(f"[tasks] Failed to persist review history: {e}")
+
+    try:
+        AuditLog().record(
+            actor="system",
+            action="review",
+            repo=repo,
+            commit_sha=commit_sha,
+            detail=f"status={result.status.value} gate={decision.value}",
+        )
+    except Exception as e:
+        print(f"[tasks] Failed to write audit log: {e}")
 
     return outcome
 

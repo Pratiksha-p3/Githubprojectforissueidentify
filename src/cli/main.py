@@ -18,6 +18,8 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
 from src.cli import analyze, index_repo, review  # noqa: E402
+from src.core.config import settings  # noqa: E402
+from src.core.secrets import resolve_secrets  # noqa: E402
 
 COMMANDS = {
     "analyze": analyze.main,
@@ -27,6 +29,13 @@ COMMANDS = {
 
 
 def main() -> int:
+    # No-op when SECRETS_BACKEND=env (the default) — overrides secret
+    # fields from Azure Key Vault otherwise. Called once here, at the
+    # single CLI entry point; a deployment running the FastAPI apps
+    # directly (uvicorn src.api.webhook:app, ...) instead of through
+    # this CLI would need the same call added at its own startup.
+    resolve_secrets(settings)
+
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("review-cli — AI Code Review CLI\n")
         print("Usage: review-cli <command> [options]\n")

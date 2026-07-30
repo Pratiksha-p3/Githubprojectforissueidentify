@@ -14,6 +14,26 @@ def fake_idempotency_store(monkeypatch):
     return store
 
 
+@pytest.fixture(autouse=True)
+def _no_real_postgres_calls(monkeypatch):
+    """Postgres persistence and the audit log are auxiliary concerns
+    (wrapped in their own try/except in _execute_review) — tests that
+    aren't specifically exercising them shouldn't depend on a real
+    Postgres connection attempt (there isn't one running in this
+    environment) succeeding, failing fast, or being silently swallowed."""
+
+    class _NoopStore:
+        def save_review(self, result):
+            pass
+
+    class _NoopAuditLog:
+        def record(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(tasks, "PostgresStore", _NoopStore)
+    monkeypatch.setattr(tasks, "AuditLog", _NoopAuditLog)
+
+
 def test_execute_review_runs_and_marks_processed(monkeypatch, fake_idempotency_store):
     clean_result = ReviewResult(
         repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
@@ -217,3 +237,92 @@ def test_notification_outcome_is_included_when_channels_fire(
 
     assert outcome["notification"]["notified"] is True
     assert outcome["notification"]["channels"]["slack"] is True
+
+
+def test_review_result_is_persisted_to_postgres_store(monkeypatch, fake_idempotency_store):
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    saved = []
+
+    class _FakeStore:
+        def save_review(self, result):
+            saved.append(result)
+
+    monkeypatch.setattr(tasks, "PostgresStore", _FakeStore)
+
+    tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert saved == [clean_result]
+
+
+def test_postgres_persistence_failure_does_not_fail_the_review(
+    monkeypatch, fake_idempotency_store
+):
+    """Auxiliary record-keeping (e.g. no docker-compose stack running
+    locally) must never take down a review that otherwise completed."""
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    class _BrokenStore:
+        def save_review(self, result):
+            raise ConnectionError("could not connect to postgres")
+
+    monkeypatch.setattr(tasks, "PostgresStore", _BrokenStore)
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert outcome["status"] == "completed"
+
+
+def test_audit_log_records_the_review_action(monkeypatch, fake_idempotency_store):
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    recorded = []
+
+    class _FakeAuditLog:
+        def record(self, **kwargs):
+            recorded.append(kwargs)
+
+    monkeypatch.setattr(tasks, "AuditLog", _FakeAuditLog)
+
+    tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert len(recorded) == 1
+    assert recorded[0]["actor"] == "system"
+    assert recorded[0]["action"] == "review"
+    assert recorded[0]["repo"] == "acme/widgets"
+    assert recorded[0]["commit_sha"] == "abc123"
+    assert "approve" in recorded[0]["detail"]
+
+
+def test_audit_log_failure_does_not_fail_the_review(monkeypatch, fake_idempotency_store):
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    class _BrokenAuditLog:
+        def record(self, **kwargs):
+            raise ConnectionError("could not connect to postgres")
+
+    monkeypatch.setattr(tasks, "AuditLog", _BrokenAuditLog)
+
+    outcome = tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert outcome["status"] == "completed"

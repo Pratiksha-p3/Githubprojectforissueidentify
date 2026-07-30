@@ -6,7 +6,7 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 9 — Slack/Teams/JIRA notifications.** See the
+**Current stage: Stage 10 — secrets abstraction + audit log.** See the
 assistant's staged roadmap for what's next.
 
 ## Running tests locally
@@ -68,3 +68,16 @@ returns the literal string `"requires login"` for some registry rules'
 matched-code snippet instead of the real code — handled in
 `semgrep_runner.py`, but worth knowing if you're inspecting raw semgrep
 output yourself.
+
+## Secrets backend (src/core/secrets.py)
+
+Defaults to reading `.env`/the process environment (`SECRETS_BACKEND=env`).
+Setting `SECRETS_BACKEND=azure_keyvault` + `AZURE_KEYVAULT_URL` switches to
+a real Azure Key Vault lookup (via `azure-identity`/`azure-keyvault-secrets`,
+an optional extra: `pip install -e ".[azure]"`) — coded against the same
+interface, but not exercised against a live vault in development (no Azure
+subscription available). `resolve_secrets()` is called once at
+`review-cli`'s startup; a deployment running the FastAPI apps directly
+(`uvicorn src.api.webhook:app`, ...) instead of through the CLI would need
+the same call added at its own startup to actually pick up Key Vault
+values.
