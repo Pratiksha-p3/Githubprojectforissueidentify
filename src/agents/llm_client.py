@@ -16,6 +16,21 @@ uselessly three times.
 
 Deterministic calls (temperature=0) are cached (src/cache/llm_cache.py)
 so re-analyzing unchanged content is a cache hit, not a fresh API call.
+Cache hits are served before the circuit breaker is even checked — an
+open circuit means "don't make new calls," not "stop serving results
+already known to be good."
+
+Stage 14 adds two more concerns at this same choke point:
+
+- Circuit breaker (src/core/circuit_breaker.py): every real provider
+  call is wrapped so a burst of failures opens the circuit and further
+  calls fail fast (CircuitOpenError) instead of each queuing up its own
+  three-attempt backoff against a provider that's already down.
+- Canary routing (src/core/canary.py): an optional `canary_key` lets a
+  caller opt a specific (repo, commit_sha) into a candidate model
+  version deterministically, without touching every call site — omitting
+  it (the default) always resolves to the stable model, so existing
+  callers are unaffected.
 """
 from __future__ import annotations
 
@@ -23,6 +38,8 @@ from typing import Any
 
 from src.cache import llm_cache
 from src.core.backoff import call_with_backoff
+from src.core.canary import variant_for
+from src.core.circuit_breaker import CircuitOpenError, breaker
 from src.core.config import settings
 
 # Opaque third-party SDK client instances (Groq/OpenAI/Anthropic) — typed
@@ -37,8 +54,11 @@ def call_llm(
     *,
     temperature: float = 0,
     max_tokens: int | None = None,
+    canary_key: str | None = None,
 ) -> str:
     provider = (settings.llm_provider or "groq").lower()
+    variant = variant_for(canary_key, settings.canary_rollout_percent) if canary_key else "stable"
+    model = _model_for(provider, variant)
     budget = (
         min(max_tokens, settings.max_review_tokens)
         if max_tokens
@@ -47,18 +67,28 @@ def call_llm(
 
     cache_key = None
     if temperature == 0:
-        model = _model_for(provider)
         cache_key = llm_cache.make_key(provider, model, system, user, str(budget))
         cached = llm_cache.get(cache_key)
         if cached is not None:
             return cached
 
-    if provider == "openai":
-        result = _call_openai(system, user, temperature, budget)
-    elif provider == "anthropic":
-        result = _call_anthropic(system, user, temperature, budget)
-    else:
-        result = _call_groq(system, user, temperature, budget)
+    if not breaker.allow_request():
+        raise CircuitOpenError(
+            f"LLM circuit breaker is open for provider={provider!r} "
+            f"(too many recent failures) — call skipped"
+        )
+
+    try:
+        if provider == "openai":
+            result = _call_openai(system, user, temperature, budget, model)
+        elif provider == "anthropic":
+            result = _call_anthropic(system, user, temperature, budget, model)
+        else:
+            result = _call_groq(system, user, temperature, budget, model)
+    except Exception:
+        breaker.record_failure()
+        raise
+    breaker.record_success()
 
     if cache_key is not None:
         llm_cache.set(cache_key, result)
@@ -66,12 +96,13 @@ def call_llm(
     return result
 
 
-def _model_for(provider: str) -> str:
+def _model_for(provider: str, variant: str) -> str:
+    is_canary = variant == "canary"
     if provider == "openai":
-        return settings.openai_model
+        return (settings.canary_openai_model if is_canary else "") or settings.openai_model
     if provider == "anthropic":
-        return settings.anthropic_model
-    return settings.review_model
+        return (settings.canary_anthropic_model if is_canary else "") or settings.anthropic_model
+    return (settings.canary_review_model if is_canary else "") or settings.review_model
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -79,7 +110,7 @@ def _is_retryable(exc: Exception) -> bool:
     return any(marker in text for marker in ("rate_limit", "429", "timeout", "connection"))
 
 
-def _call_groq(system: str, user: str, temperature: float, max_tokens: int) -> str:
+def _call_groq(system: str, user: str, temperature: float, max_tokens: int, model: str) -> str:
     if "groq" not in _clients:
         from groq import Groq
 
@@ -88,7 +119,7 @@ def _call_groq(system: str, user: str, temperature: float, max_tokens: int) -> s
 
     def _do_call() -> str:
         resp = client.chat.completions.create(
-            model=settings.review_model,
+            model=model,
             temperature=temperature,
             max_tokens=max_tokens,
             messages=[
@@ -101,7 +132,7 @@ def _call_groq(system: str, user: str, temperature: float, max_tokens: int) -> s
     return call_with_backoff(_do_call, should_retry=_is_retryable)
 
 
-def _call_openai(system: str, user: str, temperature: float, max_tokens: int) -> str:
+def _call_openai(system: str, user: str, temperature: float, max_tokens: int, model: str) -> str:
     if not settings.openai_api_key:
         raise RuntimeError("LLM_PROVIDER=openai but OPENAI_API_KEY is not set")
     if "openai" not in _clients:
@@ -112,7 +143,7 @@ def _call_openai(system: str, user: str, temperature: float, max_tokens: int) ->
 
     def _do_call() -> str:
         resp = client.chat.completions.create(
-            model=settings.openai_model,
+            model=model,
             temperature=temperature,
             max_tokens=max_tokens,
             messages=[
@@ -125,7 +156,9 @@ def _call_openai(system: str, user: str, temperature: float, max_tokens: int) ->
     return call_with_backoff(_do_call, should_retry=_is_retryable)
 
 
-def _call_anthropic(system: str, user: str, temperature: float, max_tokens: int) -> str:
+def _call_anthropic(
+    system: str, user: str, temperature: float, max_tokens: int, model: str
+) -> str:
     if not settings.anthropic_api_key:
         raise RuntimeError("LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is not set")
     if "anthropic" not in _clients:
@@ -136,7 +169,7 @@ def _call_anthropic(system: str, user: str, temperature: float, max_tokens: int)
 
     def _do_call() -> str:
         resp = client.messages.create(
-            model=settings.anthropic_model,
+            model=model,
             temperature=temperature,
             max_tokens=max_tokens,
             system=system,

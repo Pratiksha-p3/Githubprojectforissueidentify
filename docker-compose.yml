@@ -3,9 +3,12 @@
 # stub; redis and postgres are real as of Stage 4 (Celery broker/backend,
 # idempotency store, and DLQ all run against redis here).
 #
-# Bring the infra up with `docker compose up`, then run the app processes
-# from the venv (see README.md): the API (uvicorn) and worker (celery) are
-# not containerized yet — that's Stage 14's deployment-hardening scope.
+# Two ways to run the app processes, both valid:
+#   - `docker compose up` runs everything, infra included (Stage 14) --
+#     closest to how staging/production actually run.
+#   - Infra only (`docker compose up redis postgres chroma`) + the app
+#     processes from the venv directly (see README.md) -- faster
+#     edit/reload loop for local development.
 
 services:
   redis:
@@ -40,6 +43,65 @@ services:
       - "8000:8000"
     volumes:
       - chroma_data:/chroma/chroma
+
+  # No `env_file: .env` here deliberately — .env is gitignored and won't
+  # exist in a fresh checkout or CI, which would break `docker compose
+  # config` validation. Provider API keys (GROQ_API_KEY, etc.) go on the
+  # host's actual environment before `docker compose up` (compose
+  # substitutes ${VAR} references automatically); infra connection
+  # strings that differ from the venv defaults are set explicitly below
+  # since container hostnames (redis, postgres) differ from localhost.
+  webhook:
+    build: .
+    command: uvicorn src.api.webhook:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8080:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_code_review
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: celery -A src.worker.celery_app worker --loglevel=info
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_code_review
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build: .
+    command: uvicorn src.dashboard.app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8081:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_code_review
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  fix-actions:
+    build: .
+    command: uvicorn src.api.fix_actions:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8082:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_code_review
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

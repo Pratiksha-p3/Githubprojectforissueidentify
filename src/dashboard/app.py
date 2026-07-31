@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, Response
 
+from src.core.health import full_health_report
 from src.core.risk_scorer import compute_risk_score
 from src.dashboard.export import export_json, export_pdf
 from src.storage.postgres_store import PostgresStore
@@ -63,4 +64,4 @@ def export_repo_pdf(repo: str, store: PostgresStore = Depends(get_store)) -> Res
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    return full_health_report()

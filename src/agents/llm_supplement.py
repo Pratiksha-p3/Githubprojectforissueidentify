@@ -63,13 +63,17 @@ def get_llm_findings(code: str, filename: str, *, context: str = "") -> list[Fin
 
 
 def get_llm_findings_with_status(
-    code: str, filename: str, *, context: str = ""
+    code: str, filename: str, *, context: str = "", canary_key: str | None = None
 ) -> tuple[list[Finding], bool]:
     """
     Same as get_llm_findings(), but also returns whether the LLM pass
     actually completed — False if the API call raised, or if the
     response couldn't be parsed as the expected JSON shape at all. A
     successful call that genuinely found nothing still returns ([], True).
+
+    `canary_key` (typically f"{repo}:{commit_sha}", passed through from
+    src/core/orchestrator.py) opts this call into Stage 14's canary
+    prompt rollout — omitted, every call uses the stable model.
     """
     return run_finding_agent(
         code,
@@ -79,4 +83,5 @@ def get_llm_findings_with_status(
         valid_categories=_VALID_CATEGORIES,
         source_name="llm_supplement",
         context=context,
+        canary_key=canary_key,
     )

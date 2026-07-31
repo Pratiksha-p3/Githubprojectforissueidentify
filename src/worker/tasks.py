@@ -43,6 +43,7 @@ from typing import Any
 
 from celery import Task
 
+from src.core import metrics
 from src.core.audit_log import AuditLog
 from src.core.config import settings
 from src.core.orchestrator import review_code
@@ -82,6 +83,8 @@ def _execute_review(
         raise
 
     decision = decide(result)
+    metrics.increment(f"reviews_{result.status.value}_total")
+
     outcome: dict[str, Any] = {
         "status": "completed",
         "repo": repo,
@@ -127,6 +130,7 @@ class _DLQOnFailureTask(Task):
             commit_sha=kwargs.get("commit_sha", ""),
             error=str(exc),
         )
+        metrics.increment("dlq_pushes_total")
 
 
 @celery_app.task(

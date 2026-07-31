@@ -70,5 +70,12 @@ class Settings(BaseSettings):
     # Monitoring (Stage 14)
     metrics_enabled: bool = False
 
+    # Canary prompt rollout (Stage 14) -- 0 means "always stable", the
+    # safe default that changes nothing unless explicitly configured.
+    canary_rollout_percent: int = 0
+    canary_review_model: str = ""
+    canary_openai_model: str = ""
+    canary_anthropic_model: str = ""
+
 
 settings = Settings()

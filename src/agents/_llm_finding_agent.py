@@ -8,6 +8,18 @@ for runtime/logic bugs, so every specialized agent in this package
 llm_supplement.py itself) supplies only its own system prompt, task
 description, valid categories, and source tag, rather than each
 re-implementing sanitization/JSON-parsing/validation independently.
+
+Stage 14: this is also where the "eval-drift" half of the circuit breaker
+(src/core/circuit_breaker.py) gets fed. src/agents/llm_client.py already
+trips the breaker on transport-level failures (timeouts, rate limits); a
+response that comes back 200 OK but fails to parse as the expected JSON
+shape is a different failure mode entirely — the transport succeeded, the
+model just isn't producing usable output anymore — and would otherwise
+never register as a "failure" anywhere. Recording it here, against the
+same shared breaker, means a model that starts silently degrading in
+output quality (without ever raising an exception) still eventually trips
+the breaker and gets the pipeline to fall back to deterministic-only
+results, the same as any other LLM outage.
 """
 from __future__ import annotations
 
@@ -15,6 +27,7 @@ import json
 import re
 
 from src.agents.llm_client import call_llm
+from src.core.circuit_breaker import CircuitOpenError, breaker
 from src.core.config import settings
 from src.core.models import ConfidenceTier, Finding, Severity
 from src.core.prompt_sanitizer import sanitize_for_prompt
@@ -31,13 +44,19 @@ def run_finding_agent(
     valid_categories: set[str],
     source_name: str,
     context: str = "",
+    canary_key: str | None = None,
 ) -> tuple[list[Finding], bool]:
     """
     Returns (findings, succeeded) — succeeded is False if the LLM call
-    raised or the response couldn't be parsed as the expected JSON shape,
-    True otherwise (including "ran fine, found nothing"). Callers that
-    need to distinguish "found nothing" from "call failed" should check
+    raised (including the circuit breaker being open) or the response
+    couldn't be parsed as the expected JSON shape, True otherwise
+    (including "ran fine, found nothing"). Callers that need to
+    distinguish "found nothing" from "call failed" should check
     `succeeded`, not just whether findings is empty.
+
+    `canary_key` (typically f"{repo}:{commit_sha}") opts this call into
+    Stage 14's canary prompt rollout (src/core/canary.py) — omitted (the
+    default), every call uses the stable model exactly as before.
     """
     if not code.strip():
         return [], True
@@ -50,13 +69,20 @@ def run_finding_agent(
             user=prompt,
             temperature=0,
             max_tokens=settings.max_review_tokens,
+            canary_key=canary_key,
         )
+    except CircuitOpenError as e:
+        print(f"[{source_name}] {e}")
+        return [], False
     except Exception as e:
         print(f"[{source_name}] LLM call failed: {e}")
         return [], False
 
     data, parsed_ok = _safe_json_parse(raw)
-    if not parsed_ok:
+    if parsed_ok:
+        breaker.record_success()
+    else:
+        breaker.record_failure()
         print(f"[{source_name}] Could not parse LLM response as JSON: {raw!r}")
 
     findings = _to_findings(data.get("findings", []), filename, valid_categories, source_name)

@@ -1,10 +1,18 @@
 import fakeredis
 import pytest
 
+from src.core import metrics
 from src.core.config import settings
 from src.core.models import ReviewResult, ReviewStatus
 from src.storage.idempotency_store import IdempotencyStore
 from src.worker import tasks
+
+
+@pytest.fixture(autouse=True)
+def _reset_metrics():
+    metrics.reset()
+    yield
+    metrics.reset()
 
 
 @pytest.fixture
@@ -133,6 +141,38 @@ def test_on_failure_pushes_to_dlq(monkeypatch):
     assert pushed[0]["repo"] == "acme/widgets"
     assert pushed[0]["commit_sha"] == "abc123"
     assert "boom" in pushed[0]["error"]
+
+
+def test_on_failure_increments_the_dlq_pushes_metric(monkeypatch):
+    class _NoopDLQStore:
+        def push(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(tasks, "DLQStore", _NoopDLQStore)
+
+    task_instance = tasks._DLQOnFailureTask()
+    task_instance.on_failure(
+        RuntimeError("boom"),
+        "task-id-123",
+        (),
+        {"repo": "acme/widgets", "commit_sha": "abc123"},
+        None,
+    )
+
+    assert metrics.snapshot()["dlq_pushes_total"] == 1
+
+
+def test_execute_review_increments_a_metric_per_review_status(monkeypatch, fake_idempotency_store):
+    clean_result = ReviewResult(
+        repo="acme/widgets", commit_sha="abc123", status=ReviewStatus.COMPLETED, findings=[]
+    )
+    monkeypatch.setattr(tasks, "review_code", lambda *a, **k: clean_result)
+
+    tasks._execute_review(
+        repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+    )
+
+    assert metrics.snapshot()["reviews_completed_total"] == 1
 
 
 def test_review_commit_task_is_configured_with_retry_and_backoff():

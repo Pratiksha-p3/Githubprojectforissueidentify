@@ -20,7 +20,9 @@ import hmac
 
 from fastapi import FastAPI, Header, HTTPException, Request
 
+from src.core import metrics
 from src.core.config import settings
+from src.core.health import full_health_report
 from src.worker.tasks import review_commit_task
 
 app = FastAPI(title="AI Code Review Webhook Receiver")
@@ -112,4 +114,18 @@ async def gitlab_webhook(
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    """Real dependency checks (Redis, Postgres, LLM circuit breaker
+    state) — not just "the process is running," which the old stub only
+    ever proved. See src/core/health.py's docstring for why."""
+    return full_health_report()
+
+
+@app.get("/metrics")
+async def metrics_endpoint() -> dict:
+    """Gated behind settings.metrics_enabled (default False) rather than
+    always exposed — operational counters are useful to an operator but
+    are also information about review volume/failure rates that a
+    public-facing deployment shouldn't leak by default."""
+    if not settings.metrics_enabled:
+        raise HTTPException(status_code=404)
+    return metrics.snapshot()

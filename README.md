@@ -6,9 +6,9 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 13 — deep testing (golden-vuln regression suite, RAG
-eval CI gate, concurrency correctness).**
-See the assistant's staged roadmap for what's next.
+**Current stage: Stage 14 — deployment hardening (circuit breaker, canary
+rollout, monitoring, CI/CD split, chaos testing). This is the last stage
+of the original rewrite roadmap.**
 
 ## Running tests locally
 
@@ -22,12 +22,14 @@ mypy src
 ## Local infra
 
 ```
-docker compose up          # redis + postgres + chroma
+docker compose up                          # everything: redis + postgres + chroma + all 4 app processes
+docker compose up redis postgres chroma    # infra only -- pair with running the app processes from the venv below
 ```
 
 ## Running the app processes
 
-With `docker compose up` running in another terminal:
+If you brought up infra only (not the full `docker compose up`), run the
+app processes from the venv directly:
 
 ```
 # API (webhook receiver)
@@ -117,6 +119,65 @@ output yourself.
   `release()` so a claim is given back if the work then fails — otherwise a
   Celery retry would see the commit as already claimed by the failed attempt
   and silently skip redoing it.
+
+## Deployment hardening (Stage 14)
+
+- **Circuit breaker on LLM eval-drift** (`src/core/circuit_breaker.py`):
+  a classic CLOSED/OPEN/HALF_OPEN breaker wrapping every LLM call
+  (`src/agents/llm_client.py`). Trips on both infra failures (timeouts,
+  rate limits — recorded around the raw provider call) and output-quality
+  drift (a response that comes back 200 OK but fails to parse as the
+  expected JSON shape — recorded in `src/agents/_llm_finding_agent.py`,
+  since a model silently degrading in quality without ever raising an
+  exception is exactly what a transport-level retry can't catch). When
+  open, calls fail fast (`CircuitOpenError`) instead of each queuing its
+  own three-attempt backoff against a provider that's already down —
+  callers treat this exactly like any other LLM failure and the review
+  degrades to deterministic-only (`ReviewStatus.DEGRADED`), never a
+  silent clean pass. In-process only (not Redis-backed) — see the
+  module's docstring for why that's a deliberate scope boundary, not an
+  oversight.
+- **Canary prompt rollout** (`src/core/canary.py`): deterministic
+  hash-based routing between the stable and a candidate model version,
+  keyed on `f"{repo}:{commit_sha}"` so a retried Celery task never flips
+  variants mid-flight. `settings.canary_rollout_percent` defaults to `0`
+  (always stable) — configure it plus `settings.canary_review_model` (or
+  the openai/anthropic equivalents) to opt in. Wired through the
+  single-agent LLM supplement path (`src/core/orchestrator.py` ->
+  `llm_supplement.py` -> `call_llm`); the multi-agent path is a
+  documented scope boundary for this stage, not yet wired.
+- **Monitoring** (`src/core/health.py`, `src/core/metrics.py`): `/health`
+  on all three FastAPI apps now does real Redis/Postgres reachability
+  checks plus the LLM circuit breaker's state, instead of the old
+  unconditional `{"status": "ok"}` stub. `/metrics` on the webhook API
+  (gated behind `settings.metrics_enabled`, default off) exposes simple
+  in-process counters (`reviews_completed_total`, `dlq_pushes_total`,
+  `circuit_breaker_opened_total`, ...) as JSON — deliberately not
+  prometheus-client, to avoid adding a new dependency for what a plain
+  counter dict already covers at this stage.
+- **CI/CD split** (`Dockerfile`, `docker-compose.yml`,
+  `.github/workflows/deploy.yml`): the app processes are now
+  containerized (previously venv-only — see docker-compose.yml's
+  history). `deploy.yml` triggers via `workflow_run` on `ci.yml`'s
+  completion (not its own `push` trigger) so a red CI run never reaches
+  a deploy attempt; staging deploys automatically once CI passes on
+  `main`, production only from a version tag (`v*`) and targets a
+  `production` GitHub Environment that should have required reviewers
+  configured in this repo's Settings for the manual-approval gate to
+  actually take effect. The registry/deploy steps target ghcr.io as a
+  realistic placeholder — **not exercised against a live Docker daemon
+  in this development environment** (Docker Desktop wasn't running), so
+  the Dockerfile is reviewed but not build-verified here; verify with
+  `docker build .` before relying on it.
+- **Chaos testing** (`docs/chaos_testing.md`, `tests/test_chaos.py`): a
+  runbook covering Redis outages, Postgres outages, LLM provider outages,
+  malformed webhook payloads, and DLQ growth, each scenario marked
+  automated (with a real test backing it) or manual (needs real
+  infrastructure to mean anything, e.g. fuzzing a live HTTP server). The
+  automated ones inject real failures into the real call paths (e.g. the
+  actual provider-call function replaced with one that always raises, so
+  the real circuit breaker genuinely trips) rather than mocking around
+  the thing being tested.
 
 ## Secrets backend (src/core/secrets.py)
 

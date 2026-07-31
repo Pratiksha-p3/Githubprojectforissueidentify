@@ -38,9 +38,35 @@ def fake_delay(monkeypatch):
 
 
 def test_health_endpoint(client):
+    """No live Redis/Postgres in this test environment, so the honest
+    outcome is "degraded", not a hardcoded "ok" -- the whole point of
+    Stage 14's health check is that it actually reflects dependency
+    reachability instead of always reporting healthy."""
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    body = resp.json()
+    assert body["status"] in ("ok", "degraded")
+    assert set(body["checks"]) == {"redis", "postgres", "llm_circuit_breaker"}
+
+
+def test_metrics_endpoint_is_404_when_disabled(client, monkeypatch):
+    monkeypatch.setattr(settings, "metrics_enabled", False)
+    resp = client.get("/metrics")
+    assert resp.status_code == 404
+
+
+def test_metrics_endpoint_returns_counters_when_enabled(client, monkeypatch):
+    from src.core import metrics
+
+    monkeypatch.setattr(settings, "metrics_enabled", True)
+    metrics.reset()
+    metrics.increment("reviews_completed_total")
+
+    resp = client.get("/metrics")
+
+    assert resp.status_code == 200
+    assert resp.json()["reviews_completed_total"] == 1
+    metrics.reset()
 
 
 def test_github_push_event_queues_a_task_per_file(client, fake_delay):

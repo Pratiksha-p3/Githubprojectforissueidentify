@@ -4,7 +4,7 @@ from src.core.models import ReviewStatus
 
 def test_completed_status_when_llm_succeeds_with_no_findings(monkeypatch):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], True)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)
     )
     result = orchestrator.review_code(
         "def add(a, b):\n    return a + b\n",
@@ -18,7 +18,7 @@ def test_completed_status_when_llm_succeeds_with_no_findings(monkeypatch):
 
 def test_degraded_status_when_llm_fails(monkeypatch):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], False)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], False)
     )
     result = orchestrator.review_code(
         "def add(a, b):\n    return a + b\n",
@@ -45,7 +45,7 @@ def test_failed_status_on_syntax_error():
 
 def test_deterministic_findings_included_regardless_of_llm_status(monkeypatch):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], False)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], False)
     )
     code = "def divide(a, b):\n    return a / b\n"
     result = orchestrator.review_code(
@@ -60,7 +60,7 @@ def test_include_llm_false_never_calls_llm(monkeypatch):
     monkeypatch.setattr(
         orchestrator,
         "get_llm_findings_with_status",
-        lambda code, filename: (calls.append(1), ([], True))[1],
+        lambda code, filename, **_kw: (calls.append(1), ([], True))[1],
     )
     result = orchestrator.review_code(
         "def add(a, b):\n    return a + b\n",
@@ -80,7 +80,7 @@ def test_use_multi_agent_calls_coordinator_instead_of_single_agent(monkeypatch):
     monkeypatch.setattr(
         orchestrator,
         "get_llm_findings_with_status",
-        lambda code, filename: (single_agent_calls.append(1), ([], True))[1],
+        lambda code, filename, **_kw: (single_agent_calls.append(1), ([], True))[1],
     )
     monkeypatch.setattr(
         orchestrator,
@@ -107,7 +107,7 @@ def test_use_multi_agent_false_still_uses_single_agent_by_default(monkeypatch):
     monkeypatch.setattr(
         orchestrator,
         "get_llm_findings_with_status",
-        lambda code, filename: (single_agent_calls.append(1), ([], True))[1],
+        lambda code, filename, **_kw: (single_agent_calls.append(1), ([], True))[1],
     )
     monkeypatch.setattr(
         orchestrator,
@@ -140,9 +140,30 @@ def test_use_multi_agent_degraded_when_coordinator_reports_failure(monkeypatch):
     assert result.status == ReviewStatus.DEGRADED
 
 
+def test_repo_and_commit_sha_are_passed_as_the_canary_key(monkeypatch):
+    captured = {}
+
+    def fake_get_llm_findings_with_status(code, filename, **kwargs):
+        captured.update(kwargs)
+        return [], True
+
+    monkeypatch.setattr(
+        orchestrator, "get_llm_findings_with_status", fake_get_llm_findings_with_status
+    )
+
+    orchestrator.review_code(
+        "def add(a, b):\n    return a + b\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+    )
+
+    assert captured["canary_key"] == "acme/widgets:abc123"
+
+
 def test_review_code_is_idempotent_for_identical_input(monkeypatch):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], True)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)
     )
     code = (
         "class Order:\n"

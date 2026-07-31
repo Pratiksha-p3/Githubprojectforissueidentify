@@ -6,7 +6,7 @@ from src.core import orchestrator
 
 def test_review_file_returns_zero_for_clean_approvable_code(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], True)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)
     )
     fixture = tmp_path / "clean.py"
     fixture.write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
@@ -20,7 +20,7 @@ def test_review_file_returns_zero_for_clean_approvable_code(tmp_path, monkeypatc
 
 def test_review_file_returns_nonzero_when_blocked(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], True)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)
     )
     fixture = tmp_path / "buggy.py"
     fixture.write_text(
@@ -46,7 +46,7 @@ def test_review_file_returns_nonzero_for_missing_file():
 
 def test_review_file_json_output_contains_gate_decision(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], True)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)
     )
     fixture = tmp_path / "clean.py"
     fixture.write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")
@@ -61,7 +61,7 @@ def test_review_file_json_output_contains_gate_decision(tmp_path, monkeypatch, c
 
 def test_review_file_reports_review_required_when_llm_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
-        orchestrator, "get_llm_findings_with_status", lambda code, filename: ([], False)
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], False)
     )
     fixture = tmp_path / "clean.py"
     fixture.write_text("def add(a, b):\n    return a + b\n", encoding="utf-8")

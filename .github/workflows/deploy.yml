@@ -1,0 +1,95 @@
+# Stage 14: CI/CD split. ci.yml is the fast, always-on gate (lint, type
+# check, tests) that runs on every push/PR. This workflow triggers via
+# `workflow_run` on ci.yml's completion rather than its own `push` event
+# — a `push`-triggered deploy.yml would run in parallel with ci.yml, not
+# after it, so a broken build could finish deploying before CI even
+# reported the failure. Gating explicitly on
+# `github.event.workflow_run.conclusion == 'success'` (every job below)
+# means a red CI run never reaches a deploy attempt at all.
+#
+# Staging deploys automatically whenever CI passes on main — fast
+# feedback, low blast radius (staging is disposable by definition).
+# Production only deploys from a version tag (v1.2.3-style) and targets
+# the `production` GitHub Environment, which should have required
+# reviewers configured in this repo's Settings -> Environments ->
+# production — that manual approval gate is enforced by GitHub itself
+# once configured there, not by anything in this YAML (a workflow file
+# can declare the environment, it cannot itself force human approval).
+#
+# The actual `docker push`/deploy steps target ghcr.io (GitHub Container
+# Registry) as the realistic, zero-additional-signup substitute for
+# whatever real registry + hosting target a production deployment of this
+# project would use (ECR/GKE/whatever the team already runs) — swap the
+# registry/host steps for the real ones when this moves off placeholder
+# infra, the image build itself (Dockerfile) doesn't need to change.
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.value }}
+      is_tag: ${{ steps.tag.outputs.is_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.event.workflow_run.head_branch }}" == v* ]]; then
+            echo "value=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+            echo "is_tag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=staging-${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "is_tag=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.value }}
+
+  deploy-staging:
+    needs: build
+    if: needs.build.outputs.is_tag == 'false' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "Would deploy ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }} to staging."
+          echo "Placeholder for this stage: real deploy target (e.g. 'docker compose -H ssh://staging-host pull && up -d', or a cloud provider's deploy CLI) isn't provisioned in this environment."
+
+  deploy-production:
+    needs: build
+    if: needs.build.outputs.is_tag == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "Would deploy ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }} to production."
+          echo "Placeholder for this stage: real deploy target isn't provisioned in this environment."

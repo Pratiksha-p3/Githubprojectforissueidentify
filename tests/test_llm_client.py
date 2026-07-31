@@ -1,6 +1,7 @@
 import pytest
 
 from src.agents import llm_client
+from src.core.circuit_breaker import CircuitOpenError
 from src.core.config import settings
 
 
@@ -105,3 +106,57 @@ def test_anthropic_provider_requires_api_key(monkeypatch):
 
     with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
         llm_client.call_llm("system", "user", temperature=0.5)
+
+
+def test_repeated_failures_open_the_circuit_breaker_and_skip_the_call():
+    class _AlwaysFails:
+        def __getattr__(self, _name):
+            raise ConnectionError("provider unreachable")
+
+    llm_client._clients["groq"] = _AlwaysFails()
+
+    for _ in range(5):
+        with pytest.raises(ConnectionError):
+            llm_client.call_llm("system", "user", temperature=0.9)
+
+    # Breaker should now be open -- the 6th call must fail fast with
+    # CircuitOpenError instead of attempting (and failing) a real call.
+    calls: list[dict] = []
+    llm_client._clients["groq"] = _FakeGroqClient("should not be reached", calls)
+
+    with pytest.raises(CircuitOpenError):
+        llm_client.call_llm("system", "user", temperature=0.9)
+    assert calls == []
+
+
+def test_canary_key_routes_to_the_canary_model_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "canary_rollout_percent", 100)
+    monkeypatch.setattr(settings, "canary_review_model", "candidate-model-v2")
+    calls: list[dict] = []
+    llm_client._clients["groq"] = _FakeGroqClient("response", calls)
+
+    llm_client.call_llm("system", "user", temperature=0, canary_key="acme/widgets:abc123")
+
+    assert calls[0]["model"] == "candidate-model-v2"
+
+
+def test_no_canary_key_always_uses_the_stable_model(monkeypatch):
+    monkeypatch.setattr(settings, "canary_rollout_percent", 100)
+    monkeypatch.setattr(settings, "canary_review_model", "candidate-model-v2")
+    calls: list[dict] = []
+    llm_client._clients["groq"] = _FakeGroqClient("response", calls)
+
+    llm_client.call_llm("system", "user", temperature=0)
+
+    assert calls[0]["model"] == settings.review_model
+
+
+def test_canary_key_falls_back_to_stable_model_when_no_canary_model_configured(monkeypatch):
+    monkeypatch.setattr(settings, "canary_rollout_percent", 100)
+    monkeypatch.setattr(settings, "canary_review_model", "")
+    calls: list[dict] = []
+    llm_client._clients["groq"] = _FakeGroqClient("response", calls)
+
+    llm_client.call_llm("system", "user", temperature=0, canary_key="acme/widgets:abc123")
+
+    assert calls[0]["model"] == settings.review_model

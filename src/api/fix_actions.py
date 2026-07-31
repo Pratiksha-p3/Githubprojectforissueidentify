@@ -21,6 +21,7 @@ from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
 from src.core.confidence import is_safe_to_auto_apply
+from src.core.health import full_health_report
 from src.core.models import ConfidenceTier, Finding, Severity
 from src.storage.decision_log import DecisionLog
 
@@ -89,4 +90,4 @@ def acceptance_rates(log: DecisionLog = Depends(get_decision_log)) -> dict:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    return full_health_report()

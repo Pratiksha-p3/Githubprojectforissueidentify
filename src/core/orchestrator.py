@@ -30,6 +30,15 @@ specialized agents (runtime/logic, security, style, test_coverage).
 Off by default because it multiplies LLM calls per file 4x — a real
 cost/rate-limit concern, not something every review should pay for
 without an explicit choice to do so.
+
+Stage 14's canary prompt rollout (src/core/canary.py) is wired in here
+using f"{repo}:{commit_sha}" as the routing key, so the same commit
+always resolves to the same model variant even across a Celery retry —
+but only on the single-agent path (get_llm_findings_with_status). The
+multi-agent path (run_all_agents) is a known, deliberate scope boundary
+for this stage: threading canary_key through four more agent modules for
+a rollout mechanism that's off by default (settings.canary_rollout_percent
+defaults to 0) wasn't worth the churn yet.
 """
 from __future__ import annotations
 
@@ -78,7 +87,9 @@ def review_code(
         if use_multi_agent:
             llm_findings, llm_succeeded = run_all_agents(code, filename)
         else:
-            llm_findings, llm_succeeded = get_llm_findings_with_status(code, filename)
+            llm_findings, llm_succeeded = get_llm_findings_with_status(
+                code, filename, canary_key=f"{repo}:{commit_sha}"
+            )
         findings.extend(f for f in llm_findings if is_trustworthy(f, code))
         if not llm_succeeded:
             status = ReviewStatus.DEGRADED
