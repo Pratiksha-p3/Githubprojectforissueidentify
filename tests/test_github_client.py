@@ -143,7 +143,7 @@ def test_get_file_content_decodes_base64(monkeypatch):
 
     def fake_request(method, url, **kwargs):
         calls.append((method, url, kwargs))
-        return _FakeResponse(json_data={"content": encoded})
+        return _FakeResponse(json_data={"content": encoded, "sha": "blobsha1"})
 
     monkeypatch.setattr(gc.requests, "request", fake_request)
 
@@ -154,6 +154,50 @@ def test_get_file_content_decodes_base64(monkeypatch):
     method, url, kwargs = calls[0]
     assert url == "https://api.github.com/repos/acme/widgets/contents/app.py"
     assert kwargs["params"] == {"ref": "abc123"}
+
+
+def test_get_file_sha_returns_the_blob_sha(monkeypatch):
+    import base64 as b64
+
+    encoded = b64.b64encode(b"x = 1\n").decode("ascii")
+
+    def fake_request(method, url, **kwargs):
+        return _FakeResponse(json_data={"content": encoded, "sha": "blobsha1"})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    sha = client.get_file_sha("acme/widgets", "app.py", ref="abc123")
+
+    assert sha == "blobsha1"
+
+
+def test_update_file_content_sends_base64_encoded_content(monkeypatch):
+    import base64 as b64
+
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return _FakeResponse(json_data={"commit": {"sha": "newcommitsha"}})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    result = client.update_file_content(
+        "acme/widgets", "app.py",
+        message="fix it", content="x = 2\n", sha="blobsha1", branch="main",
+    )
+
+    assert result == {"commit": {"sha": "newcommitsha"}}
+    method, url, kwargs = calls[0]
+    assert method == "PUT"
+    assert url == "https://api.github.com/repos/acme/widgets/contents/app.py"
+    body = kwargs["json"]
+    assert body["message"] == "fix it"
+    assert body["sha"] == "blobsha1"
+    assert body["branch"] == "main"
+    assert b64.b64decode(body["content"]).decode("utf-8") == "x = 2\n"
 
 
 def test_create_review_comment_sends_the_suggestion_to_the_right_line(monkeypatch):

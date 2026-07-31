@@ -130,8 +130,33 @@ class GitHubClient:
         PR's head sha, typically) via the Contents API — GitHub returns
         it base64-encoded regardless of file type, decoded here so
         callers get plain text directly."""
+        return self._get_file_metadata(repo, path, ref)[0]
+
+    def get_file_sha(self, repo: str, path: str, ref: str) -> str:
+        """The file's current blob sha at `ref` — required by
+        update_file_content() so GitHub can detect a stale write (the
+        file changed since the caller last read it) instead of silently
+        clobbering a concurrent commit."""
+        return self._get_file_metadata(repo, path, ref)[1]
+
+    def _get_file_metadata(self, repo: str, path: str, ref: str) -> tuple[str, str]:
         data = self._request("GET", f"/repos/{repo}/contents/{path}", params={"ref": ref})
-        return base64.b64decode(data["content"]).decode("utf-8")
+        return base64.b64decode(data["content"]).decode("utf-8"), data["sha"]
+
+    def update_file_content(
+        self, repo: str, path: str, *, message: str, content: str, sha: str, branch: str
+    ) -> dict:
+        """Commits new content for an existing file via the Contents API
+        (PUT). `sha` must be the file's current blob sha (get_file_sha())
+        — GitHub rejects the write with a 409 if it doesn't match the
+        file's actual current content, rather than silently overwriting
+        whatever's there."""
+        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+        return self._request(
+            "PUT",
+            f"/repos/{repo}/contents/{path}",
+            json={"message": message, "content": encoded, "sha": sha, "branch": branch},
+        )
 
     def create_review_comment(
         self, repo: str, pr_number: int, *, commit_id: str, path: str, line: int, body: str
