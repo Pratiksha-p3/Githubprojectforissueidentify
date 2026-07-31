@@ -17,13 +17,14 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
 
-from src.cli import analyze, index_repo, review  # noqa: E402
+from src.cli import analyze, index_repo, review, review_pr  # noqa: E402
 from src.core.config import settings  # noqa: E402
 from src.core.secrets import resolve_secrets  # noqa: E402
 
 COMMANDS = {
     "analyze": analyze.main,
     "review": review.main,
+    "review-pr": review_pr.main,
     "index": index_repo.main,
 }
 
@@ -42,6 +43,8 @@ def main() -> int:
         print("Commands:")
         print("  analyze <file>       Run deterministic checkers on a local file")
         print("  review <file>        Full orchestrator + PR-gate decision on a local file")
+        print("  review-pr <repo> <pr_number>")
+        print("                       Review a real open GitHub PR (dry run unless --post)")
         print("  index <directory>    Index a local directory into the RAG vector store")
         return 0 if len(sys.argv) >= 2 else 1
 

@@ -21,9 +21,18 @@ and REVIEW_REQUIRED to "action_required", so an incomplete review
 (DEGRADED/FAILED — see src/core/pr_gate.py) can never show up as a green
 check on the PR itself, the same property the internal gate decision
 already enforces.
+
+get_pull_request()/list_pr_files()/get_file_content() close the gap
+src/core/orchestrator.py's module docstring used to note explicitly:
+real diff/file-content fetching from the GitHub API didn't exist yet —
+the webhook receiver only ever accepted file content handed to it
+directly in the payload. These three make it possible to point the
+reviewer at a real, already-open PR (src/cli/review_pr.py) instead of
+only ever a locally-supplied file.
 """
 from __future__ import annotations
 
+import base64
 from typing import Any
 
 import requests
@@ -58,8 +67,11 @@ class GitHubClient:
             "Accept": "application/vnd.github+json",
         }
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> dict:
-        def _do_call() -> dict:
+    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        # GitHub's response shape depends on the endpoint (a dict for
+        # most, a bare list for e.g. list_pr_files) -- Any rather than
+        # dict so list-returning callers don't need a type: ignore.
+        def _do_call() -> Any:
             resp = requests.request(
                 method, f"{_API_BASE}{path}", headers=self._headers(), timeout=15, **kwargs
             )
@@ -99,3 +111,24 @@ class GitHubClient:
                 "output": {"title": title, "summary": summary},
             },
         )
+
+    def get_pull_request(self, repo: str, pr_number: int) -> dict:
+        """Returns the PR's own metadata — used for its head.sha (the
+        commit to review and to attach the Check Run to)."""
+        return self._request("GET", f"/repos/{repo}/pulls/{pr_number}")
+
+    def list_pr_files(self, repo: str, pr_number: int) -> list[dict]:
+        """Returns every file changed by the PR (filename + status —
+        "added"/"modified"/"removed"/... — among other fields GitHub
+        includes). Not paginated beyond GitHub's default page size (30);
+        fine for this project's scope of reviewing individual PRs rather
+        than bulk-scanning huge ones."""
+        return self._request("GET", f"/repos/{repo}/pulls/{pr_number}/files")
+
+    def get_file_content(self, repo: str, path: str, ref: str) -> str:
+        """Fetches a file's full text content at a specific ref (the
+        PR's head sha, typically) via the Contents API — GitHub returns
+        it base64-encoded regardless of file type, decoded here so
+        callers get plain text directly."""
+        data = self._request("GET", f"/repos/{repo}/contents/{path}", params={"ref": ref})
+        return base64.b64decode(data["content"]).decode("utf-8")

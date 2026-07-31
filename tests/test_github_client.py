@@ -107,6 +107,55 @@ def test_auth_error_is_not_retried(monkeypatch):
     assert len(calls) == 1  # non-retryable — no wasted attempts
 
 
+def test_get_pull_request_fetches_pr_metadata(monkeypatch):
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url))
+        return _FakeResponse(json_data={"number": 4, "head": {"sha": "abc123"}})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    result = client.get_pull_request("acme/widgets", 4)
+
+    assert result["head"]["sha"] == "abc123"
+    assert calls[0] == ("GET", "https://api.github.com/repos/acme/widgets/pulls/4")
+
+
+def test_list_pr_files_returns_a_list_not_a_dict(monkeypatch):
+    def fake_request(method, url, **kwargs):
+        return _FakeResponse(json_data=[{"filename": "app.py", "status": "modified"}])
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    result = client.list_pr_files("acme/widgets", 4)
+
+    assert result == [{"filename": "app.py", "status": "modified"}]
+
+
+def test_get_file_content_decodes_base64(monkeypatch):
+    import base64 as b64
+
+    encoded = b64.b64encode(b"x = 1\n").decode("ascii")
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return _FakeResponse(json_data={"content": encoded})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    content = client.get_file_content("acme/widgets", "app.py", ref="abc123")
+
+    assert content == "x = 1\n"
+    method, url, kwargs = calls[0]
+    assert url == "https://api.github.com/repos/acme/widgets/contents/app.py"
+    assert kwargs["params"] == {"ref": "abc123"}
+
+
 def test_is_retryable_matches_transient_errors_only():
     assert gc._is_retryable(Exception("429 too many requests")) is True
     assert gc._is_retryable(Exception("503 Service Unavailable")) is True
