@@ -8,12 +8,25 @@ call's AST and reconstructs it via `ast.unparse()` rather than text
 templating, so it works regardless of the call's existing shape (kwargs
 already present, method chaining like `requests.get(url).json()`, etc).
 
+The fix is built from the call's ENCLOSING STATEMENT, not the call
+expression in isolation — a call like `response = requests.get(url)` has
+its assignment target thrown away by unparsing just the Call node, which
+produced a syntactically valid but semantically broken suggestion
+(`requests.get(url, timeout=10)` with `response` now referencing nothing,
+a NameError anywhere `response` is used afterward). Confirmed live: an
+auto-generated suggestion built this way was accepted verbatim on a real
+PR and broke the file. _enclosing_statement()/_build_fix_line() below
+walk up to the nearest ast.stmt ancestor (Assign, Return, Expr, ...) and
+reconstruct that whole statement with only the timeout kwarg added,
+so whatever wraps the call is preserved.
+
 Only fires when the file actually imports `requests` — otherwise the call
 itself is a NameError, a different problem this checker isn't about.
 """
 from __future__ import annotations
 
 import ast
+import copy
 
 from src.core.models import ConfidenceTier, Finding, Severity
 
@@ -32,6 +45,37 @@ def _imports_requests(tree: ast.AST) -> bool:
 
 def _has_timeout_kwarg(call: ast.Call) -> bool:
     return any(kw.arg == "timeout" for kw in call.keywords)
+
+
+def _enclosing_statement(tree: ast.AST, target: ast.AST) -> ast.stmt:
+    parents: dict[int, ast.AST] = {}
+    for parent in ast.walk(tree):
+        for child in ast.iter_child_nodes(parent):
+            parents[id(child)] = parent
+
+    node = target
+    while not isinstance(node, ast.stmt):
+        node = parents[id(node)]
+    return node
+
+
+def _build_fix_line(stmt: ast.stmt, target_call: ast.Call, original_line: str) -> str:
+    stmt_copy = copy.deepcopy(stmt)
+    # Identity doesn't survive deepcopy, but (lineno, col_offset) does --
+    # a reliable way to find the same Call node in the copy, since two
+    # calls can't share an exact source position within one statement.
+    target_copy = next(
+        node
+        for node in ast.walk(stmt_copy)
+        if isinstance(node, ast.Call)
+        and node.lineno == target_call.lineno
+        and node.col_offset == target_call.col_offset
+    )
+    target_copy.keywords.append(
+        ast.keyword(arg="timeout", value=ast.Constant(value=_DEFAULT_TIMEOUT_SECONDS))
+    )
+    indent = " " * (len(original_line) - len(original_line.lstrip()))
+    return f"{indent}{ast.unparse(stmt_copy)}"
 
 
 def detect_unguarded_http_calls(code: str, filename: str) -> list[Finding]:
@@ -60,20 +104,9 @@ def detect_unguarded_http_calls(code: str, filename: str) -> list[Finding]:
         if not (0 < node.lineno <= len(lines)):
             continue
 
-        timeout_kwarg = ast.keyword(
-            arg="timeout", value=ast.Constant(value=_DEFAULT_TIMEOUT_SECONDS)
-        )
-        fixed_call = ast.Call(
-            func=node.func,
-            args=list(node.args),
-            keywords=[*node.keywords, timeout_kwarg],
-        )
-        ast.copy_location(fixed_call, node)
-        fix_expr = ast.fix_missing_locations(fixed_call)
-
         original_line = lines[node.lineno - 1]
-        indent = " " * (len(original_line) - len(original_line.lstrip()))
-        fix_code = f"{indent}{ast.unparse(fix_expr)}"
+        stmt = _enclosing_statement(tree, node)
+        fix_code = _build_fix_line(stmt, node, original_line)
 
         findings.append(
             Finding(
