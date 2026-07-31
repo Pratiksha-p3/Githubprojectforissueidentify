@@ -156,6 +156,30 @@ def test_get_file_content_decodes_base64(monkeypatch):
     assert kwargs["params"] == {"ref": "abc123"}
 
 
+def test_create_review_comment_sends_the_suggestion_to_the_right_line(monkeypatch):
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return _FakeResponse(json_data={"id": 99})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    body = "**[WARNING] bad**\n\n```suggestion\nfixed line\n```"
+    result = client.create_review_comment(
+        "acme/widgets", 4, commit_id="abc123", path="app.py", line=5, body=body
+    )
+
+    assert result == {"id": 99}
+    method, url, kwargs = calls[0]
+    assert method == "POST"
+    assert url == "https://api.github.com/repos/acme/widgets/pulls/4/comments"
+    assert kwargs["json"] == {
+        "body": body, "commit_id": "abc123", "path": "app.py", "line": 5, "side": "RIGHT",
+    }
+
+
 def test_is_retryable_matches_transient_errors_only():
     assert gc._is_retryable(Exception("429 too many requests")) is True
     assert gc._is_retryable(Exception("503 Service Unavailable")) is True

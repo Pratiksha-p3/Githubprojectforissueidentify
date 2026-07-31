@@ -20,13 +20,21 @@ upserts a single comment keyed on (repo, commit_sha), so calling it once
 per file against the same commit would just overwrite the same comment
 repeatedly, leaving only the last file's findings visible instead of a
 combined summary of the whole PR.
+
+`--post` also posts one inline review comment per finding that has a
+non-empty `fix`, using GitHub's ```suggestion fenced-block syntax
+(src/integrations/github_client.py's create_review_comment()) — this is
+what turns a Finding's fix from prose in a summary comment into an
+actual one-click "Apply suggestion" button on the PR's Files Changed
+tab. Findings with no fix (e.g. a syntax error) are skipped since
+there's nothing to suggest.
 """
 from __future__ import annotations
 
 import argparse
 import sys
 
-from src.core.models import ReviewResult, ReviewStatus
+from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
 from src.integrations.github_client import GitHubClient
@@ -96,10 +104,29 @@ def review_pr(
             f"\nPosted to GitHub: comment {outcome['comment_action']} "
             f"(id={outcome['comment_id']}), check run id={outcome['check_run_id']}"
         )
+        suggestion_count = post_fix_suggestions(
+            client, repo, pr_number, head_sha, combined.findings
+        )
+        print(f"Posted {suggestion_count} inline fix suggestion(s).")
     else:
         print("\n(dry run -- nothing posted to GitHub; re-run with --post to publish)")
 
     return 0 if decision != GateDecision.BLOCK else 1
+
+
+def post_fix_suggestions(
+    client: GitHubClient, repo: str, pr_number: int, commit_sha: str, findings: list[Finding]
+) -> int:
+    posted = 0
+    for f in findings:
+        if not f.fix.strip():
+            continue
+        body = f"**[{f.severity.value.upper()}] {f.message}**\n\n```suggestion\n{f.fix}\n```"
+        client.create_review_comment(
+            repo, pr_number, commit_id=commit_sha, path=f.file, line=f.line, body=body
+        )
+        posted += 1
+    return posted
 
 
 def _print_file_result(path: str, result: ReviewResult) -> None:

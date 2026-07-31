@@ -7,6 +7,7 @@ class _FakeGitHubClient:
         self._contents = contents
         self._head_sha = head_sha
         self.published = []
+        self.review_comments = []
 
     def get_pull_request(self, repo, pr_number):
         return {"number": pr_number, "head": {"sha": self._head_sha}}
@@ -16,6 +17,14 @@ class _FakeGitHubClient:
 
     def get_file_content(self, repo, path, ref):
         return self._contents[path]
+
+    def create_review_comment(self, repo, pr_number, *, commit_id, path, line, body):
+        comment = {
+            "repo": repo, "pr_number": pr_number, "commit_id": commit_id,
+            "path": path, "line": line, "body": body,
+        }
+        self.review_comments.append(comment)
+        return {"id": len(self.review_comments)}
 
 
 def test_reviews_only_py_files_and_skips_removed_ones():
@@ -172,3 +181,72 @@ def test_worst_status_wins_across_files(monkeypatch):
     review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
 
     assert published[0].status.value == "failed"
+
+
+def test_post_flag_posts_a_suggestion_comment_for_each_finding_with_a_fix(monkeypatch):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
+
+    assert len(client.review_comments) == 1
+    comment = client.review_comments[0]
+    assert comment["path"] == "a.py"
+    assert comment["commit_id"] == "abc123"
+    assert "```suggestion" in comment["body"]
+
+
+def test_findings_with_no_fix_get_no_suggestion_comment(monkeypatch):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "broken.py", "status": "modified"}],
+        contents={"broken.py": "def broken(:\n    pass\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
+
+    # The syntax-error Finding has no fix -- nothing to suggest.
+    assert client.review_comments == []
+
+
+def test_dry_run_never_posts_suggestion_comments(monkeypatch):
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, github_client=client)
+
+    assert client.review_comments == []
+
+
+def test_post_fix_suggestions_returns_the_count_posted():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    findings = [
+        Finding(
+            file="a.py", line=5, category="runtime", severity=Severity.WARNING,
+            message="msg", fix="fixed code", confidence=ConfidenceTier.MEDIUM, source="x",
+        ),
+        Finding(
+            file="a.py", line=9, category="syntax", severity=Severity.CRITICAL,
+            message="no fix here", fix="", confidence=ConfidenceTier.MEDIUM, source="x",
+        ),
+    ]
+
+    count = review_pr.post_fix_suggestions(client, "acme/widgets", 4, "abc123", findings)
+
+    assert count == 1
+    assert len(client.review_comments) == 1

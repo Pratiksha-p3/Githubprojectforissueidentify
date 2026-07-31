@@ -132,3 +132,23 @@ class GitHubClient:
         callers get plain text directly."""
         data = self._request("GET", f"/repos/{repo}/contents/{path}", params={"ref": ref})
         return base64.b64decode(data["content"]).decode("utf-8")
+
+    def create_review_comment(
+        self, repo: str, pr_number: int, *, commit_id: str, path: str, line: int, body: str
+    ) -> dict:
+        """Posts an inline comment anchored to a specific line of the
+        PR's diff — distinct from post_issue_comment(), which posts a
+        top-level comment on the PR's conversation tab, not attached to
+        any line. When `body` contains a fenced ```suggestion block,
+        GitHub renders a one-click "Apply suggestion" button that commits
+        the replacement text directly, which is what actually makes a
+        Finding's `fix` actionable on the PR itself rather than just
+        described in prose."""
+        return self._request(
+            "POST",
+            f"/repos/{repo}/pulls/{pr_number}/comments",
+            json={
+                "body": body, "commit_id": commit_id, "path": path,
+                "line": line, "side": "RIGHT",
+            },
+        )
