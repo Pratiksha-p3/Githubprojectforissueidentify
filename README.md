@@ -142,10 +142,11 @@ output yourself.
   keyed on `f"{repo}:{commit_sha}"` so a retried Celery task never flips
   variants mid-flight. `settings.canary_rollout_percent` defaults to `0`
   (always stable) — configure it plus `settings.canary_review_model` (or
-  the openai/anthropic equivalents) to opt in. Wired through the
-  single-agent LLM supplement path (`src/core/orchestrator.py` ->
-  `llm_supplement.py` -> `call_llm`); the multi-agent path is a
-  documented scope boundary for this stage, not yet wired.
+  the openai/anthropic equivalents) to opt in. Wired through both the
+  single-agent LLM supplement path and the multi-agent path
+  (`src/agents/coordinator.py` threads the same key to all four
+  specialized agents, so a given review resolves to one variant
+  consistently rather than a mix).
 - **Monitoring** (`src/core/health.py`, `src/core/metrics.py`): `/health`
   on all three FastAPI apps now does real Redis/Postgres reachability
   checks plus the LLM circuit breaker's state, instead of the old

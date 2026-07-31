@@ -20,6 +20,12 @@ it silently quadruple LLM spend on every review.
 agent failing means DEGRADED for the whole result, the same all-or-
 nothing honesty principle src/core/orchestrator.py already applies to
 the single-agent path.
+
+`canary_key` (Stage 14, src/core/canary.py) is threaded through to all
+four agents so the multi-agent path gets the same deterministic
+stable/canary routing as the single-agent path — every agent for a given
+review resolves to the same variant (all stable or all canary), not a
+mix, since each agent independently hashes the same key.
 """
 from __future__ import annotations
 
@@ -28,7 +34,9 @@ from src.core.grounding import is_trustworthy
 from src.core.models import Finding
 
 
-def run_all_agents(code: str, filename: str, *, context: str = "") -> tuple[list[Finding], bool]:
+def run_all_agents(
+    code: str, filename: str, *, context: str = "", canary_key: str | None = None
+) -> tuple[list[Finding], bool]:
     # Each call goes through the module object (llm_supplement.<fn>(...),
     # not a pre-bound reference captured once at import time) so tests
     # can monkeypatch e.g. `coordinator.security_agent.
@@ -36,10 +44,18 @@ def run_all_agents(code: str, filename: str, *, context: str = "") -> tuple[list
     # effect on every call, the same patching pattern used everywhere
     # else in this codebase.
     agent_results = (
-        llm_supplement.get_llm_findings_with_status(code, filename, context=context),
-        security_agent.get_security_findings_with_status(code, filename, context=context),
-        style_agent.get_style_findings_with_status(code, filename, context=context),
-        test_coverage_agent.get_test_coverage_findings_with_status(code, filename, context=context),
+        llm_supplement.get_llm_findings_with_status(
+            code, filename, context=context, canary_key=canary_key
+        ),
+        security_agent.get_security_findings_with_status(
+            code, filename, context=context, canary_key=canary_key
+        ),
+        style_agent.get_style_findings_with_status(
+            code, filename, context=context, canary_key=canary_key
+        ),
+        test_coverage_agent.get_test_coverage_findings_with_status(
+            code, filename, context=context, canary_key=canary_key
+        ),
     )
 
     all_findings: list[Finding] = []

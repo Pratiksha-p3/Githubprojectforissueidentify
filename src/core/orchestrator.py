@@ -34,11 +34,10 @@ without an explicit choice to do so.
 Stage 14's canary prompt rollout (src/core/canary.py) is wired in here
 using f"{repo}:{commit_sha}" as the routing key, so the same commit
 always resolves to the same model variant even across a Celery retry —
-but only on the single-agent path (get_llm_findings_with_status). The
-multi-agent path (run_all_agents) is a known, deliberate scope boundary
-for this stage: threading canary_key through four more agent modules for
-a rollout mechanism that's off by default (settings.canary_rollout_percent
-defaults to 0) wasn't worth the churn yet.
+on both the single-agent path (get_llm_findings_with_status) and the
+multi-agent path (run_all_agents), which threads the same key through
+all four specialized agents so a given review resolves to one variant
+consistently, not a mix of stable and canary across agents.
 """
 from __future__ import annotations
 
@@ -85,7 +84,9 @@ def review_code(
 
     if include_llm:
         if use_multi_agent:
-            llm_findings, llm_succeeded = run_all_agents(code, filename)
+            llm_findings, llm_succeeded = run_all_agents(
+                code, filename, canary_key=f"{repo}:{commit_sha}"
+            )
         else:
             llm_findings, llm_succeeded = get_llm_findings_with_status(
                 code, filename, canary_key=f"{repo}:{commit_sha}"

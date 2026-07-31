@@ -37,7 +37,7 @@ def get_security_findings(code: str, filename: str, *, context: str = "") -> lis
 
 
 def get_security_findings_with_status(
-    code: str, filename: str, *, context: str = ""
+    code: str, filename: str, *, context: str = "", canary_key: str | None = None
 ) -> tuple[list[Finding], bool]:
     return run_finding_agent(
         code,
@@ -47,4 +47,5 @@ def get_security_findings_with_status(
         valid_categories=_VALID_CATEGORIES,
         source_name="security_agent",
         context=context,
+        canary_key=canary_key,
     )

@@ -85,7 +85,7 @@ def test_use_multi_agent_calls_coordinator_instead_of_single_agent(monkeypatch):
     monkeypatch.setattr(
         orchestrator,
         "run_all_agents",
-        lambda code, filename: (multi_agent_calls.append(1), ([], True))[1],
+        lambda code, filename, **_kw: (multi_agent_calls.append(1), ([], True))[1],
     )
 
     orchestrator.review_code(
@@ -112,7 +112,7 @@ def test_use_multi_agent_false_still_uses_single_agent_by_default(monkeypatch):
     monkeypatch.setattr(
         orchestrator,
         "run_all_agents",
-        lambda code, filename: (multi_agent_calls.append(1), ([], True))[1],
+        lambda code, filename, **_kw: (multi_agent_calls.append(1), ([], True))[1],
     )
 
     orchestrator.review_code(
@@ -127,7 +127,7 @@ def test_use_multi_agent_false_still_uses_single_agent_by_default(monkeypatch):
 
 
 def test_use_multi_agent_degraded_when_coordinator_reports_failure(monkeypatch):
-    monkeypatch.setattr(orchestrator, "run_all_agents", lambda code, filename: ([], False))
+    monkeypatch.setattr(orchestrator, "run_all_agents", lambda code, filename, **_kw: ([], False))
 
     result = orchestrator.review_code(
         "def add(a, b):\n    return a + b\n",

@@ -25,12 +25,15 @@ def test_merges_findings_from_all_agents(monkeypatch):
     monkeypatch.setattr(
         coordinator.llm_supplement,
         "get_llm_findings_with_status",
-        lambda code, filename, context="": ([make_finding(1, "logic", "llm_supplement")], True),
+        lambda code, filename, context="", canary_key=None: (
+            [make_finding(1, "logic", "llm_supplement")],
+            True,
+        ),
     )
     monkeypatch.setattr(
         coordinator.security_agent,
         "get_security_findings_with_status",
-        lambda code, filename, context="": (
+        lambda code, filename, context="", canary_key=None: (
             [make_finding(2, "security", "security_agent")],
             True,
         ),
@@ -38,12 +41,15 @@ def test_merges_findings_from_all_agents(monkeypatch):
     monkeypatch.setattr(
         coordinator.style_agent,
         "get_style_findings_with_status",
-        lambda code, filename, context="": ([make_finding(3, "style", "style_agent")], True),
+        lambda code, filename, context="", canary_key=None: (
+            [make_finding(3, "style", "style_agent")],
+            True,
+        ),
     )
     monkeypatch.setattr(
         coordinator.test_coverage_agent,
         "get_test_coverage_findings_with_status",
-        lambda code, filename, context="": (
+        lambda code, filename, context="", canary_key=None: (
             [make_finding(4, "test_coverage", "test_coverage_agent")],
             True,
         ),
@@ -60,22 +66,22 @@ def test_one_agent_failing_marks_overall_as_not_succeeded(monkeypatch):
     monkeypatch.setattr(
         coordinator.llm_supplement,
         "get_llm_findings_with_status",
-        lambda code, filename, context="": ([], False),
+        lambda code, filename, context="", canary_key=None: ([], False),
     )
     monkeypatch.setattr(
         coordinator.security_agent,
         "get_security_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
     monkeypatch.setattr(
         coordinator.style_agent,
         "get_style_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
     monkeypatch.setattr(
         coordinator.test_coverage_agent,
         "get_test_coverage_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
 
     _findings, succeeded = coordinator.run_all_agents("x = 1\n", "app.py")
@@ -88,27 +94,66 @@ def test_ungrounded_findings_are_dropped(monkeypatch):
     monkeypatch.setattr(
         coordinator.llm_supplement,
         "get_llm_findings_with_status",
-        lambda code, filename, context="": ([fabricated], True),
+        lambda code, filename, context="", canary_key=None: ([fabricated], True),
     )
     monkeypatch.setattr(
         coordinator.security_agent,
         "get_security_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
     monkeypatch.setattr(
         coordinator.style_agent,
         "get_style_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
     monkeypatch.setattr(
         coordinator.test_coverage_agent,
         "get_test_coverage_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
 
     findings, _succeeded = coordinator.run_all_agents("x = 1\n", "app.py")
 
     assert findings == []
+
+
+def test_canary_key_is_passed_to_every_agent(monkeypatch):
+    captured = {}
+
+    def make_capturer(name):
+        def _capture(code, filename, context="", canary_key=None):
+            captured[name] = canary_key
+            return [], True
+
+        return _capture
+
+    monkeypatch.setattr(
+        coordinator.llm_supplement,
+        "get_llm_findings_with_status",
+        make_capturer("llm_supplement"),
+    )
+    monkeypatch.setattr(
+        coordinator.security_agent,
+        "get_security_findings_with_status",
+        make_capturer("security_agent"),
+    )
+    monkeypatch.setattr(
+        coordinator.style_agent, "get_style_findings_with_status", make_capturer("style_agent")
+    )
+    monkeypatch.setattr(
+        coordinator.test_coverage_agent,
+        "get_test_coverage_findings_with_status",
+        make_capturer("test_coverage_agent"),
+    )
+
+    coordinator.run_all_agents("x = 1\n", "app.py", canary_key="acme/widgets:abc123")
+
+    assert captured == {
+        "llm_supplement": "acme/widgets:abc123",
+        "security_agent": "acme/widgets:abc123",
+        "style_agent": "acme/widgets:abc123",
+        "test_coverage_agent": "acme/widgets:abc123",
+    }
 
 
 def test_dedupes_same_line_and_category_across_agents(monkeypatch):
@@ -118,22 +163,22 @@ def test_dedupes_same_line_and_category_across_agents(monkeypatch):
     monkeypatch.setattr(
         coordinator.llm_supplement,
         "get_llm_findings_with_status",
-        lambda code, filename, context="": ([dup_a], True),
+        lambda code, filename, context="", canary_key=None: ([dup_a], True),
     )
     monkeypatch.setattr(
         coordinator.security_agent,
         "get_security_findings_with_status",
-        lambda code, filename, context="": ([dup_b], True),
+        lambda code, filename, context="", canary_key=None: ([dup_b], True),
     )
     monkeypatch.setattr(
         coordinator.style_agent,
         "get_style_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
     monkeypatch.setattr(
         coordinator.test_coverage_agent,
         "get_test_coverage_findings_with_status",
-        lambda code, filename, context="": ([], True),
+        lambda code, filename, context="", canary_key=None: ([], True),
     )
 
     findings, _succeeded = coordinator.run_all_agents("x = 1\n", "app.py")

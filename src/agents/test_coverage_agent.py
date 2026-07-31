@@ -36,7 +36,7 @@ def get_test_coverage_findings(code: str, filename: str, *, context: str = "") -
 
 
 def get_test_coverage_findings_with_status(
-    code: str, filename: str, *, context: str = ""
+    code: str, filename: str, *, context: str = "", canary_key: str | None = None
 ) -> tuple[list[Finding], bool]:
     findings, succeeded = run_finding_agent(
         code,
@@ -46,6 +46,7 @@ def get_test_coverage_findings_with_status(
         valid_categories=_VALID_CATEGORIES,
         source_name="test_coverage_agent",
         context=context,
+        canary_key=canary_key,
     )
     return [_cap_at_info(f) for f in findings], succeeded
 

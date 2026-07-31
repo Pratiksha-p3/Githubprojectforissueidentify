@@ -34,7 +34,7 @@ def get_style_findings(code: str, filename: str, *, context: str = "") -> list[F
 
 
 def get_style_findings_with_status(
-    code: str, filename: str, *, context: str = ""
+    code: str, filename: str, *, context: str = "", canary_key: str | None = None
 ) -> tuple[list[Finding], bool]:
     findings, succeeded = run_finding_agent(
         code,
@@ -44,6 +44,7 @@ def get_style_findings_with_status(
         valid_categories=_VALID_CATEGORIES,
         source_name="style_agent",
         context=context,
+        canary_key=canary_key,
     )
     return [_cap_at_warning(f) for f in findings], succeeded
 
