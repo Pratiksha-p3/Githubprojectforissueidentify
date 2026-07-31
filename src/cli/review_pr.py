@@ -34,6 +34,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+import requests
+
 from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
@@ -99,11 +101,23 @@ def review_pr(
     print(f"{'=' * 60}")
 
     if post:
-        outcome = publish_review(combined, pr_number, github_client=client)
-        print(
-            f"\nPosted to GitHub: comment {outcome['comment_action']} "
-            f"(id={outcome['comment_id']}), check run id={outcome['check_run_id']}"
-        )
+        try:
+            outcome = publish_review(combined, pr_number, github_client=client)
+            print(
+                f"\nPosted to GitHub: comment {outcome['comment_action']} "
+                f"(id={outcome['comment_id']}), check run id={outcome['check_run_id']}"
+            )
+        except requests.exceptions.HTTPError as e:
+            # Check Run creation requires GitHub App auth -- a PAT (this
+            # client's only supported auth mode, see github_client.py's
+            # docstring) gets a 403 here even with full repo permissions.
+            # The summary comment itself already succeeded (publish_review
+            # posts it before attempting the check run), so this is a
+            # disclosed, known gap, not a reason to also skip the fix
+            # suggestions below, which don't depend on the check run at all.
+            print(f"\nComment posted, but check run creation failed: {e}")
+            print("(Check Runs need GitHub App auth, not a personal access token.)")
+
         suggestion_count = post_fix_suggestions(
             client, repo, pr_number, head_sha, combined.findings
         )

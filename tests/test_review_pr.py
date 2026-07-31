@@ -231,6 +231,33 @@ def test_dry_run_never_posts_suggestion_comments(monkeypatch):
     assert client.review_comments == []
 
 
+def test_check_run_403_does_not_prevent_fix_suggestions_from_posting(monkeypatch):
+    """A PAT (this project's only supported auth mode) can't create
+    Check Runs -- GitHub returns 403 even with full repo permissions,
+    since that endpoint requires GitHub App auth. publish_review()
+    raises in that case, but the summary comment it posts beforehand
+    already succeeded, and the fix-suggestion comments below don't
+    depend on the check run at all -- a real gap, not a reason to also
+    lose those."""
+    import requests
+
+    def fake_publish(*a, **k):
+        raise requests.exceptions.HTTPError("403 Client Error: Forbidden")
+
+    monkeypatch.setattr(review_pr, "publish_review", fake_publish)
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    exit_code = review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, github_client=client
+    )
+
+    assert exit_code == 0  # still reflects the review decision, not the publish failure
+    assert len(client.review_comments) == 1  # suggestion still posted despite the 403
+
+
 def test_post_fix_suggestions_returns_the_count_posted():
     from src.core.models import ConfidenceTier, Finding, Severity
 
