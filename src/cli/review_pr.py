@@ -28,6 +28,16 @@ what turns a Finding's fix from prose in a summary comment into an
 actual one-click "Apply suggestion" button on the PR's Files Changed
 tab. Findings with no fix (e.g. a syntax error) are skipped since
 there's nothing to suggest.
+
+`--multi-agent` swaps the single runtime/logic LLM pass for
+src/agents/coordinator.py's four specialized agents (adds security,
+style, test_coverage) — off by default, same reasoning as
+src/core/orchestrator.py's own use_multi_agent default (multiplies LLM
+calls per file 4x). Findings like a hardcoded secret or a SQL-injection
+shaped query that the security_agent would catch never surface here
+without it; the deterministic checkers (src/analyzers/
+hardcoded_secret_checker.py, sql_injection_checker.py) catch the most
+common instances of both without needing this flag at all.
 """
 from __future__ import annotations
 
@@ -60,6 +70,7 @@ def review_pr(
     pr_number: int,
     *,
     include_llm: bool = True,
+    use_multi_agent: bool = False,
     post: bool = False,
     github_client: GitHubClient | None = None,
 ) -> int:
@@ -82,7 +93,8 @@ def review_pr(
         path = f["filename"]
         code = client.get_file_content(repo, path, ref=head_sha)
         result = review_code(
-            code, path, repo=repo, commit_sha=head_sha, include_llm=include_llm
+            code, path, repo=repo, commit_sha=head_sha,
+            include_llm=include_llm, use_multi_agent=use_multi_agent,
         )
         results.append(result)
         _print_file_result(path, result)
@@ -170,12 +182,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip the LLM supplement pass (deterministic checkers only)",
     )
     parser.add_argument(
+        "--multi-agent", action="store_true", dest="use_multi_agent",
+        help="Use the 4 specialized agents (security/style/test_coverage/logic) "
+        "instead of the single runtime/logic pass",
+    )
+    parser.add_argument(
         "--post", action="store_true",
         help="Actually post the review comment + check run to GitHub (default: dry run)",
     )
     args = parser.parse_args(argv)
     return review_pr(
-        args.repo, args.pr_number, include_llm=args.include_llm, post=args.post
+        args.repo, args.pr_number,
+        include_llm=args.include_llm, use_multi_agent=args.use_multi_agent, post=args.post,
     )
 
 

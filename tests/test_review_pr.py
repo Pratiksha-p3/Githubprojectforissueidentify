@@ -125,6 +125,35 @@ def test_post_flag_calls_publish_review_exactly_once(monkeypatch):
     assert published[0][1] == 4
 
 
+def test_multi_agent_flag_is_passed_through_to_review_code():
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}], contents={"a.py": "x = 1\n"}
+    )
+    captured = {}
+
+    def fake_review_code(code, filename, **kwargs):
+        captured["use_multi_agent"] = kwargs["use_multi_agent"]
+        from src.core.models import ReviewResult, ReviewStatus
+
+        return ReviewResult(
+            repo="acme/widgets", commit_sha=kwargs["commit_sha"],
+            status=ReviewStatus.COMPLETED, findings=[],
+        )
+
+    import src.cli.review_pr as module
+
+    orig = module.review_code
+    module.review_code = fake_review_code
+    try:
+        module.review_pr(
+            "acme/widgets", 4, include_llm=False, use_multi_agent=True, github_client=client
+        )
+    finally:
+        module.review_code = orig
+
+    assert captured["use_multi_agent"] is True
+
+
 def test_combined_result_uses_the_pr_head_sha():
     client = _FakeGitHubClient(
         files=[{"filename": "a.py", "status": "modified"}],

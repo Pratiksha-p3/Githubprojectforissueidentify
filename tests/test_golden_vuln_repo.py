@@ -51,6 +51,16 @@ def test_http_timeout_bug_is_caught():
     assert any(f.source == "http_timeout_checker" for f in findings)
 
 
+def test_hardcoded_secret_bug_is_caught():
+    findings = _run("hardcoded_secret_bug.py")
+    assert any(f.source == "hardcoded_secret_checker" for f in findings)
+
+
+def test_sql_injection_bug_is_caught():
+    findings = _run("sql_injection_bug.py")
+    assert any(f.source == "sql_injection_checker" for f in findings)
+
+
 def test_obfuscated_dict_key_bug_is_still_caught():
     findings = _run("dict_key_bug_obfuscated.py")
     assert any(f.source == "dict_key_checker" for f in findings)
@@ -88,6 +98,8 @@ def test_every_deterministic_checker_is_exercised_by_at_least_one_fixture():
         "file_exists_checker",
         "unstored_constructor_param_checker",
         "http_timeout_checker",
+        "hardcoded_secret_checker",
+        "sql_injection_checker",
     }
     assert expected_sources <= sources_seen
     assert len(CHECKERS) == len(expected_sources), (

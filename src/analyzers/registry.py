@@ -25,7 +25,9 @@ from collections.abc import Callable
 from src.analyzers.dict_key_checker import detect_unguarded_dict_access
 from src.analyzers.division_guard_checker import detect_unguarded_division
 from src.analyzers.file_exists_checker import detect_unguarded_file_open
+from src.analyzers.hardcoded_secret_checker import detect_hardcoded_secrets
 from src.analyzers.http_timeout_checker import detect_unguarded_http_calls
+from src.analyzers.sql_injection_checker import detect_sql_injection
 from src.analyzers.unstored_constructor_param_checker import (
     detect_unstored_constructor_params,
 )
@@ -40,6 +42,8 @@ CHECKERS: tuple[Checker, ...] = (
     detect_unguarded_file_open,
     detect_unstored_constructor_params,
     detect_unguarded_http_calls,
+    detect_hardcoded_secrets,
+    detect_sql_injection,
 )
 
 
