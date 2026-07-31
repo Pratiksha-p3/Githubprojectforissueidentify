@@ -52,6 +52,8 @@ def process_orders(orders):
 
 
 def divide(a, b):
+    if b == 0:
+        raise ZeroDivisionError(f"'b' is zero")
     return a / b
 
 
