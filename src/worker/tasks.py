@@ -20,6 +20,15 @@ docker-compose stack running locally) must never fail a review that
 otherwise completed successfully — this is auxiliary record-keeping,
 not the core correctness path.
 
+Stage 13 fixed a genuine concurrency bug found by a real threading test
+(tests/test_load_concurrency.py): the idempotency check used to be two
+separate calls (already_processed() then mark_processed()), which let
+every concurrent caller through when timed against each other — now a
+single atomic claim (try_mark_processed()), released back
+(idempotency.release()) if the work then fails, so Celery's retry can
+still redo it instead of the failed attempt's claim silently blocking
+the retry forever.
+
 _execute_review() is deliberately plain business logic with no Celery
 machinery in it (no `self`, no retry calls) so it's directly unit-
 testable without needing a running broker or Celery's eager-execution
@@ -56,7 +65,7 @@ def _execute_review(
     include_llm: bool = True,
 ) -> dict:
     idempotency = IdempotencyStore()
-    if idempotency.already_processed(repo, commit_sha):
+    if not idempotency.try_mark_processed(repo, commit_sha):
         return {
             "status": "skipped",
             "reason": "already processed",
@@ -64,10 +73,13 @@ def _execute_review(
             "commit_sha": commit_sha,
         }
 
-    result = review_code(
-        code, filename, repo=repo, commit_sha=commit_sha, include_llm=include_llm
-    )
-    idempotency.mark_processed(repo, commit_sha)
+    try:
+        result = review_code(
+            code, filename, repo=repo, commit_sha=commit_sha, include_llm=include_llm
+        )
+    except Exception:
+        idempotency.release(repo, commit_sha)
+        raise
 
     decision = decide(result)
     outcome: dict[str, Any] = {

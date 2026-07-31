@@ -6,7 +6,8 @@ surfaced), RAG-backed repo context, CVE/SBOM enrichment, and async
 GitHub/GitLab webhook delivery with a durable queue and dead-letter
 handling.
 
-**Current stage: Stage 12 — auto-fix accept/reject UX + decision logging.**
+**Current stage: Stage 13 — deep testing (golden-vuln regression suite, RAG
+eval CI gate, concurrency correctness).**
 See the assistant's staged roadmap for what's next.
 
 ## Running tests locally
@@ -83,6 +84,39 @@ returns the literal string `"requires login"` for some registry rules'
 matched-code snippet instead of the real code — handled in
 `semgrep_runner.py`, but worth knowing if you're inspecting raw semgrep
 output yourself.
+
+## Deep testing (Stage 13)
+
+- **Golden-vuln regression suite** (`tests/golden_vuln_repo/`, `tests/test_golden_vuln_repo.py`):
+  real fixture files (not mocked) run through the actual deterministic-checker
+  pipeline, each asserting the specific checker that should fire on it does.
+  A coverage-tripwire test fails the suite if a new checker is added to the
+  registry without a matching fixture, so checker coverage can't silently
+  regress over time.
+- **RAG eval CI gate** (`src/eval/rag_eval.py`, `tests/test_rag_eval.py`):
+  precision/recall against a small labeled query set, run as a normal pytest
+  test (no separate CI script) so retrieval-quality regressions fail the
+  build the same way any other test failure would.
+- **Red-team prompt-injection corpus** (`tests/test_red_team_prompt_injection.py`):
+  runs a corpus of real-world-style injection phrasings through layer 1
+  (`prompt_sanitizer.py`) and documents its actual boundary rather than
+  assuming full coverage — some phrasings (indirection, base64, no
+  imperative verb) are asserted to pass through *unmarked*, since a
+  regex-based layer 1 was never going to catch everything. A separate
+  corpus of manipulative finding text is run against layer 2
+  (`guard_agent.py`) to confirm it's the actual backstop for what layer 1
+  misses, plus a fail-open check under a simulated LLM outage.
+- **Concurrency correctness** (`tests/test_load_concurrency.py`): real Python
+  threads against fakeredis, standing in for "simulate concurrent PR reviews"
+  from the spec (no live Celery/Redis stack in this environment). This is how
+  a genuine race condition was found: the idempotency check used to be two
+  separate Redis calls (`already_processed()` then `mark_processed()`), and
+  under real thread interleaving all 20 concurrent callers proceeded instead
+  of just one. Fixed in `src/storage/idempotency_store.py` by replacing both
+  with a single atomic `try_mark_processed()` (Redis `SET NX EX`), plus a
+  `release()` so a claim is given back if the work then fails — otherwise a
+  Celery retry would see the commit as already claimed by the failed attempt
+  and silently skip redoing it.
 
 ## Secrets backend (src/core/secrets.py)
 

@@ -46,11 +46,13 @@ def test_execute_review_runs_and_marks_processed(monkeypatch, fake_idempotency_s
 
     assert outcome["status"] == "completed"
     assert outcome["gate_decision"] == "approve"
-    assert fake_idempotency_store.already_processed("acme/widgets", "abc123") is True
+    # try_mark_processed() is a claim -- a second attempt on the same
+    # commit must now be refused, proving the first call actually marked it.
+    assert fake_idempotency_store.try_mark_processed("acme/widgets", "abc123") is False
 
 
 def test_execute_review_skips_already_processed_commit(monkeypatch, fake_idempotency_store):
-    fake_idempotency_store.mark_processed("acme/widgets", "abc123")
+    fake_idempotency_store.try_mark_processed("acme/widgets", "abc123")
 
     calls = []
     monkeypatch.setattr(tasks, "review_code", lambda *a, **k: calls.append(1))
@@ -85,6 +87,28 @@ def test_execute_review_reports_block_decision(monkeypatch, fake_idempotency_sto
 
     assert outcome["gate_decision"] == "block"
     assert outcome["critical_count"] == 1
+
+
+def test_failed_review_releases_the_idempotency_claim_for_a_retry(
+    monkeypatch, fake_idempotency_store
+):
+    """If review_code() raises (Celery will autoretry the task), the
+    idempotency claim must be released -- otherwise the retry would see
+    the commit as already claimed by the failed attempt and skip doing
+    the work entirely, silently dropping it instead of retrying it."""
+
+    def _raise(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(tasks, "review_code", _raise)
+
+    with pytest.raises(RuntimeError):
+        tasks._execute_review(
+            repo="acme/widgets", commit_sha="abc123", filename="app.py", code="x = 1\n"
+        )
+
+    # Claim was released -- a retry can now actually claim and redo the work.
+    assert fake_idempotency_store.try_mark_processed("acme/widgets", "abc123") is True
 
 
 def test_on_failure_pushes_to_dlq(monkeypatch):
