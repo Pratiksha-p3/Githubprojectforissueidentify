@@ -58,7 +58,7 @@ def divide(a, b):
 
 
 def unused_function():
-    password = "admin123"
+    password = os.environ["password"]
     temp = 100
     return password
 
