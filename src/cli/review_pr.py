@@ -51,6 +51,25 @@ shaped query that the security_agent would catch never surface here
 without it; the deterministic checkers (src/analyzers/
 hardcoded_secret_checker.py, sql_injection_checker.py) catch the most
 common instances of both without needing this flag at all.
+
+`--auto-apply` (requires `--post`) is a deliberate, separate step up in
+autonomy from everything else in this file: instead of only posting a
+suggestion a human has to click, it commits every finding's fix
+directly to the PR branch (apply_fixes_to_file()), then RE-REVIEWS the
+new commit before posting anything -- the posted comment/check-run and
+"Needs manual review" count reflect what's actually still there after
+the auto-fix, not the stale pre-fix state. This is why it's off by
+default and requires an explicit flag on top of --post: every other
+command in this CLI only ever suggests or reports, never commits code
+on its own without a human asking for that specific action.
+
+"Auto-fixed" in the summary means "findings this run actually resolved
+and pushed" (0 unless --auto-apply is used and succeeds), a different,
+narrower claim than src/core/confidence.py's is_safe_to_auto_apply()
+gate (which stays permanently 0 today, by design -- see that module).
+Conflating "a human told this specific run to auto-apply" with "the
+system decided on its own this was safe" would misrepresent how much
+autonomy is actually in play.
 """
 from __future__ import annotations
 
@@ -86,12 +105,14 @@ def review_pr(
     include_llm: bool = True,
     use_multi_agent: bool = False,
     post: bool = False,
+    auto_apply: bool = False,
     github_client: GitHubClient | None = None,
 ) -> int:
     client = github_client or GitHubClient()
 
     pr = client.get_pull_request(repo, pr_number)
     head_sha = pr["head"]["sha"]
+    branch = pr["head"]["ref"]
 
     files = client.list_pr_files(repo, pr_number)
     py_files = [f for f in files if f["filename"].endswith(".py") and f["status"] != "removed"]
@@ -102,16 +123,56 @@ def review_pr(
 
     print(f"Reviewing {len(py_files)} file(s) from {repo}#{pr_number} @ {head_sha[:7]}...\n")
 
+    file_data: dict[str, tuple[str, str]] = {}  # path -> (content, blob_sha)
     results: list[ReviewResult] = []
     for f in py_files:
         path = f["filename"]
-        code = client.get_file_content(repo, path, ref=head_sha)
+        content, blob_sha = client._get_file_metadata(repo, path, head_sha)
+        file_data[path] = (content, blob_sha)
         result = review_code(
-            code, path, repo=repo, commit_sha=head_sha,
+            content, path, repo=repo, commit_sha=head_sha,
             include_llm=include_llm, use_multi_agent=use_multi_agent,
         )
         results.append(result)
         _print_file_result(path, result)
+
+    auto_fixed_count = 0
+    if auto_apply and post:
+        for f, result in zip(py_files, results, strict=True):
+            path = f["filename"]
+            content, blob_sha = file_data[path]
+            if not result.findings:
+                continue
+            patched, applied, _remaining = apply_fixes_to_file(content, result.findings)
+            if not applied:
+                continue
+            push_result = client.update_file_content(
+                repo, path,
+                message=f"Auto-fix {len(applied)} issue(s) flagged by AI Code Review",
+                content=patched, sha=blob_sha, branch=branch,
+            )
+            auto_fixed_count += len(applied)
+            new_sha = push_result["commit"]["sha"]
+            print(f"  Auto-applied {len(applied)} fix(es) to {path} (commit {new_sha[:7]})")
+
+        if auto_fixed_count:
+            # Re-review the NEW commit rather than trust stale
+            # pre-fix findings -- what gets posted below must reflect
+            # what's actually still there, the same "verify by actually
+            # checking" principle used throughout this project.
+            pr = client.get_pull_request(repo, pr_number)
+            head_sha = pr["head"]["sha"]
+            print(f"\nRe-reviewing after auto-fix @ {head_sha[:7]}...\n")
+            results = []
+            for f in py_files:
+                path = f["filename"]
+                content = client.get_file_content(repo, path, ref=head_sha)
+                result = review_code(
+                    content, path, repo=repo, commit_sha=head_sha,
+                    include_llm=include_llm, use_multi_agent=use_multi_agent,
+                )
+                results.append(result)
+                _print_file_result(path, result)
 
     combined = _combine(repo, head_sha, results)
     decision = decide(combined)
@@ -127,7 +188,7 @@ def review_pr(
     print(f"{'=' * 60}")
 
     fix_status = summarize_auto_fix_status(combined.findings)
-    print(f"  Auto-fixed:              {fix_status['auto_fixed_count']}")
+    print(f"  Auto-fixed:              {auto_fixed_count}")
     print(f"  Needs manual review:     {fix_status['manual_review_count']}")
     for detail in fix_status["manual_review_details"]:
         print(f"    - {detail['file']}:{detail['line']} ({detail['source']}) — {detail['reason']}")
@@ -163,6 +224,56 @@ def review_pr(
         print("\n(dry run -- nothing posted to GitHub; re-run with --post to publish)")
 
     return 0 if decision != GateDecision.BLOCK else 1
+
+
+def apply_fixes_to_file(
+    code: str, findings: list[Finding]
+) -> tuple[str, list[Finding], list[Finding]]:
+    """Applies every finding's `fix` to `code` by replacing that
+    finding's exact source line with the fix's (possibly multi-line)
+    replacement text. Processes lines in reverse order so an earlier
+    (further down) replacement's line-count change never shifts the
+    line number a not-yet-processed (further up) fix is anchored to.
+
+    Two findings anchored to the exact same line conflict -- neither is
+    applied, since applying one would silently invalidate the other's
+    line-based fix. Findings with no fix, plus any conflicts, are
+    returned as not-applied so they still get a chance at a posted
+    suggestion (post_fix_suggestions()) instead of being silently
+    dropped.
+
+    Returns (patched_code, applied_findings, not_applied_findings).
+    """
+    fixable = [f for f in findings if f.fix.strip()]
+    not_fixable = [f for f in findings if not f.fix.strip()]
+
+    lines = code.splitlines()
+    grouped_by_line: dict[int, list[Finding]] = {}
+    for f in fixable:
+        grouped_by_line.setdefault(f.line, []).append(f)
+
+    by_line: dict[int, Finding] = {}
+    conflicted: list[Finding] = []
+    for line_no, group in grouped_by_line.items():
+        if len(group) == 1:
+            by_line[line_no] = group[0]
+        else:
+            conflicted.extend(group)
+
+    applied: list[Finding] = []
+    for line_no in sorted(by_line, reverse=True):
+        f = by_line[line_no]
+        if not (0 < line_no <= len(lines)):
+            conflicted.append(f)
+            continue
+        lines[line_no - 1 : line_no] = f.fix.splitlines()
+        applied.append(f)
+
+    patched = "\n".join(lines)
+    if code.endswith("\n"):
+        patched += "\n"
+
+    return patched, applied, not_fixable + conflicted
 
 
 def post_fix_suggestions(
@@ -227,10 +338,20 @@ def main(argv: list[str] | None = None) -> int:
         "--post", action="store_true",
         help="Actually post the review comment + check run to GitHub (default: dry run)",
     )
+    parser.add_argument(
+        "--auto-apply", action="store_true",
+        help="Commit fixes directly to the PR branch instead of only suggesting them "
+        "(requires --post; findings with no fix, or a line conflict, still get a "
+        "posted suggestion instead)",
+    )
     args = parser.parse_args(argv)
+    if args.auto_apply and not args.post:
+        print("--auto-apply requires --post (nothing to apply against without it).")
+        return 1
     return review_pr(
         args.repo, args.pr_number,
-        include_llm=args.include_llm, use_multi_agent=args.use_multi_agent, post=args.post,
+        include_llm=args.include_llm, use_multi_agent=args.use_multi_agent,
+        post=args.post, auto_apply=args.auto_apply,
     )
 
 

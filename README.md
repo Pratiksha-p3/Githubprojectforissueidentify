@@ -53,7 +53,24 @@ review-cli analyze <file> --llm      # + LLM supplement pass
 review-cli review <file>             # full orchestrator + PR-gate decision
 review-cli review <file> --no-llm    # deterministic-only, no API key needed
 review-cli index <directory>         # index a local directory into the RAG vector store
+
+review-cli review-pr <repo> <pr_number>                # dry run against a real open PR
+review-cli review-pr <repo> <pr_number> --post         # + posts comment/check-run/suggestions
+review-cli review-pr <repo> <pr_number> --post --auto-apply
+                                                        # + commits fixes to the PR branch directly
 ```
+
+`--auto-apply` is a genuine step up in autonomy, not just a reporting
+option — it makes the tool commit code to someone's PR branch without a
+human clicking anything, for every finding that has a fix (which is
+still most findings, since MEDIUM/LOW confidence is not the same as "no
+fix exists" — see src/core/confidence.py). It re-reviews the new commit
+before posting anything, so the summary/check-run reflects what's
+actually still there afterward. Findings with no fix, or two findings
+anchored to the same line (a conflict — see
+`src/cli/review_pr.py::apply_fixes_to_file()`), are left for a posted
+suggestion instead. Requires `--post`; the CLI rejects `--auto-apply`
+without it since there'd be nothing to push against.
 
 ## Multi-agent review (opt-in, src/agents/coordinator.py)
 

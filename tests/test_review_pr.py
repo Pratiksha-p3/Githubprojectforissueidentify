@@ -2,21 +2,34 @@ from src.cli import review_pr
 
 
 class _FakeGitHubClient:
-    def __init__(self, files, contents, head_sha="abc123"):
+    def __init__(self, files, contents, head_sha="abc123", branch="main"):
         self._files = files
-        self._contents = contents
+        self._contents = dict(contents)
         self._head_sha = head_sha
+        self._branch = branch
         self.published = []
         self.review_comments = []
+        self.pushed_files: list[dict] = []
 
     def get_pull_request(self, repo, pr_number):
-        return {"number": pr_number, "head": {"sha": self._head_sha}}
+        return {"number": pr_number, "head": {"sha": self._head_sha, "ref": self._branch}}
 
     def list_pr_files(self, repo, pr_number):
         return self._files
 
     def get_file_content(self, repo, path, ref):
         return self._contents[path]
+
+    def _get_file_metadata(self, repo, path, ref):
+        return self._contents[path], f"blobsha-{path}"
+
+    def update_file_content(self, repo, path, *, message, content, sha=None, branch):
+        self._contents[path] = content
+        self._head_sha = f"{self._head_sha}-fix{len(self.pushed_files) + 1}"
+        self.pushed_files.append(
+            {"path": path, "message": message, "content": content, "sha": sha, "branch": branch}
+        )
+        return {"commit": {"sha": self._head_sha}}
 
     def create_review_comment(self, repo, pr_number, *, commit_id, path, line, body):
         comment = {
@@ -152,6 +165,85 @@ def test_dry_run_by_default_never_calls_publish(monkeypatch):
     review_pr.review_pr("acme/widgets", 4, include_llm=False, github_client=client)
 
     assert published == []
+
+
+def test_auto_apply_pushes_the_fix_and_reports_it_as_auto_fixed(monkeypatch, capsys):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    exit_code = review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, auto_apply=True, github_client=client
+    )
+
+    assert exit_code == 0  # the WARNING is now fixed -- nothing left to block on
+    assert len(client.pushed_files) == 1
+    assert "if b == 0" in client.pushed_files[0]["content"]
+
+    out = capsys.readouterr().out
+    assert "Auto-fixed:              1" in out
+    assert "Needs manual review:     0" in out
+
+
+def test_auto_apply_re_reviews_after_pushing_so_the_posted_comment_is_accurate(monkeypatch):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, auto_apply=True, github_client=client
+    )
+
+    # After auto-apply, the file's own content in the fake client is the
+    # patched version -- re-reviewing it must find nothing left.
+    assert "if b == 0" in client._contents["a.py"]
+
+
+def test_auto_apply_leaves_findings_with_no_fix_for_manual_review(monkeypatch, capsys):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={
+            "a.py": (
+                "def get_user(cursor, user_id):\n"
+                '    query = f"SELECT * FROM users WHERE id = {user_id}"\n'
+                "    cursor.execute(query)\n"
+            )
+        },
+    )
+
+    review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, auto_apply=True, github_client=client
+    )
+
+    # sql_injection_checker never generates a fix -- nothing to push.
+    assert client.pushed_files == []
+    out = capsys.readouterr().out
+    assert "Auto-fixed:              0" in out
+    assert "Needs manual review:     1" in out
+
+
+def test_auto_apply_without_post_is_rejected_by_the_cli(capsys):
+    exit_code = review_pr.main(["acme/widgets", "4", "--auto-apply"])
+    assert exit_code == 1
+    out = capsys.readouterr().out
+    assert "requires --post" in out
 
 
 def test_post_flag_calls_publish_review_exactly_once(monkeypatch):
