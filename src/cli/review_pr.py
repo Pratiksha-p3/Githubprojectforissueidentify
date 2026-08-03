@@ -26,8 +26,21 @@ non-empty `fix`, using GitHub's ```suggestion fenced-block syntax
 (src/integrations/github_client.py's create_review_comment()) — this is
 what turns a Finding's fix from prose in a summary comment into an
 actual one-click "Apply suggestion" button on the PR's Files Changed
-tab. Findings with no fix (e.g. a syntax error) are skipped since
-there's nothing to suggest.
+tab. Each such comment also includes its confidence tier and
+src/core/confidence.py's manual_review_reason() text, so "why does this
+need a human to click Apply rather than happening on its own" is visible
+right on GitHub, not just in this CLI's own output. Findings with no fix
+(e.g. a syntax error) are skipped since there's nothing to suggest.
+
+Two different counts get reported, deliberately not conflated:
+"Auto-fixed" (src/core/confidence.py's is_safe_to_auto_apply() gate --
+currently always 0, since no checker or LLM finding source in this
+project produces HIGH confidence) versus "Fix suggestions posted to
+GitHub" (how many inline suggestion comments this run actually
+published -- each still needs a human to click "Apply suggestion").
+The second number can be non-zero; conflating it with the first would
+misrepresent something a human still has to act on as something the
+system did on its own.
 
 `--multi-agent` swaps the single runtime/logic LLM pass for
 src/agents/coordinator.py's four specialized agents (adds security,
@@ -46,7 +59,7 @@ import sys
 
 import requests
 
-from src.core.confidence import summarize_auto_fix_status
+from src.core.confidence import manual_review_reason, summarize_auto_fix_status
 from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
@@ -141,7 +154,11 @@ def review_pr(
         suggestion_count = post_fix_suggestions(
             client, repo, pr_number, head_sha, combined.findings
         )
-        print(f"Posted {suggestion_count} inline fix suggestion(s).")
+        print(f"{'=' * 60}")
+        print(f"  Fix suggestions posted to GitHub: {suggestion_count}")
+        print("  (each still needs a human to click \"Apply suggestion\" -- see")
+        print("   the reason posted alongside each one on the PR itself)")
+        print(f"{'=' * 60}")
     else:
         print("\n(dry run -- nothing posted to GitHub; re-run with --post to publish)")
 
@@ -155,7 +172,13 @@ def post_fix_suggestions(
     for f in findings:
         if not f.fix.strip():
             continue
-        body = f"**[{f.severity.value.upper()}] {f.message}**\n\n```suggestion\n{f.fix}\n```"
+        reason = manual_review_reason(f) or "High confidence — safe to auto-apply."
+        body = (
+            f"**[{f.severity.value.upper()}] {f.message}**\n\n"
+            f"```suggestion\n{f.fix}\n```\n\n"
+            f"*Why this needs a human to click \"Apply suggestion\" rather than "
+            f"happening on its own ({f.confidence.value} confidence):* {reason}"
+        )
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=f.line, body=body
         )

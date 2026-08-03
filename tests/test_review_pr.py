@@ -284,6 +284,45 @@ def test_post_flag_posts_a_suggestion_comment_for_each_finding_with_a_fix(monkey
     assert "```suggestion" in comment["body"]
 
 
+def test_suggestion_comment_body_explains_why_manual_review_is_needed(monkeypatch):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
+
+    body = client.review_comments[0]["body"]
+    assert "Why this needs a human" in body
+    assert "judgment call" in body  # division_guard_checker is MEDIUM confidence
+    assert "medium confidence" in body
+
+
+def test_post_summary_reports_the_suggestion_count_distinctly_from_auto_fixed(
+    monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
+
+    out = capsys.readouterr().out
+    assert "Auto-fixed:              0" in out
+    assert "Fix suggestions posted to GitHub: 1" in out
+
+
 def test_findings_with_no_fix_get_no_suggestion_comment(monkeypatch):
     monkeypatch.setattr(
         review_pr,
