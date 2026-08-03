@@ -42,6 +42,27 @@ def test_reviews_only_py_files_and_skips_removed_ones():
     assert exit_code == 0
 
 
+def test_dry_run_prints_auto_fix_summary(capsys):
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={
+            "a.py": (
+                "def get_user(cursor, user_id):\n"
+                '    query = f"SELECT * FROM users WHERE id = {user_id}"\n'
+                "    cursor.execute(query)\n"
+            )
+        },
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, github_client=client)
+
+    out = capsys.readouterr().out
+    assert "Auto-fixed:              0" in out
+    assert "Needs manual review:     1" in out
+    assert "sql_injection_checker" in out
+    assert "needs manual investigation" in out
+
+
 def test_dry_run_prints_the_suggested_fix_for_findings_that_have_one(capsys):
     client = _FakeGitHubClient(
         files=[{"filename": "a.py", "status": "modified"}],

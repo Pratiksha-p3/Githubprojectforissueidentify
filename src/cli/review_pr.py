@@ -46,6 +46,7 @@ import sys
 
 import requests
 
+from src.core.confidence import summarize_auto_fix_status
 from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
@@ -110,6 +111,13 @@ def review_pr(
     print(f"  Findings: {len(combined.findings)} ({combined.critical_count} critical)")
     print(f"  Decision: {_DECISION_ICON[decision]} {decision.value.upper()}")
     print(f"  Reason:   {reason}")
+    print(f"{'=' * 60}")
+
+    fix_status = summarize_auto_fix_status(combined.findings)
+    print(f"  Auto-fixed:              {fix_status['auto_fixed_count']}")
+    print(f"  Needs manual review:     {fix_status['manual_review_count']}")
+    for detail in fix_status["manual_review_details"]:
+        print(f"    - {detail['file']}:{detail['line']} ({detail['source']}) — {detail['reason']}")
     print(f"{'=' * 60}")
 
     if post:

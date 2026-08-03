@@ -60,6 +60,31 @@ def test_review_file_prints_the_suggested_fix_for_findings_that_have_one(
     assert "raise ZeroDivisionError" in out
 
 
+def test_review_file_reports_auto_fix_counts_in_output(tmp_path, capsys):
+    fixture = tmp_path / "buggy.py"
+    fixture.write_text("def divide(a, b):\n    return a / b\n", encoding="utf-8")
+
+    review_cli.review_file(str(fixture), include_llm=False)
+
+    out = capsys.readouterr().out
+    assert "Auto-fixed:          0" in out
+    assert "Needs manual review: 1" in out
+    assert "Manual review needed:" in out
+
+
+def test_review_file_json_includes_fix_status(tmp_path, capsys):
+    fixture = tmp_path / "buggy.py"
+    fixture.write_text("def divide(a, b):\n    return a / b\n", encoding="utf-8")
+
+    review_cli.review_file(str(fixture), include_llm=False, as_json=True)
+
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["fix_status"]["auto_fixed_count"] == 0
+    assert payload["fix_status"]["manual_review_count"] == 1
+    assert "judgment call" in payload["fix_status"]["manual_review_details"][0]["reason"]
+
+
 def test_review_file_json_output_contains_gate_decision(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
         orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)

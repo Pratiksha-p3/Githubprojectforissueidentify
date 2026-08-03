@@ -17,6 +17,11 @@ import json
 import sys
 from pathlib import Path
 
+from src.core.confidence import (
+    is_safe_to_auto_apply,
+    manual_review_reason,
+    summarize_auto_fix_status,
+)
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
 
@@ -47,18 +52,23 @@ def review_file(
     decision = decide(result)
     reason = gate_reason(result)
 
+    fix_status = summarize_auto_fix_status(result.findings)
+
     if as_json:
         payload = result.model_dump(mode="json")
         payload["gate_decision"] = decision.value
         payload["gate_reason"] = reason
+        payload["fix_status"] = fix_status
         print(json.dumps(payload, indent=2))
     else:
-        _print_human(path, result, decision, reason)
+        _print_human(path, result, decision, reason, fix_status)
 
     return 0 if decision != GateDecision.BLOCK else 1
 
 
-def _print_human(path: Path, result, decision: GateDecision, reason: str) -> None:
+def _print_human(
+    path: Path, result, decision: GateDecision, reason: str, fix_status: dict
+) -> None:
     icon = _DECISION_ICON[decision]
     print(f"\n{'=' * 60}")
     print(f"  Review: {path}")
@@ -67,6 +77,8 @@ def _print_human(path: Path, result, decision: GateDecision, reason: str) -> Non
     print(f"  Findings: {len(result.findings)} ({result.critical_count} critical)")
     print(f"  Decision: {icon} {decision.value.upper()}")
     print(f"  Reason:   {reason}")
+    print(f"  Auto-fixed:          {fix_status['auto_fixed_count']}")
+    print(f"  Needs manual review: {fix_status['manual_review_count']}")
     print(f"{'=' * 60}\n")
 
     for f in result.findings:
@@ -75,6 +87,8 @@ def _print_human(path: Path, result, decision: GateDecision, reason: str) -> Non
             print(f"    Suggested fix ({f.confidence.value} confidence):")
             for line in f.fix.splitlines():
                 print(f"      {line}")
+        if not is_safe_to_auto_apply(f):
+            print(f"    Manual review needed: {manual_review_reason(f)}")
 
 
 def main(argv: list[str] | None = None) -> int:
