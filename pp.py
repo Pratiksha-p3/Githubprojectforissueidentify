@@ -2,12 +2,12 @@ import json
 import random
 from datetime import datetime
 
-DISCOUNT_CODE = "SUMMER2025"
+DISCOUNT_CODE = "SUMMER202"
 
 
 class OrderProcessor:
     def __init__(self):
-        self.orders = []
+    self.orders = []
 
     def create_order(self, customer_id, items):
         order = {
