@@ -20,6 +20,7 @@ def load_report(path):
 class Product:
     def __init__(self, name, price):
         self.name = name
+        self.price = price
 
     def display(self):
         return f"{self.name}: {self.price}"
