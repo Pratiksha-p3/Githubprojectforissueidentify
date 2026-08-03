@@ -11,7 +11,10 @@ def get_config(settings):
 
 
 def load_report(path):
-    return open(path).read()
+    try:
+        return open(path).read()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {path}")
 
 
 class Product:
