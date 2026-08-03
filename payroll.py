@@ -49,8 +49,7 @@ def export_payroll(payroll_data):
             row["employee_id"] + ","
             + str(row["annual_salary"]) + ","
             + row["generated_at"]
-            + "
-"
+            + "\n"
         )
 
     return output
