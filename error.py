@@ -3,7 +3,7 @@ import os
 import sqlite3
 
 
-API_KEY = "hardcoded-secret-key"
+API_KEY = os.environ["API_KEY"]
 
 
 def average(total, count):
