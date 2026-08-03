@@ -200,6 +200,27 @@ def test_update_file_content_sends_base64_encoded_content(monkeypatch):
     assert b64.b64decode(body["content"]).decode("utf-8") == "x = 2\n"
 
 
+def test_update_file_content_omits_sha_when_creating_a_new_file(monkeypatch):
+    """GitHub treats a `sha` on a path with no existing file as an
+    error, not "create it" -- omitting `sha` entirely (the default) is
+    what makes this method double as file creation, not just updates."""
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return _FakeResponse(json_data={"commit": {"sha": "newcommitsha"}})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    client.update_file_content(
+        "acme/widgets", "new_file.py", message="add it", content="x = 1\n", branch="main",
+    )
+
+    _method, _url, kwargs = calls[0]
+    assert "sha" not in kwargs["json"]
+
+
 def test_create_review_comment_sends_the_suggestion_to_the_right_line(monkeypatch):
     calls = []
 

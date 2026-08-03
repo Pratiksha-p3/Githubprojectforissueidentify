@@ -144,19 +144,22 @@ class GitHubClient:
         return base64.b64decode(data["content"]).decode("utf-8"), data["sha"]
 
     def update_file_content(
-        self, repo: str, path: str, *, message: str, content: str, sha: str, branch: str
+        self, repo: str, path: str, *, message: str, content: str, sha: str | None = None,
+        branch: str,
     ) -> dict:
-        """Commits new content for an existing file via the Contents API
-        (PUT). `sha` must be the file's current blob sha (get_file_sha())
-        — GitHub rejects the write with a 409 if it doesn't match the
-        file's actual current content, rather than silently overwriting
-        whatever's there."""
+        """Commits `content` via the Contents API (PUT) — creates `path`
+        if it doesn't exist yet, or updates it if `sha` is given. `sha`
+        must be the file's current blob sha (get_file_sha()) for an
+        update; GitHub rejects the write with a 409 if it doesn't match
+        the file's actual current content, rather than silently
+        overwriting whatever's there. Omit `sha` entirely for a brand
+        new file — GitHub treats a `sha` on a path with no existing
+        file as an error, not "create it"."""
         encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
-        return self._request(
-            "PUT",
-            f"/repos/{repo}/contents/{path}",
-            json={"message": message, "content": encoded, "sha": sha, "branch": branch},
-        )
+        body = {"message": message, "content": encoded, "branch": branch}
+        if sha is not None:
+            body["sha"] = sha
+        return self._request("PUT", f"/repos/{repo}/contents/{path}", json=body)
 
     def create_review_comment(
         self, repo: str, pr_number: int, *, commit_id: str, path: str, line: int, body: str
