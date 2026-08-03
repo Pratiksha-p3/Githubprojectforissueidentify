@@ -71,6 +71,10 @@ def _print_human(path: Path, result, decision: GateDecision, reason: str) -> Non
 
     for f in result.findings:
         print(f"  [{f.severity.value.upper()}] Line {f.line} — {f.message} (source: {f.source})")
+        if f.fix:
+            print(f"    Suggested fix ({f.confidence.value} confidence):")
+            for line in f.fix.splitlines():
+                print(f"      {line}")
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -44,6 +44,22 @@ def test_review_file_returns_nonzero_for_missing_file():
     assert review_cli.review_file("does_not_exist.py") == 1
 
 
+def test_review_file_prints_the_suggested_fix_for_findings_that_have_one(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)
+    )
+    fixture = tmp_path / "buggy.py"
+    fixture.write_text("def divide(a, b):\n    return a / b\n", encoding="utf-8")
+
+    review_cli.review_file(str(fixture), include_llm=False)
+
+    out = capsys.readouterr().out
+    assert "Suggested fix" in out
+    assert "raise ZeroDivisionError" in out
+
+
 def test_review_file_json_output_contains_gate_decision(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(
         orchestrator, "get_llm_findings_with_status", lambda code, filename, **_kw: ([], True)

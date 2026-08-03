@@ -42,6 +42,37 @@ def test_reviews_only_py_files_and_skips_removed_ones():
     assert exit_code == 0
 
 
+def test_dry_run_prints_the_suggested_fix_for_findings_that_have_one(capsys):
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, github_client=client)
+
+    out = capsys.readouterr().out
+    assert "Suggested fix" in out
+    assert "raise ZeroDivisionError" in out
+
+
+def test_dry_run_notes_when_a_finding_has_no_fix(capsys):
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={
+            "a.py": (
+                "def get_user(cursor, user_id):\n"
+                '    query = f"SELECT * FROM users WHERE id = {user_id}"\n'
+                "    cursor.execute(query)\n"
+            )
+        },
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, github_client=client)
+
+    out = capsys.readouterr().out
+    assert "no auto-generated fix" in out
+
+
 def test_no_py_files_short_circuits_cleanly():
     client = _FakeGitHubClient(files=[{"filename": "README.md", "status": "modified"}], contents={})
 

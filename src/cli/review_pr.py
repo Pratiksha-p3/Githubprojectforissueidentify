@@ -159,6 +159,12 @@ def _print_file_result(path: str, result: ReviewResult) -> None:
     print(f"  {path} — {result.status.value}, {len(result.findings)} finding(s)")
     for f in result.findings:
         print(f"    [{f.severity.value.upper()}] Line {f.line} — {f.message} (source: {f.source})")
+        if f.fix:
+            print(f"      Suggested fix ({f.confidence.value} confidence):")
+            for line in f.fix.splitlines():
+                print(f"        {line}")
+        else:
+            print("      (no auto-generated fix for this finding)")
 
 
 def _combine(repo: str, commit_sha: str, results: list[ReviewResult]) -> ReviewResult:
