@@ -26,7 +26,10 @@ class InventoryManager:
 
 def load_inventory(file_path):
 
-    file = open(file_path, "r")
+    try:
+        file = open(file_path, "r")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {file_path}")
 
     data = json.load(file)
 
