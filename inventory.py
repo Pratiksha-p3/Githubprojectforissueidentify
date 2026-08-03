@@ -5,6 +5,8 @@ DB_PASSWORD = "supersecret123"
 
 
 def get_config(settings):
+    if "timeout" not in settings:
+        raise KeyError(f"'settings' is missing required key(s): {[k for k in (['timeout']) if k not in settings]}")
     return settings["timeout"]
 
 
