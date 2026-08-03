@@ -30,7 +30,7 @@ def generate_payroll(employees):
 
 def calculate_bonus(employee, rating):
 
-    if rating >= 4
+    if rating >= 4:
         bonus = employee.salary * 0.20
     elif rating >= 3:
         bonus = employee.salary * 0.10
