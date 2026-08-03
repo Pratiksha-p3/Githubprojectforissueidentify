@@ -16,8 +16,8 @@ def get_user(user_id):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
 
-    query = f"SELECT * FROM users WHERE id = {user_id}"
-    cursor.execute(query)
+    query = "SELECT * FROM users WHERE id = ?"
+    cursor.execute(query, (user_id,))
 
     return cursor.fetchall()
 
@@ -36,7 +36,7 @@ class Order:
 
 
 def fetch_data(url):
-    requests.get(url, timeout=10)
+    response = requests.get(url, timeout=10)
     return response.json()
 
 
