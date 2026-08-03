@@ -23,6 +23,16 @@ class _FakeResponse:
 @pytest.fixture(autouse=True)
 def _configured_token(monkeypatch):
     monkeypatch.setattr(settings, "github_token", "test-token")
+    # Explicitly cleared, not just left to whatever's absent on disk --
+    # this used to rely on secrets/github_app.pem not existing to keep
+    # GitHubClient on the PAT path, which broke the moment a real App
+    # key + real .env values were introduced in this environment (every
+    # PAT-focused test below started silently authenticating as the App
+    # instead). Tests that specifically want App auth active override
+    # these explicitly (see _configure_app_auth()).
+    monkeypatch.setattr(settings, "github_app_id", "")
+    monkeypatch.setattr(settings, "github_installation_id", "")
+    monkeypatch.setattr(settings, "github_app_private_key_path", "")
 
 
 def test_requires_token_when_none_configured(monkeypatch):

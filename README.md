@@ -195,13 +195,22 @@ App credentials never break anything). `PyJWT[crypto]` is an optional
 extra (`pip install -e ".[github-app]"`), imported lazily so a
 PAT-only deployment never needs it installed.
 
-**Not exercised against a real GitHub App installation in this
-environment** — `tests/test_github_app_auth.py` verifies real JWT
-signing/verification against a real (test-generated) RSA keypair, and
-`tests/test_github_client.py` verifies the auth-mode selection logic,
-but the actual token-exchange HTTP call is only tested against a fake.
-To use this for real: create a GitHub App, install it on the target
-repo, and put its private key at `secrets/github_app.pem` (or wherever
+**Live-verified end to end** against a real installation (the
+`ai-error-app-check` App on `Pratiksha-p3/Githubprojectforissueidentify`):
+JWT signing, installation token exchange, and a real Check Run
+(`conclusion: success`) all confirmed working. Two GitHub-side gotchas
+worth knowing if this ever needs setting up again: (1) a Check Run needs
+the App's **Checks** permission explicitly granted (Contents/PR access
+alone isn't enough — Check Runs 403 with "Resource not accessible by
+integration" without it); (2) changing an App's permissions does NOT
+retroactively upgrade an *already-installed* instance — the installation
+itself has to separately accept the new permission grant at
+`github.com/settings/installations`, or the installation token keeps
+carrying the old (narrower) permission set indefinitely.
+`tests/test_github_app_auth.py` verifies real JWT signing/verification
+against a real (test-generated) RSA keypair; `tests/test_github_client.py`
+verifies the auth-mode selection logic. To set this up on a new App: install
+it on the target repo, and put its private key at `secrets/github_app.pem` (or wherever
 `GITHUB_APP_PRIVATE_KEY_PATH` points) — that file doesn't ship with this
 repo and isn't committed (see `.gitignore`).
 
