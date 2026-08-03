@@ -13,9 +13,20 @@ The fix suggests reading the value from an environment variable instead
 (os.environ[...]) -- MEDIUM confidence, since which secrets backend a
 project actually uses (env var, Vault, AWS Secrets Manager, ...) is a
 judgment call this checker can't make; matches src/core/secrets.py's own
-env-first default used elsewhere in this project. The fix text assumes
-`os` is already imported (or the caller adds it) rather than splicing an
-import statement into an arbitrary line of the file.
+env-first default used elsewhere in this project.
+
+The fix is only generated when the file already has `import os` --
+confirmed live: a fix applied without checking this (via review-cli
+review-pr's --auto-apply, which commits a finding's fix without a human
+reading the finding's message first) produced a file that raised
+NameError: name 'os' is not defined the moment it was imported, since
+nothing added the missing import. Rather than splice an import
+statement into an arbitrary line of the file (fragile, and a second
+finding in the same file would splice a second, duplicate import), this
+checker now simply declines to offer a fix at all when `os` isn't
+already imported -- leaving it for manual review, the same "no fix is
+better than a wrong fix" precedent src/analyzers/sql_injection_checker.py
+already sets.
 """
 from __future__ import annotations
 
@@ -42,12 +53,28 @@ def _looks_like_secret_name(name: str) -> bool:
     return any(marker in normalized for marker in _SECRET_NAME_MARKERS)
 
 
+def _imports_os(tree: ast.AST) -> bool:
+    """True only if the bare name `os` is actually bound -- `import os`
+    qualifies, but `import os as _os` does NOT: this checker's fix
+    always writes `os.environ[...]`, and `ast.alias.name` is the
+    original module name ("os") even when aliased, so checking only
+    `a.name == "os"` would (and, before this check existed, briefly
+    did) generate a fix referencing a name the file never actually
+    binds."""
+    return any(
+        isinstance(node, ast.Import)
+        and any(a.name == "os" and a.asname is None for a in node.names)
+        for node in ast.walk(tree)
+    )
+
+
 def detect_hardcoded_secrets(code: str, filename: str) -> list[Finding]:
     try:
         tree = ast.parse(code)
     except SyntaxError:
         return []
     lines = code.splitlines()
+    os_imported = _imports_os(tree)
 
     findings: list[Finding] = []
     for node in ast.walk(tree):
@@ -65,8 +92,20 @@ def detect_hardcoded_secrets(code: str, filename: str) -> list[Finding]:
                 continue
 
             original_line = lines[node.lineno - 1]
-            indent = " " * (len(original_line) - len(original_line.lstrip()))
-            fix_code = f'{indent}{target.id} = os.environ["{target.id}"]'
+            if os_imported:
+                indent = " " * (len(original_line) - len(original_line.lstrip()))
+                fix_code = f'{indent}{target.id} = os.environ["{target.id}"]'
+                message = (
+                    f"'{target.id}' looks like a credential but is hardcoded as "
+                    f"a string literal — read it from an environment variable instead."
+                )
+            else:
+                fix_code = ""
+                message = (
+                    f"'{target.id}' looks like a credential but is hardcoded as a "
+                    f"string literal — read it from an environment variable instead "
+                    f"(no fix generated: the file doesn't `import os` yet)."
+                )
 
             findings.append(
                 Finding(
@@ -74,11 +113,7 @@ def detect_hardcoded_secrets(code: str, filename: str) -> list[Finding]:
                     line=node.lineno,
                     category="security",
                     severity=Severity.CRITICAL,
-                    message=(
-                        f"'{target.id}' looks like a credential but is hardcoded as "
-                        f"a string literal — read it from an environment variable "
-                        f"instead (requires `import os`)."
-                    ),
+                    message=message,
                     bad_code=original_line.strip(),
                     fix=fix_code,
                     confidence=ConfidenceTier.MEDIUM,
