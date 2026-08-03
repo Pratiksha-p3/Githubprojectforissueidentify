@@ -395,6 +395,31 @@ def test_suggestion_comment_body_explains_why_manual_review_is_needed(monkeypatc
     assert "medium confidence" in body
 
 
+def test_suggestion_comment_body_for_a_high_confidence_fix_does_not_ask_why_it_needs_a_human(
+    monkeypatch,
+):
+    """A HIGH-confidence fix (e.g. the missing-colon syntax-error fix)
+    genuinely doesn't need a human to look at it first -- the comment
+    must not ask "why does this need a human" and then answer "it
+    doesn't", which is what the wording used to do before this test."""
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def f(rating):\n    if rating >= 4\n        return 1\n    return 0\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
+
+    body = client.review_comments[0]["body"]
+    assert "Why this needs a human" not in body
+    assert "high confidence" in body.lower()
+    assert "--auto-apply" in body
+
+
 def test_post_summary_reports_the_suggestion_count_distinctly_from_auto_fixed(
     monkeypatch, capsys
 ):

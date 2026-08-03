@@ -283,12 +283,21 @@ def post_fix_suggestions(
     for f in findings:
         if not f.fix.strip():
             continue
-        reason = manual_review_reason(f) or "High confidence — safe to auto-apply."
+        reason = manual_review_reason(f)
+        if reason:
+            note = (
+                f'*Why this needs a human to click "Apply suggestion" rather than '
+                f"happening on its own ({f.confidence.value} confidence):* {reason}"
+            )
+        else:
+            note = (
+                f"*This fix is **{f.confidence.value} confidence** — safe to commit "
+                f'without review. Click "Apply suggestion" now, or re-run with '
+                f"`--auto-apply` to have fixes like this committed automatically.*"
+            )
         body = (
             f"**[{f.severity.value.upper()}] {f.message}**\n\n"
-            f"```suggestion\n{f.fix}\n```\n\n"
-            f"*Why this needs a human to click \"Apply suggestion\" rather than "
-            f"happening on its own ({f.confidence.value} confidence):* {reason}"
+            f"```suggestion\n{f.fix}\n```\n\n{note}"
         )
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=f.line, body=body
