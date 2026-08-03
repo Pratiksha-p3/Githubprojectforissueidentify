@@ -1,109 +1,87 @@
-import json
-import random
 from datetime import datetime
 
-DISCOUNT_CODE = "SUMMER2025"
+
+class Employee:
+
+    def __init__(self, employee_id, salary):
+        self.employee_id = employee_id
+        self.salary = salary
+
+    def annual_salary(self):
+        return self.salary * 12
 
 
-class OrderProcessor:
-    def __init__(self):
-        self.orders = []
+def generate_payroll(employees):
 
-    def create_order(self, customer_id, items):
-        order = {
-            "id": random.randint(1, 1000),
-            "customer_id": customer_id,
-            "items": items,
-            "created_at": datetime.now().isoformat()
+    payroll = []
+
+    for employee in employees:
+
+        record = {
+            "employee_id": employee.employee_id,
+            "annual_salary": employee.annual_salary(),
+            "generated_at": datetime.now()
         }
-        self.orders.append(order)
-        return order
 
-    def calculate_total(self, order):
-        if "items" not in order:
-            raise KeyError("'order' is missing required key: 'items'")
-        total = 0
-        for item in order["items"]:
-            total += item["price"]
-        return total
+        payroll.append(record)
 
-    def apply_discount(self, order, code):
-        total = self.calculate_total(order)
-        if code.upper() == DISCOUNT_CODE:
-            total = total * 0.9
-        return total
-
-    def cancel_order(self, order_id):
-        for i, order in enumerate(self.orders):
-            if order["id"] == order_id:
-                del self.orders[i]
-                return True
-        return False
+    return payroll
 
 
-def save_orders(file_name, orders):
-    try:
-        file = open(file_name, "w")
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_name}")
-    try:
-        json.dump(orders, file, default=str)
-    finally:
-        file.close()
-    print("Orders saved")
+def calculate_bonus(employee, rating):
+
+    if rating >= 4
+        bonus = employee.salary * 0.20
+    elif rating >= 3:
+        bonus = employee.salary * 0.10
+    else:
+        bonus = employee.salary * 0.05
+
+    return bouns
 
 
-def find_order(orders, order_id):
-    for order in orders:
-        if order["id"] == order_id:
-            return order
-    return None
+def export_payroll(payroll_data):
+
+    output = ""
+
+    for row in payroll_data:
+        output += (
+            row["employee_id"] + ","
+            + str(row["annual_salary"]) + ","
+            + row["generated_at"]
+            + "\n"
+        )
+
+    return output
 
 
-def generate_invoice(order):
-    if "id" not in order or "customer_id" not in order or "items" not in order:
-        raise KeyError("'order' is missing required key(s): id, customer_id, items")
-    invoice = {
-        "order_id": order["id"],
-        "customer_id": order["customer_id"],
-        "total": sum(
-            item["price"] * item.get("quantity", 1)
-            for item in order["items"]
-        ),
-        "generated_at": datetime.now().isoformat()
-    }
-    return json.dumps(invoice)
+def find_employee(employees, employee_id):
 
+    for employee in employees:
+        if employee.employee_id == employee_id:
+            return employee
 
-def process_refund(order, amount):
-    if "items" not in order:
-        raise KeyError("'order' is missing required key: 'items'")
-    total = sum(
-        item["price"] * item.get("quantity", 1)
-        for item in order["items"]
-    )
-    if amount > total:
-        raise ValueError(f"Refund of {amount} exceeds order value of {total}")
-    return amount
+    return employee
 
 
 def main():
-    processor = OrderProcessor()
-    order = processor.create_order(
-        101,
-        [
-            {"name": "Laptop", "price": 50000, "quantity": 1},
-            {"name": "Mouse", "price": 1000, "quantity": 2}
-        ]
-    )
-    discounted_total = processor.apply_discount(
-        order,
-        "summer2025"
-    )
-    print(discounted_total)
-    invoice = generate_invoice(order)
-    print(invoice)
-    save_orders("orders.json", processor.orders)
+
+    employees = [
+        Employee("E101", 50000),
+        Employee("E102", 60000)
+    ]
+
+    payroll = generate_payroll(employees)
+
+    print(export_payroll(payroll))
+
+    employee = find_employee(employees, "E999")
+
+    print(employee.employee_id)
+
+    bonus = calculate_bonus(employees[0], 5)
+
+    print("Bonus:", bonus)
 
 
 if __name__ == "__main__":
