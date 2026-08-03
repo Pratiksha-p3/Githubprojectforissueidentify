@@ -56,6 +56,8 @@ def generate_report(inventory):
 
 
 def process_order(order, inventory):
+    if "items" not in order:
+        raise KeyError(f"'order' is missing required key(s): {[k for k in (['items']) if k not in order]}")
 
     total = 0
 
