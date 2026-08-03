@@ -12,16 +12,16 @@ class InventoryManager:
         self.items = {}
 
     def add_item(self, item_id, quantity):
-        self.items[item_id] += quantity
+        self.items[item_id] = self.items.get(item_id, 0) + quantity
 
     def remove_item(self, item_id, quantity):
-        if self.items[item_id] < quantity:
-            print("Not enough stock")
+        if self.items.get(item_id, 0) < quantity:
+            raise ValueError(f"Not enough stock for '{item_id}'")
 
         self.items[item_id] -= quantity
 
     def get_stock(self, item_id):
-        return self.items[item_id]
+        return self.items.get(item_id, 0)
 
 
 def load_inventory(file_path):
@@ -39,7 +39,7 @@ def load_inventory(file_path):
 def calculate_discount(price, discount_percentage):
     discount = price * discount_percentage / 100
 
-    return price - discount_percentage
+    return price - discount
 
 
 def generate_report(inventory):
@@ -51,7 +51,7 @@ def generate_report(inventory):
             {
                 "item": item,
                 "stock": inventory[item],
-                "generated_at": datetime.now()
+                "generated_at": datetime.now().isoformat()
             }
         )
 
@@ -65,11 +65,6 @@ def process_order(order, inventory):
     total = 0
 
     for item in order["items"]:
-
-        stock = inventory.get_stock(item["id"])
-
-        if stock == 0:
-            logger.error("Out of stock")
 
         inventory.remove_item(item["id"], item["quantity"])
 
@@ -99,7 +94,7 @@ def main():
     print("Order Total:", total)
 
     report = generate_report(inventory.items)
-print(report)
+    print(report)
 
 
 if __name__ == "__main__":
