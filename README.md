@@ -64,13 +64,34 @@ review-cli review-pr <repo> <pr_number> --post --auto-apply
 option — it makes the tool commit code to someone's PR branch without a
 human clicking anything, for every finding that has a fix (which is
 still most findings, since MEDIUM/LOW confidence is not the same as "no
-fix exists" — see src/core/confidence.py). It re-reviews the new commit
-before posting anything, so the summary/check-run reflects what's
-actually still there afterward. Findings with no fix, or two findings
-anchored to the same line (a conflict — see
+fix exists" — see src/core/confidence.py). Live-testing this against a
+real PR immediately found a real bug: a hardcoded-secret fix referencing
+`os.environ` got committed to a file with no `import os`, producing a
+real `NameError` (since fixed — `hardcoded_secret_checker` now declines
+to offer a fix at all unless `os` is already imported, rather than
+guessing where to splice one in). It re-reviews the new commit before
+posting anything, so the summary/check-run reflects what's actually
+still there afterward. Findings with no fix, or two findings anchored to
+the same line (a conflict — see
 `src/cli/review_pr.py::apply_fixes_to_file()`), are left for a posted
 suggestion instead. Requires `--post`; the CLI rejects `--auto-apply`
 without it since there'd be nothing to push against.
+
+## The one HIGH-confidence fix (src/core/orchestrator.py)
+
+Every checker's fix in this project is capped at MEDIUM confidence (or
+LOW for LLM output) because which exact remediation is "correct" is a
+judgment call about intent — see src/core/confidence.py. One narrow
+exception: a `SyntaxError` whose message is exactly `"expected ':'"` (a
+compound statement header — `if`/`elif`/`else`/`for`/`while`/`def`/
+`class`/`try`/`except`/`finally`/`with` — missing its colon).
+CPython's own parser has already said exactly where the colon belongs;
+there's no judgment call left to make, so `_missing_colon_fix()` marks
+it `ConfidenceTier.HIGH` — the first (and, as of this writing, only)
+fix in this project that `is_safe_to_auto_apply()` actually accepts.
+Skipped (no fix offered, same as any other syntax error) when the line
+has a trailing comment, since a colon appended after a `#` would land
+inside the comment and not fix anything.
 
 ## Multi-agent review (opt-in, src/agents/coordinator.py)
 

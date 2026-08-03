@@ -24,6 +24,19 @@ that doesn't even parse would look identical to "reviewed everything,
 found 0 issues", which is the exact same class of bug ReviewStatus exists
 to prevent, just one level earlier.
 
+_missing_colon_fix() generates a fix for exactly one narrow SyntaxError
+shape: CPython's own "expected ':'" (a compound statement header --
+if/elif/else/for/while/def/class/try/except/finally/with -- missing its
+colon). Every other checker's fix in this project is capped at MEDIUM
+confidence because which exact remediation is "correct" is a judgment
+call about intent (see src/core/confidence.py) -- this one genuinely
+isn't: CPython's own parser has already told us exactly where the colon
+belongs, there's no ambiguity about intent to guess at, so it's the
+first fix in this project confident enough to mark ConfidenceTier.HIGH.
+Skipped (no fix offered, same as any other syntax error) when the line
+has a trailing comment, since inserting a colon after a `#` would land
+inside the comment and not actually fix anything.
+
 use_multi_agent (Stage 11, opt-in, default False) swaps the single
 runtime/logic LLM supplement for src/agents/coordinator.py's four
 specialized agents (runtime/logic, security, style, test_coverage).
@@ -47,7 +60,19 @@ from src.agents.coordinator import run_all_agents
 from src.agents.llm_supplement import get_llm_findings_with_status
 from src.analyzers.registry import run_deterministic_checkers
 from src.core.grounding import is_trustworthy
-from src.core.models import Finding, ReviewResult, ReviewStatus, Severity
+from src.core.models import ConfidenceTier, Finding, ReviewResult, ReviewStatus, Severity
+
+
+def _missing_colon_fix(code: str, e: SyntaxError) -> str:
+    if e.msg != "expected ':'" or not e.lineno:
+        return ""
+    lines = code.splitlines()
+    if not (0 < e.lineno <= len(lines)):
+        return ""
+    line = lines[e.lineno - 1]
+    if "#" in line or line.rstrip().endswith(":"):
+        return ""
+    return f"{line.rstrip()}:"
 
 
 def review_code(
@@ -62,6 +87,7 @@ def review_code(
     try:
         ast.parse(code)
     except SyntaxError as e:
+        fix = _missing_colon_fix(code, e)
         return ReviewResult(
             repo=repo,
             commit_sha=commit_sha,
@@ -73,6 +99,9 @@ def review_code(
                     category="syntax",
                     severity=Severity.CRITICAL,
                     message=f"File does not parse as valid Python: {e.msg}",
+                    bad_code=(code.splitlines()[e.lineno - 1].strip() if e.lineno else ""),
+                    fix=fix,
+                    confidence=ConfidenceTier.HIGH if fix else ConfidenceTier.MEDIUM,
                     source="orchestrator",
                 )
             ],

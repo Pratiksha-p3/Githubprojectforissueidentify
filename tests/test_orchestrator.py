@@ -1,5 +1,5 @@
 from src.core import orchestrator
-from src.core.models import ReviewStatus
+from src.core.models import ConfidenceTier, ReviewStatus
 
 
 def test_completed_status_when_llm_succeeds_with_no_findings(monkeypatch):
@@ -41,6 +41,75 @@ def test_failed_status_on_syntax_error():
     assert result.status == ReviewStatus.FAILED
     assert result.is_approvable is False
     assert result.critical_count == 1
+
+
+def test_missing_colon_syntax_error_gets_a_high_confidence_fix():
+    """CPython's own parser already says exactly where the colon
+    belongs -- no judgment call about intent is involved, unlike every
+    other fix in this project (see src/core/confidence.py), so this is
+    the one case that legitimately crosses into HIGH confidence."""
+    result = orchestrator.review_code(
+        "def f(rating):\n    if rating >= 4\n        return 1\n    return 0\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+        include_llm=False,
+    )
+    assert result.status == ReviewStatus.FAILED
+    finding = result.findings[0]
+    assert finding.confidence == ConfidenceTier.HIGH
+    assert finding.fix == "    if rating >= 4:"
+
+
+def test_other_syntax_errors_get_no_fix_and_stay_medium_confidence():
+    """Only the "expected ':'" shape is unambiguous enough for a fix --
+    every other syntax error (mismatched parens, unexpected indent, ...)
+    can have more than one valid resolution, so this must not guess."""
+    result = orchestrator.review_code(
+        "def broken(:\n    pass\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+        include_llm=False,
+    )
+    finding = result.findings[0]
+    assert finding.fix == ""
+    assert finding.confidence == ConfidenceTier.MEDIUM
+
+
+def test_missing_colon_fix_is_skipped_when_line_has_a_trailing_comment():
+    """Appending a colon after a `#` would land inside the comment and
+    not actually fix the syntax error -- safer to offer no fix at all
+    than one that looks plausible but doesn't work."""
+    result = orchestrator.review_code(
+        "def f(rating):\n    if rating >= 4  # check threshold\n        return 1\n    return 0\n",
+        "app.py",
+        repo="acme/widgets",
+        commit_sha="abc123",
+        include_llm=False,
+    )
+    finding = result.findings[0]
+    assert finding.fix == ""
+    assert finding.confidence == ConfidenceTier.MEDIUM
+
+
+def test_missing_colon_fix_applied_produces_a_fully_parseable_file():
+    """The real end-to-end guarantee: substituting the fix back into the
+    original file (not just validating the fix snippet in isolation)
+    must produce a file that actually parses."""
+    import ast
+
+    code = "def f(rating):\n    if rating >= 4\n        return 1\n    return 0\n"
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+    finding = result.findings[0]
+
+    lines = code.splitlines()
+    lines[finding.line - 1] = finding.fix
+    patched = "\n".join(lines)
+
+    ast.parse(patched)  # must not raise
 
 
 def test_deterministic_findings_included_regardless_of_llm_status(monkeypatch):
