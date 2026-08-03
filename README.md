@@ -180,6 +180,31 @@ output yourself.
   the real circuit breaker genuinely trips) rather than mocking around
   the thing being tested.
 
+## GitHub App authentication (src/integrations/github_app_auth.py)
+
+`GitHubClient` supports two auth modes. A personal access token
+(`GITHUB_TOKEN`) is simplest and what every example above uses — but
+confirmed live against a real repo, GitHub's Check Runs API rejects a
+PAT outright with a 403 regardless of what scopes it's granted; only
+GitHub App auth is accepted there. Setting `GITHUB_APP_ID` +
+`GITHUB_INSTALLATION_ID` + a *readable file* at
+`GITHUB_APP_PRIVATE_KEY_PATH` switches `GitHubClient` to sign a JWT and
+exchange it for an installation access token automatically (falls back
+to the PAT if any of the three isn't satisfied, so partially-configured
+App credentials never break anything). `PyJWT[crypto]` is an optional
+extra (`pip install -e ".[github-app]"`), imported lazily so a
+PAT-only deployment never needs it installed.
+
+**Not exercised against a real GitHub App installation in this
+environment** — `tests/test_github_app_auth.py` verifies real JWT
+signing/verification against a real (test-generated) RSA keypair, and
+`tests/test_github_client.py` verifies the auth-mode selection logic,
+but the actual token-exchange HTTP call is only tested against a fake.
+To use this for real: create a GitHub App, install it on the target
+repo, and put its private key at `secrets/github_app.pem` (or wherever
+`GITHUB_APP_PRIVATE_KEY_PATH` points) — that file doesn't ship with this
+repo and isn't committed (see `.gitignore`).
+
 ## Secrets backend (src/core/secrets.py)
 
 Defaults to reading `.env`/the process environment (`SECRETS_BACKEND=env`).

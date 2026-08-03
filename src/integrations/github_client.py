@@ -1,14 +1,27 @@
 """
 src/integrations/github_client.py
 
-GitHub REST API client — PAT-based for now (a fine-grained personal
-access token scoped to one sandbox repo: contents:read,
-pull_requests:write, checks:write — the least-privilege scopes this
-client actually needs). A GitHub App (JWT -> installation token,
-installable across multiple repos without a long-lived personal token)
-is the "real" production auth path and a drop-in swap behind this same
-interface later; nothing downstream should need to change when that
-swap happens.
+GitHub REST API client — two auth modes behind one interface, resolved
+per-request so a token that expires mid-session (installation tokens
+last ~1 hour) is transparently refreshed rather than cached stale for
+the client's whole lifetime:
+
+  1. Personal access token (settings.github_token, or an explicit
+     `token` passed to the constructor — takes priority when given,
+     e.g. in tests). Simple, but confirmed live against a real repo
+     that the Check Runs API rejects it outright with a 403 regardless
+     of granted scopes — GitHub only accepts App auth for that endpoint.
+  2. GitHub App auth (src/integrations/github_app_auth.py) — used
+     automatically when settings.github_app_id,
+     settings.github_installation_id, and a readable
+     settings.github_app_private_key_path are all configured and no
+     explicit `token` was passed. This is what actually makes Check
+     Runs work; PAT auth structurally cannot.
+
+Falls back to the PAT if App auth isn't fully configured, so setting up
+one doesn't require tearing down the other — a deployment can run on a
+PAT with App credentials only partially filled in (e.g. the private key
+file not deployed yet) without breaking.
 
 Retry/backoff reuses src/core/backoff.py rather than rolling its own —
 a rate limit (429) or transient server error (502/503) is retried, an
@@ -33,6 +46,7 @@ only ever a locally-supplied file.
 from __future__ import annotations
 
 import base64
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -40,6 +54,7 @@ import requests
 from src.core.backoff import call_with_backoff
 from src.core.config import settings
 from src.core.pr_gate import GateDecision
+from src.integrations import github_app_auth
 
 _API_BASE = "https://api.github.com"
 
@@ -57,13 +72,38 @@ def _is_retryable(exc: Exception) -> bool:
 
 class GitHubClient:
     def __init__(self, token: str | None = None):
-        self._token = token or settings.github_token
-        if not self._token:
-            raise RuntimeError("GITHUB_TOKEN is not set")
+        self._explicit_token = token
+        has_pat = bool(self._explicit_token or settings.github_token)
+        if not has_pat and not self._app_auth_configured():
+            raise RuntimeError(
+                "No GitHub auth configured -- set GITHUB_TOKEN (personal access "
+                "token), or GITHUB_APP_ID + GITHUB_INSTALLATION_ID + a readable "
+                "GITHUB_APP_PRIVATE_KEY_PATH (GitHub App auth)."
+            )
+
+    def _app_auth_configured(self) -> bool:
+        return bool(
+            settings.github_app_id
+            and settings.github_installation_id
+            and settings.github_app_private_key_path
+            and Path(settings.github_app_private_key_path).is_file()
+        )
+
+    def _resolve_token(self) -> str:
+        if self._explicit_token:
+            return self._explicit_token
+        if self._app_auth_configured():
+            private_key_pem = Path(settings.github_app_private_key_path).read_text(
+                encoding="utf-8"
+            )
+            return github_app_auth.get_installation_token(
+                settings.github_app_id, settings.github_installation_id, private_key_pem
+            )
+        return settings.github_token
 
     def _headers(self) -> dict:
         return {
-            "Authorization": f"Bearer {self._token}",
+            "Authorization": f"Bearer {self._resolve_token()}",
             "Accept": "application/vnd.github+json",
         }
 

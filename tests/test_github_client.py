@@ -31,6 +31,98 @@ def test_requires_token_when_none_configured(monkeypatch):
         gc.GitHubClient()
 
 
+def _configure_app_auth(monkeypatch, tmp_path):
+    key_file = tmp_path / "github_app.pem"
+    key_file.write_text("fake-pem-content", encoding="utf-8")
+    monkeypatch.setattr(settings, "github_app_id", "12345")
+    monkeypatch.setattr(settings, "github_installation_id", "999")
+    monkeypatch.setattr(settings, "github_app_private_key_path", str(key_file))
+    return key_file
+
+
+def test_uses_pat_when_app_auth_is_not_configured(monkeypatch):
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append(kwargs["headers"]["Authorization"])
+        return _FakeResponse(json_data={"id": 1})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    client.post_issue_comment("acme/widgets", 1, "hi")
+
+    assert calls[0] == "Bearer test-token"
+
+
+def test_uses_app_auth_when_fully_configured(monkeypatch, tmp_path):
+    _configure_app_auth(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        gc.github_app_auth, "get_installation_token",
+        lambda app_id, installation_id, pem: "ghs_installation_token",
+    )
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append(kwargs["headers"]["Authorization"])
+        return _FakeResponse(json_data={"id": 1})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    client.post_issue_comment("acme/widgets", 1, "hi")
+
+    assert calls[0] == "Bearer ghs_installation_token"
+
+
+def test_explicit_token_takes_priority_over_app_auth(monkeypatch, tmp_path):
+    _configure_app_auth(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        gc.github_app_auth, "get_installation_token",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not be called")),
+    )
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append(kwargs["headers"]["Authorization"])
+        return _FakeResponse(json_data={"id": 1})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient(token="explicit-token")
+    client.post_issue_comment("acme/widgets", 1, "hi")
+
+    assert calls[0] == "Bearer explicit-token"
+
+
+def test_falls_back_to_pat_when_app_auth_is_only_partially_configured(monkeypatch):
+    # app_id and installation_id set, but no private key file -- must not
+    # attempt app auth (github_app_auth.get_installation_token is never
+    # called, would fail loudly if it were).
+    monkeypatch.setattr(settings, "github_app_id", "12345")
+    monkeypatch.setattr(settings, "github_installation_id", "999")
+    monkeypatch.setattr(settings, "github_app_private_key_path", "does/not/exist.pem")
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append(kwargs["headers"]["Authorization"])
+        return _FakeResponse(json_data={"id": 1})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    client.post_issue_comment("acme/widgets", 1, "hi")
+
+    assert calls[0] == "Bearer test-token"
+
+
+def test_constructor_does_not_raise_when_only_app_auth_is_configured(monkeypatch, tmp_path):
+    _configure_app_auth(monkeypatch, tmp_path)
+    monkeypatch.setattr(settings, "github_token", "")
+
+    gc.GitHubClient()  # must not raise
+
+
 def test_post_issue_comment_sends_correct_request(monkeypatch):
     calls = []
 
