@@ -1,7 +1,7 @@
 import os
 
 
-DB_PASSWORD = "supersecret123"
+DB_PASSWORD = os.environ["DB_PASSWORD"]
 
 
 def get_config(settings):
