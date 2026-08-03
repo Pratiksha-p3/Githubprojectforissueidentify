@@ -20,7 +20,7 @@ def generate_payroll(employees):
         record = {
             "employee_id": employee.employee_id,
             "annual_salary": employee.annual_salary(),
-            "generated_at": datetime.now()
+            "generated_at": datetime.now().isoformat()
         }
 
         payroll.append(record)
@@ -37,7 +37,7 @@ def calculate_bonus(employee, rating):
     else:
         bonus = employee.salary * 0.05
 
-    return bouns
+    return bonus
 
 
 def export_payroll(payroll_data):
@@ -61,7 +61,7 @@ def find_employee(employees, employee_id):
         if employee.employee_id == employee_id:
             return employee
 
-    return employee
+    return None
 
 
 def main():
@@ -77,7 +77,10 @@ def main():
 
     employee = find_employee(employees, "E999")
 
-    print(employee.employee_id)
+    if employee is None:
+        print("Employee not found")
+    else:
+        print(employee.employee_id)
 
     bonus = calculate_bonus(employees[0], 5)
 
