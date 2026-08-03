@@ -93,6 +93,81 @@ def test_missing_colon_fix_is_skipped_when_line_has_a_trailing_comment():
     assert finding.confidence == ConfidenceTier.MEDIUM
 
 
+def test_multiple_missing_colons_are_all_found_in_one_pass():
+    """Python's parser can only ever report the FIRST syntax error --
+    _collect_syntax_error_findings() gets past each auto-fixable colon
+    error by applying the fix to an in-memory working copy and
+    re-parsing, so a file with several missing colons in a row gets all
+    of them reported at once instead of needing one review per error."""
+    code = (
+        "def check_status(code)\n"
+        "    if code == 200\n"
+        '        return "ok"\n'
+        "    elif code == 404\n"
+        '        return "not found"\n'
+        "    else:\n"
+        '        return "unknown"\n'
+    )
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+
+    assert result.status == ReviewStatus.FAILED
+    assert len(result.findings) == 3
+    assert [f.line for f in result.findings] == [1, 2, 4]
+    assert all(f.confidence == ConfidenceTier.HIGH for f in result.findings)
+
+
+def test_applying_all_multi_colon_fixes_produces_a_fully_working_file():
+    import ast
+
+    code = (
+        "def check_status(code)\n"
+        "    if code == 200\n"
+        '        return "ok"\n'
+        "    elif code == 404\n"
+        '        return "not found"\n'
+        "    else:\n"
+        '        return "unknown"\n'
+    )
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+
+    lines = code.splitlines()
+    for finding in result.findings:
+        lines[finding.line - 1] = finding.fix
+    patched = "\n".join(lines)
+
+    ast.parse(patched)  # must not raise
+    namespace: dict = {}
+    exec(compile(patched, "app.py", "exec"), namespace)
+    assert namespace["check_status"](200) == "ok"
+    assert namespace["check_status"](404) == "not found"
+    assert namespace["check_status"](500) == "unknown"
+
+
+def test_stops_at_the_first_non_colon_syntax_error_without_guessing_past_it():
+    """A genuinely ambiguous syntax error (not the missing-colon shape)
+    must not be guessed past -- there's no way to know how many lines
+    were meant to belong to the block, so only that one error is
+    reported, even if more errors exist further down the file."""
+    code = (
+        "class Handler:\n"
+        "\n"
+        "def process(self):\n"  # missing indent -- ambiguous, not a colon issue
+        "    return 1\n"
+    )
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+
+    assert result.status == ReviewStatus.FAILED
+    assert len(result.findings) == 1
+    assert result.findings[0].fix == ""
+    assert result.findings[0].confidence == ConfidenceTier.MEDIUM
+
+
 def test_missing_colon_fix_applied_produces_a_fully_parseable_file():
     """The real end-to-end guarantee: substituting the fix back into the
     original file (not just validating the fix snippet in isolation)
