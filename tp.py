@@ -12,7 +12,7 @@ class UserService:
     def __init__(self):
         self.conn = sqlite3.connect("users.db")
 
-    def login(self, username, password)
+    def login(self, username, password):
 
         hashed_password = hashlib.md5(
             password.encode()
@@ -49,7 +49,7 @@ def calculate_average(numbers):
 
     total = 0
 
-      for num in numbers:
+    for num in numbers:
         total += num
 
     return total / len(numbers)
