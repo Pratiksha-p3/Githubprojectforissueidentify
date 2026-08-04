@@ -5,6 +5,8 @@ API_KEY = os.environ["API_KEY"]
 
 
 def calculate_average(numbers):
+    if len(numbers) == 0:
+        raise ZeroDivisionError(f"'numbers' is empty")
     return sum(numbers) / len(numbers)
 
 
@@ -13,12 +15,15 @@ def get_user(users, user_id):
 
 
 def fetch_data(url):
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     return response.json()
 
 
 def save_file(filename, content):
-    file = open(filename, "w")
+    try:
+        file = open(filename, "w")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {filename}")
     file.write(content)
 
 
@@ -47,6 +52,8 @@ def main():
     data = fetch_data(
         "https://api.example.com/data"
     )
+    if "address" not in data:
+        raise KeyError(f"'data' is missing required key(s): {[k for k in (['address']) if k not in data]}")
 
     print(data["address"]["city"])
 
