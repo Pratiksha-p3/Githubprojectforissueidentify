@@ -54,5 +54,8 @@ def run_backup(user_supplied_path):
 
 
 def load_session(file_name):
-    file = open(file_name, "rb")
+    try:
+        file = open(file_name, "rb")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {file_name}")
     return file.read()
