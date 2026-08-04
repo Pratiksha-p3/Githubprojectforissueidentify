@@ -1,0 +1,35 @@
+import os
+import requests
+
+
+def compute_average(total, count):
+    return total / count
+
+
+def get_username(payload):
+    return payload["username"]
+
+
+def read_config(config_path):
+    with open(config_path) as f:
+        return f.read()
+
+
+class Account:
+    def __init__(self, owner):
+        self.balance = 0
+
+    def describe(self):
+        return f"Account owned by {self.owner}"
+
+
+def fetch_data(url):
+    response = requests.get(url)
+    return response.json()
+
+
+def find_user(cursor, user_id):
+    cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+
+
+API_KEY = "sk-live-abc123def456"
