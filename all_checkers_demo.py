@@ -30,6 +30,7 @@ def read_config(config_path):
 class Account:
     def __init__(self, owner):
         self.balance = 0
+        self.owner = owner
 
     def describe(self):
         return f"Account owned by {self.owner}"
