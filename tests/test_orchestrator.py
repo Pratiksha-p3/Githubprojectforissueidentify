@@ -43,6 +43,24 @@ def test_failed_status_on_syntax_error():
     assert result.critical_count == 1
 
 
+def test_catches_errors_ast_parse_alone_would_miss():
+    """ast.parse() only does grammar-level parsing -- it does NOT run
+    compile()'s symbol-table pass, so it silently accepts a bare `return`
+    outside any function (also `yield`/`break`/`continue` misuse, bad
+    `nonlocal`). Confirmed live: a real PR file mangled by conflicting
+    "Apply suggestion" clicks had exactly this shape (a stray top-level
+    `return` left over from a function whose `def` line got deleted) --
+    ast.parse() said it was fine and the file got reviewed as COMPLETED
+    while being completely unrunnable. review_code() must use compile(),
+    not ast.parse(), for the top-level "does this even parse" gate."""
+    code = "def f():\n    return 1\n\n\nreturn 2\n"
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+    assert result.status == ReviewStatus.FAILED
+    assert "outside function" in result.findings[0].message
+
+
 def test_missing_colon_syntax_error_gets_a_high_confidence_fix():
     """CPython's own parser already says exactly where the colon
     belongs -- no judgment call about intent is involved, unlike every

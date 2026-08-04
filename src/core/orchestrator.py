@@ -24,6 +24,27 @@ that doesn't even parse would look identical to "reviewed everything,
 found 0 issues", which is the exact same class of bug ReviewStatus exists
 to prevent, just one level earlier.
 
+The "does this even parse" gate uses compile(code, filename, "exec"),
+NOT ast.parse(code) -- confirmed live that this is not a cosmetic choice.
+ast.parse() only does grammar-level parsing; it silently accepts code a
+real Python run would reject: a bare `return`/`yield` outside a function,
+`break`/`continue` outside a loop, a `nonlocal` with no enclosing binding
+-- these are caught by compile()'s symbol-table pass, which ast.parse()
+never runs. Confirmed concretely: a file mangled by conflicting "Apply
+suggestion" clicks (stray top-level `return` statements left over from a
+function whose `def` line got deleted) passed ast.parse() cleanly and
+was reviewed as COMPLETED, deterministic checkers and all, while being
+completely broken -- unrunnable, and structurally incoherent enough that
+several checkers' own pattern matching silently found nothing either,
+since the functions they were looking for no longer existed as such.
+compile() still just raises SyntaxError (same type, same .lineno/.msg
+attributes) for every case ast.parse() already caught, so this is a
+strict superset, not a behavior change for anything that already worked
+-- every internal verification/retry ast.parse() call in this module
+(the "does this candidate fix actually resolve it" checks in
+_missing_indent_fix()/_misaligned_indent_fix()) was upgraded to
+compile() too, for the same reason.
+
 _missing_colon_fix() generates a fix for exactly one narrow SyntaxError
 shape: CPython's own "expected ':'" (a compound statement header --
 if/elif/else/for/while/def/class/try/except/finally/with -- missing its
@@ -99,7 +120,6 @@ consistently, not a mix of stable and canary across agents.
 """
 from __future__ import annotations
 
-import ast
 import re
 
 from src.agents.coordinator import run_all_agents
@@ -170,7 +190,7 @@ def _missing_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
             if patched_lines[idx].strip():
                 patched_lines[idx] = " " * offset + patched_lines[idx]
         try:
-            ast.parse("\n".join(patched_lines))
+            compile("\n".join(patched_lines), "<string>", "exec")
         except SyntaxError:
             continue
 
@@ -252,7 +272,7 @@ def _misaligned_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
             if underflow:
                 break  # shrinking further only underflows more -- stop growing this span
             try:
-                ast.parse("\n".join(patched_lines))
+                compile("\n".join(patched_lines), "<string>", "exec")
             except SyntaxError:
                 continue
 
@@ -301,7 +321,7 @@ def _collect_syntax_error_findings(code: str, filename: str) -> list[Finding]:
     for _ in range(_MAX_SYNTAX_ERRORS_PER_REVIEW):
         working_code = "\n".join(working_lines)
         try:
-            ast.parse(working_code)
+            compile(working_code, filename, "exec")
             break  # every error found so far was auto-fixed; file now parses
         except SyntaxError as e:
             fix, end_line, confidence, reason = _syntax_error_fix(working_code, e)
@@ -347,7 +367,7 @@ def review_code(
     use_multi_agent: bool = False,
 ) -> ReviewResult:
     try:
-        ast.parse(code)
+        compile(code, filename, "exec")
     except SyntaxError as e:
         syntax_findings = _collect_syntax_error_findings(code, filename)
         return ReviewResult(
