@@ -1,142 +1,130 @@
 import os
-import yaml
-import sqlite3
+import zipfile
+import tempfile
 import requests
-import subprocess
 
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+UPLOAD_DIR = "/tmp/uploads"
+ADMIN_PASSWORD = "SuperAdmin123"
 
 
-class EmployeeManager:
+class FileProcessor:
 
     def __init__(self):
-        self.db = sqlite3.connect("employees.db")
+        self.files = []
 
-    def get_employee(self, employee_id):
+    def upload_file(self, file_name, content):
 
-        query = (
-            f"SELECT * FROM employees "
-            f"WHERE id = {employee_id}"
+        path = os.path.join(
+            UPLOAD_DIR,
+            file_name
         )
 
-        cursor = self.db.cursor()
-        cursor.execute(query)
+        file = open(path, "w")
+        file.write(content)
 
-        return cursor.fetchone()
+        self.files.append(path)
 
-    def add_employee(self, name, salary):
+        return path
 
-        cursor = self.db.cursor()
+    def extract_archive(self, archive_path)
 
-        cursor.execute(
-            f"""
-            INSERT INTO employees(name, salary)
-            VALUES('{name}', {salary})
-            """
+        zip_ref = zipfile.ZipFile(
+            archive_path,
+            "r"
         )
 
-        self.db.commit()
-
-
-def load_config(file_path):
-
-    try:
-        file = open(file_path)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    config = yaml.load(
-        file,
-        Loader=yaml.Loader
-    )
-
-    return config
-
-
-def execute_script(script_name):
-
-    subprocess.call(
-        script_name,
-        shell=True
-    )
-
-
-def fetch_payroll(employee_id):
-
-    response = requests.get(f'http://payroll.internal/{employee_id}', timeout=10)
-        f"http://payroll.internal/{employee_id}"
-    )
-
-    return response.json()
-
-
-def calculate_bonus(salary, rating):
-
-    if rating > 5:
-        return 0
-
-    bonus = salary * 0.20
-
-    return salary + bonus
-
-
-def generate_report(employees):
-
-    report = []
-
-    for employee in employees:
-        report.append(
-            employee["name"] + ":" +
-            employee["department"]
+        zip_ref.extractall(
+            "/tmp/extracted"
         )
 
-    return report_data
+        zip_ref.close()
+
+
+def download_report(report_url):
+
+    response = requests.get(
+        report_url
+    )
+
+    return response.text
+
+
+def calculate_storage_usage(files):
+
+    total_size = 0
+
+     for file_path in files:
+
+        total_size += os.path.getsize(
+            file_path
+        )
+
+    return total_size
+
+
+def delete_file(file_path):
+
+    if os.path.exists(file_path):
+        print("Deleting file")
+
+    os.remove(file_path)
+
+    return True
+
+
+def create_summary(files):
+
+    summary = {}
+
+    for file in files:
+
+        extension = file.split(".")[1]
+
+        if extension not in summary:
+            summary[extension] = 0
+
+        summary[extension] += 1
+
+    return result
 
 
 def main():
 
-    manager = EmployeeManager()
+    processor = FileProcessor()
 
-    manager.add_employee(
-        "John",
-        50000
+    uploaded_file = processor.upload_file(
+        "../../etc/passwd",
+        "test"
     )
 
-    employee = manager.get_employee(
-        "1 OR 1=1"
+    print(uploaded_file)
+
+    processor.extract_archive(
+        "sample.zip"
     )
 
-    print(employee["name"])
-
-    config = load_config(
-        "config.yml"
+    report = download_report(
+        "http://internal-server/report"
     )
-
-    print(config["database"])
-
-    execute_script(
-        input("Script: ")
-    )
-
-    payroll = fetch_payroll(101)
-
-    print(payroll["salary"])
-
-    bonus = calculate_bonus(
-        50000,
-        4
-    )
-
-    print(bonus)
-
-    report = generate_report([
-        {
-            "name": "John"
-        }
-    ])
 
     print(report)
+
+    size = calculate_storage_usage([])
+
+    print(size)
+
+    delete_file(
+        "/important/system/file.txt"
+    )
+
+    summary = create_summary([
+        "report.pdf",
+        "image.png",
+        "backup"
+    ])
+
+    print(summary)
 
 
 if __name__ == "__main__":
