@@ -1,19 +1,17 @@
 import os
 import requests
 
-API_KEY = os.environ["API_KEY"]
+API_KEY = os.getenv("API_KEY")
 
 
 def calculate_average(numbers):
-    if len(numbers) == 0:
-        raise ZeroDivisionError(f"'numbers' is empty")
     if len(numbers) == 0:
         raise ZeroDivisionError(f"'numbers' is empty")
     return sum(numbers) / len(numbers)
 
 
 def get_user(users, user_id):
-return users.get(user_id)
+    return users.get(user_id)
 
 
 def fetch_data(url):
@@ -23,10 +21,10 @@ def fetch_data(url):
 
 def save_file(filename, content):
     try:
-        file = open(filename, "w")
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {filename}")
-    file.write(content)
+        with open(filename, "w") as file:
+            file.write(content)
+    except OSError as e:
+        raise OSError(f"Could not write to {filename}: {e}")
 
 
 def process_order(order):
@@ -37,7 +35,7 @@ def process_order(order):
     for item in order["items"]:
         total += item["price"]
 
-    return amount
+    return total
 
 
 def main():
@@ -52,13 +50,12 @@ def main():
     print(get_user(users, 3))
 
     data = fetch_data(
-    data = fetch_data(
         "https://api.example.com/data"
     )
     if "address" not in data:
         raise KeyError(f"'data' is missing required key(s): {[k for k in (['address']) if k not in data]}")
-    if "address" not in data:
-        raise KeyError(f"'data' is missing required key(s): {[k for k in (['address']) if k not in data]}")
+    if "city" not in data["address"]:
+        raise KeyError("'city' is missing from data['address']")
 
     print(data["address"]["city"])
 
