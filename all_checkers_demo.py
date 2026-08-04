@@ -3,7 +3,7 @@ import yaml
 import requests
 import subprocess
 
-API_KEY = "sk-live-abc123def456"
+API_KEY = os.environ["API_KEY"]
 PAYROLL_API = "http://payroll.internal/api"
 
 
