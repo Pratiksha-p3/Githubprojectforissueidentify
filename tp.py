@@ -41,7 +41,10 @@ class EmployeeManager:
 
 def load_config(file_path):
 
-    file = open(file_path)
+    try:
+        file = open(file_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {file_path}")
 
     config = yaml.load(
         file,
