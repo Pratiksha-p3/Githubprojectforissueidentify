@@ -28,13 +28,21 @@ from src.analyzers.division_guard_checker import detect_unguarded_division
 from src.analyzers.file_exists_checker import detect_unguarded_file_open
 from src.analyzers.hardcoded_secret_checker import detect_hardcoded_secrets
 from src.analyzers.http_timeout_checker import detect_unguarded_http_calls
+from src.analyzers.index_guard_checker import detect_unguarded_index_access
+from src.analyzers.insecure_deserialization_checker import (
+    detect_insecure_deserialization,
+)
 from src.analyzers.insecure_http_checker import detect_insecure_http_urls
+from src.analyzers.none_attribute_checker import detect_unguarded_none_attribute_access
+from src.analyzers.path_traversal_checker import detect_path_traversal
 from src.analyzers.resource_leak_checker import detect_unclosed_file_handles
 from src.analyzers.sql_injection_checker import detect_sql_injection
 from src.analyzers.unsafe_yaml_checker import detect_unsafe_yaml_load
 from src.analyzers.unstored_constructor_param_checker import (
     detect_unstored_constructor_params,
 )
+from src.analyzers.weak_crypto_checker import detect_weak_crypto
+from src.analyzers.zip_slip_checker import detect_zip_slip
 from src.core.grounding import is_trustworthy
 from src.core.models import Finding
 
@@ -52,6 +60,12 @@ CHECKERS: tuple[Checker, ...] = (
     detect_unsafe_yaml_load,
     detect_insecure_http_urls,
     detect_unclosed_file_handles,
+    detect_unguarded_index_access,
+    detect_unguarded_none_attribute_access,
+    detect_weak_crypto,
+    detect_insecure_deserialization,
+    detect_path_traversal,
+    detect_zip_slip,
 )
 
 

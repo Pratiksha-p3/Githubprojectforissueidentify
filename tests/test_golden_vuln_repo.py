@@ -81,6 +81,36 @@ def test_resource_leak_bug_is_caught():
     assert any(f.source == "resource_leak_checker" for f in findings)
 
 
+def test_index_guard_bug_is_caught():
+    findings = _run("index_guard_bug.py")
+    assert any(f.source == "index_guard_checker" for f in findings)
+
+
+def test_none_attribute_bug_is_caught():
+    findings = _run("none_attribute_bug.py")
+    assert any(f.source == "none_attribute_checker" for f in findings)
+
+
+def test_weak_crypto_bug_is_caught():
+    findings = _run("weak_crypto_bug.py")
+    assert any(f.source == "weak_crypto_checker" for f in findings)
+
+
+def test_insecure_deserialization_bug_is_caught():
+    findings = _run("insecure_deserialization_bug.py")
+    assert any(f.source == "insecure_deserialization_checker" for f in findings)
+
+
+def test_path_traversal_bug_is_caught():
+    findings = _run("path_traversal_bug.py")
+    assert any(f.source == "path_traversal_checker" for f in findings)
+
+
+def test_zip_slip_bug_is_caught():
+    findings = _run("zip_slip_bug.py")
+    assert any(f.source == "zip_slip_checker" for f in findings)
+
+
 def test_obfuscated_dict_key_bug_is_still_caught():
     findings = _run("dict_key_bug_obfuscated.py")
     assert any(f.source == "dict_key_checker" for f in findings)
@@ -124,6 +154,12 @@ def test_every_deterministic_checker_is_exercised_by_at_least_one_fixture():
         "insecure_http_checker",
         "command_injection_checker",
         "resource_leak_checker",
+        "index_guard_checker",
+        "none_attribute_checker",
+        "weak_crypto_checker",
+        "insecure_deserialization_checker",
+        "path_traversal_checker",
+        "zip_slip_checker",
     }
     assert expected_sources <= sources_seen
     assert len(CHECKERS) == len(expected_sources), (
