@@ -5,7 +5,7 @@ import requests
 
 
 UPLOAD_DIR = "/tmp/uploads"
-ADMIN_PASSWORD = "SuperAdmin123"
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
 
 
 class FileProcessor:
@@ -20,7 +20,10 @@ class FileProcessor:
             file_name
         )
 
-        file = open(path, "w")
+        try:
+            file = open(path, "w")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File not found: {path}")
         file.write(content)
 
         self.files.append(path)
@@ -43,7 +46,7 @@ class FileProcessor:
 
 def download_report(report_url):
 
-    response = requests.get(
+    response = requests.get(report_url, timeout=10)
         report_url
     )
 
@@ -105,7 +108,7 @@ def main():
     )
 
     report = download_report(
-        "http://internal-server/report"
+        report = download_report('https://internal-server/report')
     )
 
     print(report)
