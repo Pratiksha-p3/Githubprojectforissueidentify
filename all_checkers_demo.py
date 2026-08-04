@@ -8,6 +8,8 @@ PAYROLL_API = 'https://payroll.internal/api'
 
 
 def compute_average(total, count):
+    if count == 0:
+        raise ZeroDivisionError(f"'count' is zero")
     return total / count
 
 
