@@ -27,6 +27,8 @@ def start_threads():
 
 
 def get_first_item(items):
+    if len(items) <= 0:
+        raise IndexError(f"'items' has fewer than 1 item(s)")
 
     return items[0]
 
