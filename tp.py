@@ -28,7 +28,7 @@ def process_order(order):
 
     for item in order["items"]:
         total += item["price"]
-
+return total
     return total
 
 
