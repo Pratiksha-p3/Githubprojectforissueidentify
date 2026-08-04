@@ -14,7 +14,7 @@ def get_user(users):
     if "admin" not in users:
         raise KeyError(f"'users' is missing required key(s): {[k for k in (['admin']) if k not in users]}")
     return users["admin"]
-
+return users.get("admin")
 
 def fetch_data(url):
     response = requests.get(url, timeout=10)
