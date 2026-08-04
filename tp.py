@@ -52,9 +52,11 @@ def main():
     print(get_user(users, 3))
 
     data = fetch_data(
-if 'address' not in data:
-    print("Address not found in data")
+    data = fetch_data(
+        "https://api.example.com/data"
     )
+    if "address" not in data:
+        raise KeyError(f"'data' is missing required key(s): {[k for k in (['address']) if k not in data]}")
     if "address" not in data:
         raise KeyError(f"'data' is missing required key(s): {[k for k in (['address']) if k not in data]}")
 
