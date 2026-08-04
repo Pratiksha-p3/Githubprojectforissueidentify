@@ -4,7 +4,7 @@ import requests
 import subprocess
 
 API_KEY = os.environ["API_KEY"]
-PAYROLL_API = "http://payroll.internal/api"
+PAYROLL_API = 'https://payroll.internal/api'
 
 
 def compute_average(total, count):
