@@ -61,6 +61,26 @@ def test_sql_injection_bug_is_caught():
     assert any(f.source == "sql_injection_checker" for f in findings)
 
 
+def test_unsafe_yaml_bug_is_caught():
+    findings = _run("unsafe_yaml_bug.py")
+    assert any(f.source == "unsafe_yaml_checker" for f in findings)
+
+
+def test_insecure_http_bug_is_caught():
+    findings = _run("insecure_http_bug.py")
+    assert any(f.source == "insecure_http_checker" for f in findings)
+
+
+def test_command_injection_bug_is_caught():
+    findings = _run("command_injection_bug.py")
+    assert any(f.source == "command_injection_checker" for f in findings)
+
+
+def test_resource_leak_bug_is_caught():
+    findings = _run("resource_leak_bug.py")
+    assert any(f.source == "resource_leak_checker" for f in findings)
+
+
 def test_obfuscated_dict_key_bug_is_still_caught():
     findings = _run("dict_key_bug_obfuscated.py")
     assert any(f.source == "dict_key_checker" for f in findings)
@@ -100,6 +120,10 @@ def test_every_deterministic_checker_is_exercised_by_at_least_one_fixture():
         "http_timeout_checker",
         "hardcoded_secret_checker",
         "sql_injection_checker",
+        "unsafe_yaml_checker",
+        "insecure_http_checker",
+        "command_injection_checker",
+        "resource_leak_checker",
     }
     assert expected_sources <= sources_seen
     assert len(CHECKERS) == len(expected_sources), (

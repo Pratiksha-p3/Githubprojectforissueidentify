@@ -77,17 +77,28 @@ def detect_unguarded_file_open(code: str, filename: str) -> list[Finding]:
         stmt = _owning_statement(parent_map, node)
         if stmt is None or not (0 < stmt.lineno <= len(lines)):
             continue
+        end_lineno = getattr(stmt, "end_lineno", None) or stmt.lineno
+        if not (stmt.lineno <= end_lineno <= len(lines)):
+            continue
         if stmt.lineno in seen_lines:
             continue
         seen_lines.add(stmt.lineno)
 
-        stmt_text = lines[stmt.lineno - 1]
-        indent = line_indent(stmt_text)
+        stmt_lines = lines[stmt.lineno - 1 : end_lineno]
+        indent = line_indent(stmt_lines[0])
         inner_indent = indent + "    "
+
+        # Wrap the statement's FULL span, not just its first line -- a
+        # `with open(path) as f: ...` has a body that must stay nested
+        # inside the `with`, which itself must now stay nested inside
+        # `try`. Prepending a flat 4 spaces to every original line (rather
+        # than re-deriving indentation from scratch) preserves whatever
+        # nesting already existed within the statement.
+        wrapped_body = "\n".join(f"    {line}" for line in stmt_lines)
 
         fix_code = (
             f"{indent}try:\n"
-            f"{inner_indent}{stmt_text.strip()}\n"
+            f"{wrapped_body}\n"
             f"{indent}except FileNotFoundError:\n"
             f'{inner_indent}raise FileNotFoundError(f"File not found: {{{path_arg.id}}}")'
         )
@@ -96,13 +107,14 @@ def detect_unguarded_file_open(code: str, filename: str) -> list[Finding]:
             Finding(
                 file=filename,
                 line=stmt.lineno,
+                end_line=end_lineno,
                 category="runtime",
                 severity=Severity.WARNING,
                 message=(
                     f"open({path_arg.id}, ...) has no guard against a missing "
                     f"file — raises FileNotFoundError if the path doesn't exist."
                 ),
-                bad_code=stmt_text.strip(),
+                bad_code=stmt_lines[0].strip(),
                 fix=fix_code,
                 confidence=ConfidenceTier.MEDIUM,
                 source="file_exists_checker",
