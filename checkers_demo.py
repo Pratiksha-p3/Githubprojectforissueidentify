@@ -2,7 +2,7 @@ import os
 import requests
 
 
-def compute_average(total, count):
+return total / count if count != 0 else 0
     return total / count
 
 
