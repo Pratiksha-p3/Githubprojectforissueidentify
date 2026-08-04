@@ -1,6 +1,6 @@
 import os
 import pickle
-def calculate_discount(price, discount)
+def calculate_discount(price, discount):
 
     if discount > 100:
         return price
