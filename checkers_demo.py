@@ -40,4 +40,4 @@ def find_user(cursor, user_id):
     cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
 
 
-API_KEY = "sk-live-abc123def456"
+API_KEY = os.environ["API_KEY"]
