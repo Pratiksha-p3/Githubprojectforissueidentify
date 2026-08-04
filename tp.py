@@ -1,45 +1,47 @@
-import os
-import requests
-
-API_KEY = os.environ["API_KEY"]
+import json
+import threading
 
 
-def calculate_average(numbers):
-    if len(numbers) == 0:
-        raise ZeroDivisionError(f"'numbers' is empty")
-    return sum(numbers) / len(numbers)
+def parse_config():
+
+    config = "{invalid json}"
+
+    return json.loads(config)
 
 
-def get_user(users):
-    if "admin" not in users:
-        raise KeyError(f"'users' is missing required key(s): {[k for k in (['admin']) if k not in users]}")
-    return users["admin"]
-return users.get("admin")
+def calculate_age(birth_year):
 
-def fetch_data(url):
-    response = requests.get(url, timeout=10)
-    return response.json()
+    return "Age: " + (2025 - birth_year)
 
 
-def process_order(order):
-    if "items" not in order:
-        raise KeyError(f"'order' is missing required key(s): {[k for k in (['items']) if k not in order]}")
-    total = 0
+def start_threads():
 
-    for item in order["items"]:
-        total += item["price"]
-return total
-    return total
+    thread = threading.Thread(
+        target=print,
+        args=("Hello",)
+    )
+
+    thread.run()
+
+    thread.join()
 
 
-def main():
-    users = {"admin": "root"}
+def get_first_item(items):
 
-    print(calculate_average([]))
-    print(get_user(users))
-    print(fetch_data("https://api.example.com/data"))
-    print(process_order({"items": [{"price": 100}]}))
+    return items[0]
 
-print(get_user(users) if 'admin' in users else None)
-if __name__ == "__main__":
-    main()
+
+def divide_numbers(a, b):
+
+    return a // b
+
+
+print(parse_config())
+
+print(calculate_age(2000))
+
+start_threads()
+
+print(get_first_item([]))
+
+print(divide_numbers(10, 0))
