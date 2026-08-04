@@ -9,6 +9,8 @@ return total / count if count != 0 else 0
 
 
 def get_username(payload):
+    if "username" not in payload:
+        raise KeyError(f"'payload' is missing required key(s): {[k for k in (['username']) if k not in payload]}")
     return payload["username"]
 
 
