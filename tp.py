@@ -64,7 +64,7 @@ def execute_script(script_name):
 
 def fetch_payroll(employee_id):
 
-    response = requests.get(
+    response = requests.get(f'http://payroll.internal/{employee_id}', timeout=10)
         f"http://payroll.internal/{employee_id}"
     )
 
