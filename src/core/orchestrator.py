@@ -45,10 +45,42 @@ error IS the unambiguous missing-colon shape, this applies that fix to
 an in-memory working copy (never the caller's real file) and re-parses,
 repeating until either the file parses clean or it hits a syntax error
 that isn't the colon shape — at which point it stops and reports that
-one with no fix, same as before. A file with three missing colons in a
-row now gets all three reported in one pass; a file whose first syntax
-error is genuinely ambiguous (e.g. "expected an indented block") still
-only reveals that one error, because there is no way to guess past it.
+one, same as before. A file with three missing colons in a row now gets
+all three reported in one pass.
+
+_missing_indent_fix() covers a second SyntaxError shape -- "expected an
+indented block after X on line N". CPython's message names the
+enclosing header's line, so the target indentation isn't a guess -- it's
+exactly one level (4 spaces) deeper than that header. What IS a genuine
+guess is how many of the following lines also belong inside the newly-
+indented block; there's no parser fact for that. Rather than guess and
+hope, this tries reindenting an increasing number of lines (offsetting
+each by the same amount, preserving their relative nesting) and asks
+the parser itself to confirm: the smallest number of lines that makes
+the whole file parse again is what gets returned as the fix, so the fix
+is verified to actually resolve the syntax error, not just a plausible-
+looking guess. It stays MEDIUM confidence, not HIGH, because "smallest
+parsing fix" is a reasonable tie-break, not a certainty about intent --
+confirmed with a concrete counter-example: `class C:\ndef f(self): ...\n
+def g(self): ...` has more than one syntactically valid reindent (just
+`f`, or both `f` and `g`), and the smallest one doesn't always match
+what a human meant. The message spells out exactly which lines moved
+and why. If no reindent within a bounded forward search parses cleanly,
+no fix is offered at all, same as any other unrecognized syntax error.
+
+_misaligned_indent_fix() covers the remaining two indentation
+SyntaxError shapes: "unexpected indent" (a line indented MORE than
+expected, with no preceding colon-header authorizing a new block --
+typically stray extra spaces) and "unindent does not match any outer
+indentation level" (a line dedents to a column that isn't any enclosing
+block's actual indentation). Neither message names a header line to
+anchor to, so instead of one analytically-derived target this tries
+every indentation level already used earlier in the file, closest to
+the offending line's current indentation first, and -- same parser-as-
+oracle approach as _missing_indent_fix() -- returns the first (level,
+span) the parser confirms actually fixes the file. Also stays MEDIUM,
+never HIGH, for the same reason: "closest level that happens to parse"
+is a strong heuristic, not a certainty about what was intended.
 
 use_multi_agent (Stage 11, opt-in, default False) swaps the single
 runtime/logic LLM supplement for src/agents/coordinator.py's four
@@ -68,6 +100,7 @@ consistently, not a mix of stable and canary across agents.
 from __future__ import annotations
 
 import ast
+import re
 
 from src.agents.coordinator import run_all_agents
 from src.agents.llm_supplement import get_llm_findings_with_status
@@ -88,6 +121,176 @@ def _missing_colon_fix(code: str, e: SyntaxError) -> str:
     return f"{line.rstrip()}:"
 
 
+_INDENT_HEADER_LINE = re.compile(r"on line (\d+)$")
+_INDENT_SEARCH_WINDOW = 50  # lines forward to try before giving up
+
+
+def _missing_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
+    """Fix for "expected an indented block after X on line N" -- see the
+    module docstring for the full reasoning. Returns (fix, end_line,
+    reason) where `fix` spans lines[e.lineno .. end_line] (1-indexed,
+    inclusive), or ("", 0, "") if no reindent within the search window
+    makes the file parse."""
+    if not e.lineno or not e.msg or "expected an indented block" not in e.msg:
+        return "", 0, ""
+    header_match = _INDENT_HEADER_LINE.search(e.msg)
+    if not header_match:
+        return "", 0, ""
+    header_lineno = int(header_match.group(1))
+
+    lines = code.splitlines()
+    if not (0 < e.lineno <= len(lines) and 0 < header_lineno <= len(lines)):
+        return "", 0, ""
+
+    header_line = lines[header_lineno - 1]
+    first_line = lines[e.lineno - 1]
+    if not first_line.strip():
+        return "", 0, ""
+
+    header_indent = len(header_line) - len(header_line.lstrip())
+    first_indent = len(first_line) - len(first_line.lstrip())
+    offset = (header_indent + 4) - first_indent
+    if offset <= 0:
+        return "", 0, ""
+
+    # Bound the search: stop as soon as a line dedents below even the
+    # enclosing header's own level (definitely outside any nested scope
+    # the header could own), or after a generous fixed window, whichever
+    # comes first.
+    max_end_line = e.lineno
+    for idx in range(e.lineno, min(len(lines), e.lineno + _INDENT_SEARCH_WINDOW)):
+        candidate = lines[idx]
+        if candidate.strip() and (len(candidate) - len(candidate.lstrip())) < header_indent:
+            break
+        max_end_line = idx + 1
+
+    for end_line in range(e.lineno, max_end_line + 1):
+        patched_lines = list(lines)
+        for idx in range(e.lineno - 1, end_line):
+            if patched_lines[idx].strip():
+                patched_lines[idx] = " " * offset + patched_lines[idx]
+        try:
+            ast.parse("\n".join(patched_lines))
+        except SyntaxError:
+            continue
+
+        fix = "\n".join(patched_lines[e.lineno - 1 : end_line])
+        span = "that line" if end_line == e.lineno else f"lines {e.lineno}-{end_line}"
+        reason = (
+            f"'{header_line.strip()}' on line {header_lineno} needs its body "
+            f"indented one level deeper (column {header_indent + 4}), but line "
+            f"{e.lineno} sits at column {first_indent} -- shifting {span} right "
+            f"by {offset} space(s) is the smallest change that makes the file "
+            f"parse again."
+        )
+        return fix, end_line, reason
+
+    return "", 0, ""
+
+
+_MISALIGNED_INDENT_MESSAGES = (
+    "unexpected indent",
+    "unindent does not match any outer indentation level",
+)
+
+
+def _misaligned_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
+    """Fix for CPython's other two indentation SyntaxError shapes:
+    "unexpected indent" (a line is indented MORE than the parser expects,
+    with no preceding colon-header authorizing a new block -- typically
+    stray extra spaces) and "unindent does not match any outer
+    indentation level" (a line dedents to a column that isn't any
+    enclosing block's actual indentation).
+
+    Unlike _missing_indent_fix(), CPython's message doesn't name a
+    header line here -- there's no single fact to anchor the target
+    indentation to. Instead this tries every indentation level already
+    used earlier in the file (the levels that are actually meaningful in
+    THIS file, whatever its indent width), closest to the offending
+    line's current indentation first, and -- same as
+    _missing_indent_fix() -- asks the parser to confirm: the first
+    (level, span) combination that makes the whole file parse again is
+    what gets returned. Also tries `first_indent + 4` as a candidate in
+    case the file has no earlier line at the right level yet (e.g. the
+    very first statement in a function body)."""
+    if not e.lineno or not e.msg or e.msg not in _MISALIGNED_INDENT_MESSAGES:
+        return "", 0, ""
+    lines = code.splitlines()
+    if not (0 < e.lineno <= len(lines)):
+        return "", 0, ""
+    first_line = lines[e.lineno - 1]
+    if not first_line.strip():
+        return "", 0, ""
+    first_indent = len(first_line) - len(first_line.lstrip())
+
+    existing_levels = {0, first_indent + 4}
+    for line in lines[: e.lineno - 1]:
+        if line.strip():
+            existing_levels.add(len(line) - len(line.lstrip()))
+    candidates = sorted(
+        (lvl for lvl in existing_levels if lvl != first_indent),
+        key=lambda lvl: (abs(lvl - first_indent), lvl),
+    )
+
+    max_end_line = min(len(lines), e.lineno + _INDENT_SEARCH_WINDOW)
+
+    for target in candidates:
+        offset = target - first_indent
+        for end_line in range(e.lineno, max_end_line + 1):
+            patched_lines = list(lines)
+            underflow = False
+            for idx in range(e.lineno - 1, end_line):
+                line = patched_lines[idx]
+                if not line.strip():
+                    continue
+                cur_indent = len(line) - len(line.lstrip())
+                new_indent = cur_indent + offset
+                if new_indent < 0:
+                    underflow = True
+                    break
+                patched_lines[idx] = " " * new_indent + line.lstrip()
+            if underflow:
+                break  # shrinking further only underflows more -- stop growing this span
+            try:
+                ast.parse("\n".join(patched_lines))
+            except SyntaxError:
+                continue
+
+            fix = "\n".join(patched_lines[e.lineno - 1 : end_line])
+            span = "that line" if end_line == e.lineno else f"lines {e.lineno}-{end_line}"
+            direction = "deeper" if offset > 0 else "shallower"
+            reason = (
+                f"line {e.lineno} sits at column {first_indent}, which doesn't "
+                f"match any indentation level already used earlier in the file "
+                f"at that point -- column {target} ({abs(offset)} space(s) "
+                f"{direction}) is the closest level that makes {span} parse "
+                f"again."
+            )
+            return fix, end_line, reason
+
+    return "", 0, ""
+
+
+def _syntax_error_fix(code: str, e: SyntaxError) -> tuple[str, int, ConfidenceTier, str]:
+    """Tries each narrow, purpose-built SyntaxError fix in turn and
+    returns (fix, end_line, confidence, reason). The colon fix is
+    checked first because it's the only shape unambiguous enough to
+    safely chain the iterative collector below past it."""
+    colon_fix = _missing_colon_fix(code, e)
+    if colon_fix:
+        return colon_fix, 0, ConfidenceTier.HIGH, ""
+
+    indent_fix, indent_end_line, indent_reason = _missing_indent_fix(code, e)
+    if indent_fix:
+        return indent_fix, indent_end_line, ConfidenceTier.MEDIUM, indent_reason
+
+    misaligned_fix, misaligned_end_line, misaligned_reason = _misaligned_indent_fix(code, e)
+    if misaligned_fix:
+        return misaligned_fix, misaligned_end_line, ConfidenceTier.MEDIUM, misaligned_reason
+
+    return "", 0, ConfidenceTier.MEDIUM, ""
+
+
 _MAX_SYNTAX_ERRORS_PER_REVIEW = 25  # safety cap, not a realistic file's actual count
 
 
@@ -101,27 +304,34 @@ def _collect_syntax_error_findings(code: str, filename: str) -> list[Finding]:
             ast.parse(working_code)
             break  # every error found so far was auto-fixed; file now parses
         except SyntaxError as e:
-            fix = _missing_colon_fix(working_code, e)
+            fix, end_line, confidence, reason = _syntax_error_fix(working_code, e)
             bad_code = (
                 working_lines[e.lineno - 1].strip()
                 if e.lineno and 0 < e.lineno <= len(working_lines)
                 else ""
             )
+            message = f"File does not parse as valid Python: {e.msg}"
+            if reason:
+                message += f" ({reason})"
             findings.append(
                 Finding(
                     file=filename,
                     line=e.lineno or 1,
+                    end_line=end_line,
                     category="syntax",
                     severity=Severity.CRITICAL,
-                    message=f"File does not parse as valid Python: {e.msg}",
+                    message=message,
                     bad_code=bad_code,
                     fix=fix,
-                    confidence=ConfidenceTier.HIGH if fix else ConfidenceTier.MEDIUM,
+                    confidence=confidence,
                     source="orchestrator",
                 )
             )
-            if not fix or not e.lineno:
-                break  # can't guess past a non-colon error -- stop here
+            # Only the HIGH-confidence colon fix is unambiguous enough to
+            # chain the search further into the file on top of -- a MEDIUM
+            # guess (or no fix at all) means stop and report just this one.
+            if confidence != ConfidenceTier.HIGH or not fix or not e.lineno:
+                break
             working_lines[e.lineno - 1] = fix
 
     return findings

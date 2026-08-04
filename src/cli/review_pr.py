@@ -84,7 +84,7 @@ import sys
 
 import requests
 
-from src.core.confidence import manual_review_reason
+from src.core.confidence import manual_review_reason, review_reason
 from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
@@ -196,13 +196,17 @@ def review_pr(
     print(f"  Auto-fixed:              {auto_fixed_count}")
     print(f"  Needs manual review:     {len(combined.findings)}")
     for finding in combined.findings:
-        reason = _review_reason(finding, auto_apply)
-        print(f"    - {finding.file}:{finding.line} ({finding.source}) — {reason}")
+        reason = review_reason(finding, auto_apply=auto_apply)
+        start, end = _span(finding)
+        loc = f"{finding.line}" if end == start else f"{start}-{end}"
+        print(f"    - {finding.file}:{loc} ({finding.source}) — {reason}")
     print(f"{'=' * 60}")
 
     if post:
         try:
-            outcome = publish_review(combined, pr_number, github_client=client)
+            outcome = publish_review(
+                combined, pr_number, github_client=client, auto_apply=auto_apply
+            )
             print(
                 f"\nPosted to GitHub: comment {outcome['comment_action']} "
                 f"(id={outcome['comment_id']}), check run id={outcome['check_run_id']}"
@@ -232,46 +236,32 @@ def review_pr(
     return 0 if decision != GateDecision.BLOCK else 1
 
 
-def _review_reason(f: Finding, auto_apply: bool) -> str:
-    """Every finding still in `combined.findings` by the time the
-    summary prints needs a reason -- including a HIGH-confidence finding
-    that was never actually applied because --auto-apply wasn't passed
-    this run. src/core/confidence.py's manual_review_reason() only
-    covers the "confidence tier itself is the reason" case (MEDIUM/LOW,
-    or no fix at all); this fills the gap so nothing prints with an
-    empty/missing reason."""
-    reason = manual_review_reason(f)
-    if reason:
-        return reason
-    if auto_apply:
-        # Reached --auto-apply but still unresolved -- must have hit a
-        # same-line conflict in apply_fixes_to_file(), the only way a
-        # HIGH-confidence fixable finding survives re-review.
-        return (
-            "High confidence, but not applied this run -- another finding "
-            "on the same line conflicted with it."
-        )
-    return (
-        "High confidence and auto-fixable -- re-run with --auto-apply to "
-        "have this committed automatically."
-    )
+def _span(f: Finding) -> tuple[int, int]:
+    """A finding's (start, end) line range, 1-indexed inclusive.
+    `end_line` defaults to 0 (meaning "same as line") for every checker
+    that only ever replaces a single line -- only orchestrator.py's
+    block-reindent fix currently sets it above `line`."""
+    end = f.end_line if f.end_line >= f.line else f.line
+    return f.line, end
 
 
 def apply_fixes_to_file(
     code: str, findings: list[Finding]
 ) -> tuple[str, list[Finding], list[Finding]]:
     """Applies every finding's `fix` to `code` by replacing that
-    finding's exact source line with the fix's (possibly multi-line)
-    replacement text. Processes lines in reverse order so an earlier
-    (further down) replacement's line-count change never shifts the
-    line number a not-yet-processed (further up) fix is anchored to.
+    finding's exact source line range (_span()) with the fix's
+    (possibly multi-line) replacement text. Processes ranges in reverse
+    order so an earlier (further down) replacement's line-count change
+    never shifts the line numbers a not-yet-processed (further up) fix
+    is anchored to.
 
-    Two findings anchored to the exact same line conflict -- neither is
+    Two findings whose line ranges overlap at all conflict -- neither is
     applied, since applying one would silently invalidate the other's
-    line-based fix. Findings with no fix, plus any conflicts, are
-    returned as not-applied so they still get a chance at a posted
-    suggestion (post_fix_suggestions()) instead of being silently
-    dropped.
+    line-based fix (this generalizes the old "exact same line" rule to
+    ranges, needed now that a fix can span more than one line). Findings
+    with no fix, plus any conflicts, are returned as not-applied so they
+    still get a chance at a posted suggestion (post_fix_suggestions())
+    instead of being silently dropped.
 
     Returns (patched_code, applied_findings, not_applied_findings).
     """
@@ -279,25 +269,34 @@ def apply_fixes_to_file(
     not_fixable = [f for f in findings if not f.fix.strip()]
 
     lines = code.splitlines()
-    grouped_by_line: dict[int, list[Finding]] = {}
-    for f in fixable:
-        grouped_by_line.setdefault(f.line, []).append(f)
 
-    by_line: dict[int, Finding] = {}
+    ordered = sorted(fixable, key=_span)
+    groups: list[list[Finding]] = []
+    group_end = -1
+    for f in ordered:
+        start, end = _span(f)
+        if groups and start <= group_end:
+            groups[-1].append(f)
+            group_end = max(group_end, end)
+        else:
+            groups.append([f])
+            group_end = end
+
+    single: list[Finding] = []
     conflicted: list[Finding] = []
-    for line_no, group in grouped_by_line.items():
+    for group in groups:
         if len(group) == 1:
-            by_line[line_no] = group[0]
+            single.append(group[0])
         else:
             conflicted.extend(group)
 
     applied: list[Finding] = []
-    for line_no in sorted(by_line, reverse=True):
-        f = by_line[line_no]
-        if not (0 < line_no <= len(lines)):
+    for f in sorted(single, key=lambda f: _span(f)[0], reverse=True):
+        start, end = _span(f)
+        if not (0 < start <= len(lines) and end <= len(lines)):
             conflicted.append(f)
             continue
-        lines[line_no - 1 : line_no] = f.fix.splitlines()
+        lines[start - 1 : end] = f.fix.splitlines()
         applied.append(f)
 
     patched = "\n".join(lines)
@@ -330,8 +329,10 @@ def post_fix_suggestions(
             f"**[{f.severity.value.upper()}] {f.message}**\n\n"
             f"```suggestion\n{f.fix}\n```\n\n{note}"
         )
+        start, end = _span(f)
         client.create_review_comment(
-            repo, pr_number, commit_id=commit_sha, path=f.file, line=f.line, body=body
+            repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
+            start_line=start if end > start else None,
         )
         posted += 1
     return posted
@@ -340,7 +341,9 @@ def post_fix_suggestions(
 def _print_file_result(path: str, result: ReviewResult) -> None:
     print(f"  {path} — {result.status.value}, {len(result.findings)} finding(s)")
     for f in result.findings:
-        print(f"    [{f.severity.value.upper()}] Line {f.line} — {f.message} (source: {f.source})")
+        start, end = _span(f)
+        line_label = f"Line {start}" if end == start else f"Lines {start}-{end}"
+        print(f"    [{f.severity.value.upper()}] {line_label} — {f.message} (source: {f.source})")
         if f.fix:
             print(f"      Suggested fix ({f.confidence.value} confidence):")
             for line in f.fix.splitlines():

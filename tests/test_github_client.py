@@ -347,6 +347,55 @@ def test_create_review_comment_sends_the_suggestion_to_the_right_line(monkeypatc
     }
 
 
+def test_create_review_comment_with_start_line_sends_a_multi_line_range(monkeypatch):
+    """A fix spanning more than one original line (e.g. orchestrator.py's
+    block-reindent fix) needs GitHub's multi-line suggestion range --
+    start_line/start_side alongside line/side -- or the ```suggestion```
+    block would only ever be offered to replace the single last line."""
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return _FakeResponse(json_data={"id": 99})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    body = "**[CRITICAL] bad**\n\n```suggestion\nfixed\nlines\n```"
+    client.create_review_comment(
+        "acme/widgets", 4, commit_id="abc123", path="app.py", line=4, body=body, start_line=3,
+    )
+
+    _method, _url, kwargs = calls[0]
+    assert kwargs["json"] == {
+        "body": body, "commit_id": "abc123", "path": "app.py", "line": 4, "side": "RIGHT",
+        "start_line": 3, "start_side": "RIGHT",
+    }
+
+
+def test_create_review_comment_ignores_start_line_when_not_below_line(monkeypatch):
+    """start_line must be strictly less than line for GitHub's API to
+    accept it -- a single-line finding's start_line == line (from
+    review_pr.py's _span()) must not get sent as a bogus zero-width
+    range."""
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        return _FakeResponse(json_data={"id": 99})
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    client.create_review_comment(
+        "acme/widgets", 4, commit_id="abc123", path="app.py", line=5, body="b", start_line=5,
+    )
+
+    _method, _url, kwargs = calls[0]
+    assert "start_line" not in kwargs["json"]
+    assert "start_side" not in kwargs["json"]
+
+
 def test_is_retryable_matches_transient_errors_only():
     assert gc._is_retryable(Exception("429 too many requests")) is True
     assert gc._is_retryable(Exception("503 Service Unavailable")) is True

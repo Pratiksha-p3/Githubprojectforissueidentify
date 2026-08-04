@@ -31,10 +31,12 @@ class _FakeGitHubClient:
         )
         return {"commit": {"sha": self._head_sha}}
 
-    def create_review_comment(self, repo, pr_number, *, commit_id, path, line, body):
+    def create_review_comment(
+        self, repo, pr_number, *, commit_id, path, line, body, start_line=None
+    ):
         comment = {
             "repo": repo, "pr_number": pr_number, "commit_id": commit_id,
-            "path": path, "line": line, "body": body,
+            "path": path, "line": line, "body": body, "start_line": start_line,
         }
         self.review_comments.append(comment)
         return {"id": len(self.review_comments)}
@@ -535,3 +537,20 @@ def test_post_fix_suggestions_returns_the_count_posted():
 
     assert count == 1
     assert len(client.review_comments) == 1
+
+
+def test_post_fix_suggestions_sends_start_line_for_a_multi_line_fix():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    finding = Finding(
+        file="a.py", line=3, end_line=4, category="syntax", severity=Severity.CRITICAL,
+        message="msg", fix="    def process(self):\n        return 1",
+        confidence=ConfidenceTier.MEDIUM, source="orchestrator",
+    )
+
+    review_pr.post_fix_suggestions(client, "acme/widgets", 4, "abc123", [finding])
+
+    comment = client.review_comments[0]
+    assert comment["line"] == 4
+    assert comment["start_line"] == 3

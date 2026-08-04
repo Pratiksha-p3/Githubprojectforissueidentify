@@ -58,6 +58,13 @@ class ReviewStatus(StrEnum):
 class Finding(BaseModel):
     file: str
     line: int = Field(ge=0)
+    # 0 means "single line, same as `line`" -- every existing checker leaves
+    # this at the default. Only set above `line` when `fix` genuinely
+    # replaces a contiguous multi-line range (e.g. orchestrator.py's
+    # block-reindent fix), so apply_fixes_to_file() and the GitHub
+    # multi-line suggestion comment both know exactly which original lines
+    # the fix is meant to replace, not just where it starts.
+    end_line: int = Field(default=0, ge=0)
     category: str
     severity: Severity
     message: str

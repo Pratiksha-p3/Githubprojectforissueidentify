@@ -2,10 +2,11 @@ from src.cli.review_pr import apply_fixes_to_file
 from src.core.models import ConfidenceTier, Finding, Severity
 
 
-def make_finding(line: int, fix: str = "", source: str = "checker") -> Finding:
+def make_finding(line: int, fix: str = "", source: str = "checker", end_line: int = 0) -> Finding:
     return Finding(
         file="app.py",
         line=line,
+        end_line=end_line,
         category="runtime",
         severity=Severity.WARNING,
         message="msg",
@@ -127,3 +128,54 @@ def test_empty_findings_list_returns_code_unchanged():
     assert patched == code
     assert applied == []
     assert remaining == []
+
+
+def test_applies_a_multi_line_range_fix():
+    """A finding whose end_line is above line (e.g. orchestrator.py's
+    block-reindent fix) must replace the WHOLE original range, not just
+    the first line, or the untouched remainder of the block would be
+    left duplicated/orphaned in the output."""
+    code = "class Handler:\n\ndef process(self):\n    return 1\n"
+    finding = make_finding(
+        3, fix="    def process(self):\n        return 1", end_line=4,
+    )
+
+    patched, applied, remaining = apply_fixes_to_file(code, [finding])
+
+    assert applied == [finding]
+    assert remaining == []
+    assert patched == "class Handler:\n\n    def process(self):\n        return 1\n"
+
+
+def test_range_fix_that_overlaps_another_finding_conflicts():
+    """A single-line finding anchored inside a multi-line finding's range
+    must be treated the same as an exact-line collision -- applying the
+    range fix would silently invalidate the single-line one's anchor."""
+    code = "class Handler:\n\ndef process(self):\n    return 1\n"
+    range_finding = make_finding(
+        3, fix="    def process(self):\n        return 1", end_line=4,
+    )
+    overlapping = make_finding(4, fix="    return 2")
+
+    patched, applied, remaining = apply_fixes_to_file(code, [range_finding, overlapping])
+
+    assert patched == code
+    assert applied == []
+    assert sorted(remaining, key=lambda f: f.fix) == sorted(
+        [range_finding, overlapping], key=lambda f: f.fix
+    )
+
+
+def test_non_overlapping_range_and_single_line_fixes_both_apply():
+    code = "class Handler:\n\ndef process(self):\n    return 1\nx = 1\n"
+    range_finding = make_finding(
+        3, fix="    def process(self):\n        return 1", end_line=4,
+    )
+    other = make_finding(5, fix="x = 2")
+
+    patched, applied, remaining = apply_fixes_to_file(code, [range_finding, other])
+
+    assert sorted(applied, key=lambda f: f.line) == [range_finding, other]
+    assert remaining == []
+    assert "x = 2" in patched
+    assert "        return 1" in patched

@@ -202,21 +202,39 @@ class GitHubClient:
         return self._request("PUT", f"/repos/{repo}/contents/{path}", json=body)
 
     def create_review_comment(
-        self, repo: str, pr_number: int, *, commit_id: str, path: str, line: int, body: str
+        self,
+        repo: str,
+        pr_number: int,
+        *,
+        commit_id: str,
+        path: str,
+        line: int,
+        body: str,
+        start_line: int | None = None,
     ) -> dict:
-        """Posts an inline comment anchored to a specific line of the
-        PR's diff — distinct from post_issue_comment(), which posts a
-        top-level comment on the PR's conversation tab, not attached to
-        any line. When `body` contains a fenced ```suggestion block,
-        GitHub renders a one-click "Apply suggestion" button that commits
-        the replacement text directly, which is what actually makes a
-        Finding's `fix` actionable on the PR itself rather than just
-        described in prose."""
+        """Posts an inline comment anchored to a specific line (or line
+        range) of the PR's diff — distinct from post_issue_comment(),
+        which posts a top-level comment on the PR's conversation tab, not
+        attached to any line. When `body` contains a fenced ```suggestion
+        block, GitHub renders a one-click "Apply suggestion" button that
+        commits the replacement text directly, which is what actually
+        makes a Finding's `fix` actionable on the PR itself rather than
+        just described in prose.
+
+        `start_line` opts into GitHub's multi-line suggestion range (the
+        API requires `start_line` to be a different, smaller value than
+        `line`, with `start_side` set alongside it) -- needed for a fix
+        like orchestrator.py's block-reindent, whose `fix` replaces more
+        than one original line at once."""
+        payload = {
+            "body": body, "commit_id": commit_id, "path": path,
+            "line": line, "side": "RIGHT",
+        }
+        if start_line is not None and start_line < line:
+            payload["start_line"] = start_line
+            payload["start_side"] = "RIGHT"
         return self._request(
             "POST",
             f"/repos/{repo}/pulls/{pr_number}/comments",
-            json={
-                "body": body, "commit_id": commit_id, "path": path,
-                "line": line, "side": "RIGHT",
-            },
+            json=payload,
         )
