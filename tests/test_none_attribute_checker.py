@@ -14,6 +14,34 @@ def test_flags_unguarded_attribute_access_after_dict_get():
     assert "user" in findings[0].message
 
 
+def test_ignores_requests_get_which_is_not_dict_get():
+    """Regression: requests.get(url) matches the same `.get(single-arg)`
+    shape as dict.get(key) syntactically, but is an HTTP request, not a
+    dict lookup, and never returns None -- confirmed live as a false
+    positive on a real PR before this exclusion existed."""
+    code = (
+        "import requests\n\n"
+        "def fetch_data(url):\n"
+        "    response = requests.get(url)\n"
+        "    return response.json()\n"
+    )
+    assert detect_unguarded_none_attribute_access(code, "app.py") == []
+
+
+def test_still_flags_get_on_a_non_imported_name():
+    """The exclusion is specifically for names bound by `import` in this
+    file -- a parameter or local variable named the same as a module
+    (e.g. a dict parameter that happens to be called `requests`) must
+    still be flagged normally."""
+    code = (
+        "def handler(requests):\n"
+        "    user = requests.get('user')\n"
+        "    return user.role\n"
+    )
+    findings = detect_unguarded_none_attribute_access(code, "app.py")
+    assert len(findings) == 1
+
+
 def test_flags_unguarded_attribute_access_after_re_match():
     code = (
         "import re\n\n"

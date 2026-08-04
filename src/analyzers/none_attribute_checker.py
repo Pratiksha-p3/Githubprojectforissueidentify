@@ -18,6 +18,15 @@ Scoped narrowly to keep false positives low:
   - Only flags a bare `x.attr` access, not `x(...)` calls, subscripts,
     or use as a plain value (`return x`, `if x`) -- those don't risk an
     AttributeError.
+  - The receiver of `.get(key)` must NOT be a name bound by `import` in
+    this file -- confirmed as a real false positive: `requests.get(url)`
+    matches the same `.get(single-arg)` shape as `dict.get(key)`, but is
+    an HTTP request, not a dict lookup, and doesn't return None on
+    anything. There's no general way to verify a `.get()` receiver is
+    actually dict-like without type inference; excluding known module
+    names is the narrow, practical guard against the collision that's
+    actually been observed, not a claim of catching every non-dict
+    `.get()` out there.
 
 The fix inserts a guard immediately after the assignment (matching
 src/analyzers/dict_key_checker.py's "guard right where the risky value
@@ -33,13 +42,24 @@ from src.analyzers._ast_utils import exception_names, line_indent
 from src.core.models import ConfidenceTier, Finding, Severity
 
 
-def _is_none_returning_call(node: ast.expr) -> str:
+def _imported_module_names(tree: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                names.add(alias.asname or alias.name.split(".")[0])
+    return names
+
+
+def _is_none_returning_call(node: ast.expr, imported_modules: set[str]) -> str:
     """Returns a short description of the call shape if it's a known
     None-returning one, else ""."""
     if not isinstance(node, ast.Call):
         return ""
     func = node.func
     if isinstance(func, ast.Attribute) and func.attr == "get" and len(node.args) == 1:
+        if isinstance(func.value, ast.Name) and func.value.id in imported_modules:
+            return ""  # e.g. requests.get(url) -- an HTTP call, not dict.get()
         return "dict.get(key) with no default"
     if (
         isinstance(func, ast.Attribute)
@@ -93,6 +113,7 @@ def detect_unguarded_none_attribute_access(code: str, filename: str) -> list[Fin
     except SyntaxError:
         return []
     lines = code.splitlines()
+    imported_modules = _imported_module_names(tree)
 
     findings: list[Finding] = []
     for func in ast.walk(tree):
@@ -105,7 +126,7 @@ def detect_unguarded_none_attribute_access(code: str, filename: str) -> list[Fin
             target = stmt.targets[0]
             if not isinstance(target, ast.Name):
                 continue
-            shape = _is_none_returning_call(stmt.value)
+            shape = _is_none_returning_call(stmt.value, imported_modules)
             if not shape:
                 continue
             if not _attr_access_exists(func, target.id):
