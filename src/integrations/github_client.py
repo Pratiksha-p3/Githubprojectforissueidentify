@@ -201,6 +201,15 @@ class GitHubClient:
             body["sha"] = sha
         return self._request("PUT", f"/repos/{repo}/contents/{path}", json=body)
 
+    def list_review_comments(self, repo: str, pr_number: int) -> list[dict]:
+        """Every existing inline review comment on the PR (across all
+        commits, not just the current head) -- used by
+        src/cli/review_pr.py's post_fix_suggestions() to avoid posting a
+        second "Apply suggestion" comment on a (path, line) that already
+        has one from a previous run. Not paginated beyond GitHub's
+        default page size (30), same scope note as list_pr_files()."""
+        return self._request("GET", f"/repos/{repo}/pulls/{pr_number}/comments")
+
     def create_review_comment(
         self,
         repo: str,

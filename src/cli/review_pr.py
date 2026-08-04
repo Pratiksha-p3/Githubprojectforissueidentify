@@ -309,9 +309,29 @@ def apply_fixes_to_file(
 def post_fix_suggestions(
     client: GitHubClient, repo: str, pr_number: int, commit_sha: str, findings: list[Finding]
 ) -> int:
+    """Posts one inline "Apply suggestion" comment per fixable finding --
+    but skips a (path, line) that already has an existing review comment
+    from a previous run.
+
+    Without this check, re-running `--post` on a PR whose findings
+    hadn't changed (nothing auto-applied, nothing manually fixed yet)
+    posted a FRESH, duplicate suggestion every time -- the main summary
+    comment is idempotent (updates in place via CommentStore), but these
+    per-line comments never were. Confirmed live as the actual cause of
+    real file corruption: a human clicked "Apply suggestion" on more
+    than one of the duplicate comments for the same finding, and each
+    click independently committed the same insert-a-guard patch,
+    duplicating it in the file."""
+    existing = {
+        (c["path"], c["line"]) for c in client.list_review_comments(repo, pr_number)
+    }
+
     posted = 0
     for f in findings:
         if not f.fix.strip():
+            continue
+        start, end = _span(f)
+        if (f.file, end) in existing:
             continue
         reason = manual_review_reason(f)
         if reason:
@@ -329,7 +349,6 @@ def post_fix_suggestions(
             f"**[{f.severity.value.upper()}] {f.message}**\n\n"
             f"```suggestion\n{f.fix}\n```\n\n{note}"
         )
-        start, end = _span(f)
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
             start_line=start if end > start else None,

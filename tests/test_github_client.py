@@ -237,6 +237,24 @@ def test_list_pr_files_returns_a_list_not_a_dict(monkeypatch):
     assert result == [{"filename": "app.py", "status": "modified"}]
 
 
+def test_list_review_comments_returns_a_list(monkeypatch):
+    calls = []
+
+    def fake_request(method, url, **kwargs):
+        calls.append((method, url))
+        return _FakeResponse(json_data=[{"path": "app.py", "line": 5, "body": "x"}])
+
+    monkeypatch.setattr(gc.requests, "request", fake_request)
+
+    client = gc.GitHubClient()
+    result = client.list_review_comments("acme/widgets", 4)
+
+    assert result == [{"path": "app.py", "line": 5, "body": "x"}]
+    method, url = calls[0]
+    assert method == "GET"
+    assert url == "https://api.github.com/repos/acme/widgets/pulls/4/comments"
+
+
 def test_get_file_content_decodes_base64(monkeypatch):
     import base64 as b64
 

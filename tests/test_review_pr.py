@@ -41,6 +41,9 @@ class _FakeGitHubClient:
         self.review_comments.append(comment)
         return {"id": len(self.review_comments)}
 
+    def list_review_comments(self, repo, pr_number):
+        return list(self.review_comments)
+
 
 def test_reviews_only_py_files_and_skips_removed_ones():
     client = _FakeGitHubClient(
@@ -537,6 +540,46 @@ def test_post_fix_suggestions_returns_the_count_posted():
 
     assert count == 1
     assert len(client.review_comments) == 1
+
+
+def test_post_fix_suggestions_skips_a_line_that_already_has_a_comment():
+    """Regression: re-running --post on a PR whose findings hadn't
+    changed used to post a FRESH duplicate suggestion every time. If a
+    human clicked "Apply suggestion" on more than one of the duplicates
+    for the same finding, each click independently applied the same
+    patch -- confirmed live as the actual cause of real file corruption
+    (a guard block duplicated, an assignment line duplicated)."""
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    client.review_comments.append(
+        {"path": "a.py", "line": 5, "body": "already posted from a prior run"}
+    )
+    finding = Finding(
+        file="a.py", line=5, category="runtime", severity=Severity.WARNING,
+        message="msg", fix="fixed code", confidence=ConfidenceTier.MEDIUM, source="x",
+    )
+
+    count = review_pr.post_fix_suggestions(client, "acme/widgets", 4, "abc123", [finding])
+
+    assert count == 0
+    assert len(client.review_comments) == 1  # still just the pre-existing one
+
+
+def test_post_fix_suggestions_still_posts_for_a_different_line():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    client.review_comments.append({"path": "a.py", "line": 5, "body": "unrelated"})
+    finding = Finding(
+        file="a.py", line=9, category="runtime", severity=Severity.WARNING,
+        message="msg", fix="fixed code", confidence=ConfidenceTier.MEDIUM, source="x",
+    )
+
+    count = review_pr.post_fix_suggestions(client, "acme/widgets", 4, "abc123", [finding])
+
+    assert count == 1
+    assert len(client.review_comments) == 2
 
 
 def test_post_fix_suggestions_sends_start_line_for_a_multi_line_fix():
