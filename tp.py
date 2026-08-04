@@ -60,7 +60,7 @@ def calculate_average(numbers):
 
 def fetch_user(url):
 
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
 
     return response.json()
 
