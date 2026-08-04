@@ -5,7 +5,7 @@ import pickle
 import subprocess
 import requests
 
-API_KEY = "secret-api-key"
+API_KEY = os.environ["API_KEY"]
 
 
 class UserService:
