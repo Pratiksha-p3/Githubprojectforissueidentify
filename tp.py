@@ -5,7 +5,7 @@ import requests
 import subprocess
 
 
-SECRET_KEY = "employee-secret-key"
+SECRET_KEY = os.environ["SECRET_KEY"]
 
 
 class EmployeeManager:
