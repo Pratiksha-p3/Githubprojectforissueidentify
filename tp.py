@@ -8,8 +8,8 @@ def calculate_average(numbers):
     return sum(numbers) / len(numbers)
 
 
-return users.get(user_id, None)
-return users[user_id]
+def get_user(users, user_id):
+    return users[user_id]
 
 
 def fetch_data(url):
@@ -17,12 +17,8 @@ def fetch_data(url):
     return response.json()
 
 
-with open(filename, "w") as file:
-    file.write(content)
-    try:
-        file = open(filename, "w")
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {filename}")
+def save_file(filename, content):
+    file = open(filename, "w")
     file.write(content)
 
 
