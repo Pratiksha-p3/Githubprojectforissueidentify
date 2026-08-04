@@ -3,7 +3,7 @@ import threading
 
 
 def parse_config():
-
+config = "{}"  # or a valid JSON string
     config = "{invalid json}"
 
     return json.loads(config)
