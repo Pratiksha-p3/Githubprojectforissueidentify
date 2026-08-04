@@ -7,6 +7,8 @@ API_KEY = os.environ["API_KEY"]
 def calculate_average(numbers):
     if len(numbers) == 0:
         raise ZeroDivisionError(f"'numbers' is empty")
+    if len(numbers) == 0:
+        raise ZeroDivisionError(f"'numbers' is empty")
     return sum(numbers) / len(numbers)
 
 
