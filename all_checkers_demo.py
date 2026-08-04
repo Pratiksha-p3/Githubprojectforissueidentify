@@ -20,8 +20,11 @@ def get_username(payload):
 
 
 def read_config(config_path):
-    with open(config_path) as f:
-        return f.read()
+    try:
+        with open(config_path) as f:
+            return f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {config_path}")
 
 
 class Account:
