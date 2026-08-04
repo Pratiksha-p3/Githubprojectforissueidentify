@@ -1,14 +1,14 @@
 import os
 import requests
 
-API_KEY = "my-secret-api-key"
+API_KEY = os.environ["API_KEY"]
 
 
 def calculate_average(numbers):
     return sum(numbers) / len(numbers)
 
 
-def get_user(users, user_id):
+return users.get(user_id, None)
     return users[user_id]
 
 
@@ -17,12 +17,18 @@ def fetch_data(url):
     return response.json()
 
 
-def save_file(filename, content):
-    file = open(filename, "w")
+with open(filename, "w") as file:
+    file.write(content)
+    try:
+        file = open(filename, "w")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {filename}")
     file.write(content)
 
 
 def process_order(order):
+    if "items" not in order:
+        raise KeyError(f"'order' is missing required key(s): {[k for k in (['items']) if k not in order]}")
     total = 0
 
     for item in order["items"]:
