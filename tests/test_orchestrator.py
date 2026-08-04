@@ -171,10 +171,13 @@ def test_expected_indented_block_gets_a_medium_confidence_block_reindent_fix():
     message names the enclosing header, so it's exactly one level deeper
     than that. How many FOLLOWING lines also belong in the block is what's
     genuinely uncertain, so the fix is derived by trying increasingly
-    large reindents and keeping the smallest one the parser confirms
-    fixes the file -- here that's both `def process` and its body
-    `return 1`. Still stays MEDIUM, never HIGH, because "smallest parsing
-    fix" is a reasonable tie-break, not a certainty about intent."""
+    large reindents and keeping the LARGEST one the parser confirms fixes
+    the file (bounded so it stops before a sibling def/class/decorator,
+    or a bare return/break/continue/raise, at the same indent) -- here
+    that's both `def process` and its body `return 1`, with nothing after
+    them to stop at. Still stays MEDIUM, never HIGH, because "largest
+    parsing fix within that bound" is a reasonable tie-break, not a
+    certainty about intent."""
     code = (
         "class Handler:\n"
         "\n"
@@ -192,7 +195,7 @@ def test_expected_indented_block_gets_a_medium_confidence_block_reindent_fix():
     assert finding.end_line == 4
     assert finding.fix == "    def process(self):\n        return 1"
     assert finding.confidence == ConfidenceTier.MEDIUM
-    assert "smallest change" in finding.message
+    assert "largest change" in finding.message
 
 
 def test_indent_fix_applied_produces_a_parseable_file_when_block_is_one_line():
@@ -281,7 +284,10 @@ def test_unexpected_indent_gets_a_medium_confidence_fix():
     colon-header authorizing a new block) has no header line in the
     message to anchor to, unlike "expected an indented block" -- the fix
     instead tries indentation levels already used earlier in the file,
-    closest first, and takes the one the parser confirms fixes it."""
+    closest first, and -- within each level -- the largest span the
+    parser confirms fixes it (here that includes the for-loop's body
+    line too, not just the header, since nothing stops the span before
+    it)."""
     code = (
         "def total(numbers):\n"
         "\n"
@@ -300,8 +306,18 @@ def test_unexpected_indent_gets_a_medium_confidence_fix():
     assert len(result.findings) == 1
     finding = result.findings[0]
     assert finding.line == 5
-    assert finding.fix == "    for n in numbers:"
     assert finding.confidence == ConfidenceTier.MEDIUM
+
+    import ast
+
+    lines = code.splitlines()
+    end = finding.end_line or finding.line
+    lines[finding.line - 1 : end] = finding.fix.splitlines()
+    patched = "\n".join(lines)
+    ast.parse(patched)  # must not raise
+    namespace: dict = {}
+    exec(compile(patched, "app.py", "exec"), namespace)
+    assert namespace["total"]([1, 2, 3]) == 6
 
 
 def test_unexpected_indent_fix_applied_produces_a_working_file():
@@ -360,6 +376,100 @@ def test_unindent_mismatch_gets_a_medium_confidence_fix():
     end = finding.end_line or finding.line
     lines[finding.line - 1 : end] = finding.fix.splitlines()
     ast.parse("\n".join(lines))  # must not raise
+
+
+def test_missing_indent_fix_does_not_produce_an_infinite_loop():
+    """Regression -- a real, serious bug: a too-small reindent span left
+    a while-loop's decrement statement OUTSIDE the loop body. That's
+    still syntactically valid Python (a plain statement can legally
+    follow a compound one at the same indent), so it compiled fine and
+    passed every earlier check -- but the loop variable then never
+    changed, so running it hung forever. Confirmed live by actually
+    executing the "fixed" code before this test existed. The fix must
+    pull the decrement inside the loop too, not just the first line."""
+    import ast
+
+    code = (
+        "def f(n):\n"
+        "    total = 0\n"
+        "    while n > 0:\n"
+        "    total += n\n"
+        "    n -= 1\n"
+        "    return total\n"
+    )
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+    finding = result.findings[0]
+
+    lines = code.splitlines()
+    end = finding.end_line or finding.line
+    lines[finding.line - 1 : end] = finding.fix.splitlines()
+    patched = "\n".join(lines)
+    ast.parse(patched)  # must not raise
+    namespace: dict = {}
+    exec(compile(patched, "app.py", "exec"), namespace)
+
+    # 3+2+1 -- if this hangs, the decrement got left outside the loop again.
+    assert namespace["f"](3) == 6
+
+
+def test_missing_indent_fix_does_not_swallow_a_trailing_return():
+    """Regression -- the opposite failure mode from the infinite-loop
+    bug above: over-correcting to always prefer the largest possible
+    span pulled a for-loop's trailing `return total` INSIDE the loop
+    body, since it sat at the same (wrong) indentation as the line that
+    genuinely belonged there. That made the function return after the
+    first item instead of the whole accumulated sum -- still compiled
+    fine, silently wrong. A bare return/break/continue/raise must stop
+    the span before it, not get pulled in."""
+    import ast
+
+    code = "def f(items):\n    total = 0\n    for i in items:\n    total += i\n    return total\n"
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+    finding = result.findings[0]
+
+    lines = code.splitlines()
+    end = finding.end_line or finding.line
+    lines[finding.line - 1 : end] = finding.fix.splitlines()
+    patched = "\n".join(lines)
+    ast.parse(patched)  # must not raise
+    namespace: dict = {}
+    exec(compile(patched, "app.py", "exec"), namespace)
+
+    assert namespace["f"]([1, 2, 3]) == 6  # not 1 -- must sum every item, not return early
+
+
+def test_missing_indent_fix_stops_a_span_before_a_sibling_return_in_an_if_elif_chain():
+    """Same span-boundary rule, applied to an if/elif chain's fallback
+    return rather than a loop's accumulated result -- the return after
+    the elif body belongs to the function as a whole, not inside the
+    elif."""
+    code = (
+        "def f(x):\n"
+        "    if x > 0:\n"
+        "        return 1\n"
+        "    elif x < 0:\n"
+        "    return -1\n"
+        "    return 0\n"
+    )
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+    finding = result.findings[0]
+
+    lines = code.splitlines()
+    end = finding.end_line or finding.line
+    lines[finding.line - 1 : end] = finding.fix.splitlines()
+    patched = "\n".join(lines)
+    namespace: dict = {}
+    exec(compile(patched, "app.py", "exec"), namespace)
+
+    assert namespace["f"](5) == 1
+    assert namespace["f"](-5) == -1
+    assert namespace["f"](0) == 0
 
 
 def test_stops_at_a_syntax_error_shape_with_no_recognized_fix():

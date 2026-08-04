@@ -74,19 +74,30 @@ indented block after X on line N". CPython's message names the
 enclosing header's line, so the target indentation isn't a guess -- it's
 exactly one level (4 spaces) deeper than that header. What IS a genuine
 guess is how many of the following lines also belong inside the newly-
-indented block; there's no parser fact for that. Rather than guess and
-hope, this tries reindenting an increasing number of lines (offsetting
-each by the same amount, preserving their relative nesting) and asks
-the parser itself to confirm: the smallest number of lines that makes
-the whole file parse again is what gets returned as the fix, so the fix
-is verified to actually resolve the syntax error, not just a plausible-
-looking guess. It stays MEDIUM confidence, not HIGH, because "smallest
-parsing fix" is a reasonable tie-break, not a certainty about intent --
-confirmed with a concrete counter-example: `class C:\ndef f(self): ...\n
-def g(self): ...` has more than one syntactically valid reindent (just
-`f`, or both `f` and `g`), and the smallest one doesn't always match
-what a human meant. The message spells out exactly which lines moved
-and why. If no reindent within a bounded forward search parses cleanly,
+indented block; there's no parser fact for that. This reindents an
+increasing number of lines (offsetting each by the same amount,
+preserving their relative nesting), bounded by _looks_like_span_boundary()
+stopping the span before a sibling def/class/decorator, or a bare
+return/break/continue/raise, at the offending line's own indent, and --
+within that bound -- prefers the LARGEST span
+the parser confirms actually fixes the file, not the smallest. That
+preference is deliberate, and was a real live bug before it was added:
+"smallest span that compiles" isn't a safe enough bar, because a
+too-small span can still be syntactically valid Python on its own --
+confirmed concretely with a while-loop whose decrement and return
+statements got left OUTSIDE the loop body (a plain sibling statement
+after a compound one is valid syntax), silently turning a one-line fix
+into an infinite loop at runtime despite "compiling fine". Every line up
+through the bound was written at (or nested under) the SAME wrong
+indentation as the first offending line, which is strong evidence they
+were meant to move together; the new-definition boundary exists
+specifically so this doesn't overcorrect into swallowing a genuine
+sibling declaration (confirmed against the opposite counter-example:
+`class C:\ndef f(self): ...\ndef g(self): ...` -- `g` sits at the exact
+same indent as `f` and starts with `def`, so the span stops before it).
+It stays MEDIUM confidence, not HIGH, because even with this boundary,
+"largest span that parses" is a strong heuristic, not a certainty about
+intent. If no reindent within a bounded forward search parses cleanly,
 no fix is offered at all, same as any other unrecognized syntax error.
 
 _misaligned_indent_fix() covers the remaining two indentation
@@ -97,10 +108,10 @@ indentation level" (a line dedents to a column that isn't any enclosing
 block's actual indentation). Neither message names a header line to
 anchor to, so instead of one analytically-derived target this tries
 every indentation level already used earlier in the file, closest to
-the offending line's current indentation first, and -- same parser-as-
-oracle approach as _missing_indent_fix() -- returns the first (level,
-span) the parser confirms actually fixes the file. Also stays MEDIUM,
-never HIGH, for the same reason: "closest level that happens to parse"
+the offending line's current indentation first -- and, for each level,
+the same largest-span-first search (with the same new-definition
+boundary) as _missing_indent_fix(), for the same reason. Also stays
+MEDIUM, never HIGH: "closest level, largest span that happens to parse"
 is a strong heuristic, not a certainty about what was intended.
 
 use_multi_agent (Stage 11, opt-in, default False) swaps the single
@@ -143,6 +154,31 @@ def _missing_colon_fix(code: str, e: SyntaxError) -> str:
 
 _INDENT_HEADER_LINE = re.compile(r"on line (\d+)$")
 _INDENT_SEARCH_WINDOW = 50  # lines forward to try before giving up
+_NEW_DEFINITION = re.compile(r"^\s*(async\s+def\b|def\b|class\b|@)")
+_BLOCK_EXIT = re.compile(r"^\s*(return|break|continue|raise)\b")
+
+
+def _looks_like_span_boundary(line: str) -> bool:
+    """True for a line that should end a reindent span rather than be
+    swallowed into it by the "prefer largest span" search below -- either
+    a new sibling def/class/decorator, or a bare return/break/continue/
+    raise. Both are common as the very NEXT line after a block at the
+    same (wrong) indentation, yet are much more often meant to run AFTER
+    the block than as part of it: a loop's final accumulated-result
+    return, an if/elif chain's fallback return, a sibling method
+    declaration. Confirmed live as two separate real bugs without this
+    split: (1) a while-loop's decrement statement left OUTSIDE the loop
+    (an earlier, too-small-span version of this fix) was still
+    syntactically valid Python, silently becoming an infinite loop; (2) a
+    for-loop's trailing `return total` pulled INTO the loop (an
+    over-corrected, too-large-span version) returned after the first
+    item instead of the whole accumulated sum. Splitting the two DOES
+    matter: a plain statement like `total += n` almost always belongs
+    inside the block (include it, growing the span); a def/class/return/
+    break/continue/raise almost always belongs after it (stop before
+    it) -- confirmed against both directions with concrete cases in
+    tests/test_orchestrator.py."""
+    return bool(_NEW_DEFINITION.match(line) or _BLOCK_EXIT.match(line))
 
 
 def _missing_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
@@ -175,16 +211,34 @@ def _missing_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
 
     # Bound the search: stop as soon as a line dedents below even the
     # enclosing header's own level (definitely outside any nested scope
-    # the header could own), or after a generous fixed window, whichever
-    # comes first.
+    # the header could own), a span-boundary line appears at the
+    # offending line's own indent (see _looks_like_span_boundary
+    # docstring), or after a generous fixed window -- whichever comes
+    # first.
     max_end_line = e.lineno
     for idx in range(e.lineno, min(len(lines), e.lineno + _INDENT_SEARCH_WINDOW)):
         candidate = lines[idx]
-        if candidate.strip() and (len(candidate) - len(candidate.lstrip())) < header_indent:
+        if not candidate.strip():
+            max_end_line = idx + 1
+            continue
+        candidate_indent = len(candidate) - len(candidate.lstrip())
+        if candidate_indent < header_indent:
+            break
+        if candidate_indent == first_indent and _looks_like_span_boundary(candidate):
             break
         max_end_line = idx + 1
 
-    for end_line in range(e.lineno, max_end_line + 1):
+    # Prefer the LARGEST span the parser confirms fixes the file, not the
+    # smallest -- confirmed live that "smallest that compiles" isn't a
+    # safe enough bar: a while-loop's decrement/return left outside the
+    # loop body is still syntactically valid Python (a sibling statement
+    # after the loop), just an infinite loop at runtime. Every line up
+    # through max_end_line was already written at the SAME wrong
+    # indentation as the first offending line (or nested deeper within
+    # it), which is strong evidence they were all meant to move together
+    # -- the smaller spans this now only falls back to are for cases
+    # where the larger one doesn't even parse.
+    for end_line in range(max_end_line, e.lineno - 1, -1):
         patched_lines = list(lines)
         for idx in range(e.lineno - 1, end_line):
             if patched_lines[idx].strip():
@@ -200,8 +254,9 @@ def _missing_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
             f"'{header_line.strip()}' on line {header_lineno} needs its body "
             f"indented one level deeper (column {header_indent + 4}), but line "
             f"{e.lineno} sits at column {first_indent} -- shifting {span} right "
-            f"by {offset} space(s) is the smallest change that makes the file "
-            f"parse again."
+            f"by {offset} space(s) is the largest change the parser confirms "
+            f"actually fixes the file, without pulling in a later sibling "
+            f"definition."
         )
         return fix, end_line, reason
 
@@ -252,11 +307,30 @@ def _misaligned_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
         key=lambda lvl: (abs(lvl - first_indent), lvl),
     )
 
-    max_end_line = min(len(lines), e.lineno + _INDENT_SEARCH_WINDOW)
+    # Same boundary refinement as _missing_indent_fix(): stop before a
+    # span-boundary line (new sibling def/class/decorator, or a bare
+    # return/break/continue/raise) at the offending line's own indent,
+    # rather than swallowing it into the reindented span.
+    max_end_line = e.lineno
+    for idx in range(e.lineno, min(len(lines), e.lineno + _INDENT_SEARCH_WINDOW)):
+        candidate = lines[idx]
+        if candidate.strip():
+            candidate_indent = len(candidate) - len(candidate.lstrip())
+            if candidate_indent == first_indent and _looks_like_span_boundary(candidate):
+                break
+        max_end_line = idx + 1
 
     for target in candidates:
         offset = target - first_indent
-        for end_line in range(e.lineno, max_end_line + 1):
+        # Prefer the LARGEST span that parses, not the smallest -- same
+        # reasoning as _missing_indent_fix(): every line through
+        # max_end_line was written at (or nested under) the same
+        # original indentation, so they were most likely meant to move
+        # together. A larger span underflowing (a deeper-nested line's
+        # new indent going negative) doesn't rule out a smaller one
+        # working, so that skips to the next size down instead of
+        # giving up on this target level entirely.
+        for end_line in range(max_end_line, e.lineno - 1, -1):
             patched_lines = list(lines)
             underflow = False
             for idx in range(e.lineno - 1, end_line):
@@ -270,7 +344,7 @@ def _misaligned_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
                     break
                 patched_lines[idx] = " " * new_indent + line.lstrip()
             if underflow:
-                break  # shrinking further only underflows more -- stop growing this span
+                continue
             try:
                 compile("\n".join(patched_lines), "<string>", "exec")
             except SyntaxError:
