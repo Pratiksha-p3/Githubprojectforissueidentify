@@ -42,6 +42,13 @@ def manual_review_reason(finding: Finding) -> str:
     if not finding.fix.strip():
         return "No fix was generated for this finding — needs manual investigation."
     if finding.confidence == ConfidenceTier.MEDIUM:
+        if finding.category == "syntax":
+            return (
+                "Confidence is MEDIUM — this is the smallest reindent the "
+                "parser confirms actually fixes the file, but how many "
+                "lines were truly meant to belong to the block is a "
+                "judgment call about intent this can't verify on its own."
+            )
         return (
             "Confidence is MEDIUM — a reasonable checker-generated fix, but "
             "which exact guard behavior is correct (raise vs. return vs. "
@@ -50,6 +57,31 @@ def manual_review_reason(finding: Finding) -> str:
     return (
         "Confidence is LOW — free-form LLM output with no independent "
         "verification beyond basic grounding/validity checks."
+    )
+
+
+def review_reason(finding: Finding, *, auto_apply: bool = False) -> str:
+    """Every finding still requiring attention gets a reason, with no
+    gap -- manual_review_reason() alone only covers "the confidence tier
+    itself is the reason" (MEDIUM/LOW, or no fix at all). It returns ""
+    for a HIGH-confidence finding, since HIGH is normally safe to
+    auto-apply without explanation -- but a HIGH finding can still be
+    sitting in front of a caller that hasn't applied it yet (--auto-apply
+    wasn't passed this run, or it was passed but this specific finding
+    lost a same-line conflict to another one). This fills that gap so a
+    caller displaying "why does this need manual attention" never has to
+    special-case HIGH confidence separately."""
+    reason = manual_review_reason(finding)
+    if reason:
+        return reason
+    if auto_apply:
+        return (
+            "High confidence, but not applied this run -- another finding "
+            "on the same line conflicted with it."
+        )
+    return (
+        "High confidence and auto-fixable -- re-run with --auto-apply to "
+        "have this committed automatically."
     )
 
 

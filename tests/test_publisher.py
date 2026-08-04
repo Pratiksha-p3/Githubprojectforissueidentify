@@ -1,4 +1,4 @@
-from src.core.models import Finding, ReviewResult, ReviewStatus, Severity
+from src.core.models import ConfidenceTier, Finding, ReviewResult, ReviewStatus, Severity
 from src.integrations.publisher import publish_review
 
 
@@ -92,6 +92,78 @@ def test_comment_body_includes_findings():
     body = client.posted_comments[0][2]
     assert "app.py:3" in body
     assert "boom" in body
+
+
+def test_comment_body_includes_the_fix_suggestion_and_reason_right_after_the_finding():
+    """The whole point of this: someone reading only the PR's Conversation
+    tab (not the Files Changed tab's inline suggestions) must be able to
+    see, right after each finding, what the suggested fix is and why they
+    still have to apply it themselves -- not just the bare message."""
+    client = _FakeGitHubClient()
+    store = _FakeCommentStore()
+    result = make_result(
+        findings=[
+            Finding(
+                file="app.py", line=3, category="runtime", severity=Severity.WARNING,
+                message="Division by parameter 'b' with no zero-check",
+                fix="if b == 0:\n    raise ZeroDivisionError",
+                confidence=ConfidenceTier.MEDIUM, source="division_guard_checker",
+            )
+        ]
+    )
+
+    publish_review(result, pr_number=7, github_client=client, comment_store=store)
+
+    body = client.posted_comments[0][2]
+    finding_idx = body.index("app.py:3")
+    fix_idx = body.index("if b == 0:")
+    reason_idx = body.index("Why this is still here")
+    reason_text_idx = body.index("judgment call")
+    assert finding_idx < fix_idx < reason_idx < reason_text_idx
+
+
+def test_comment_body_omits_fix_block_when_finding_has_no_fix():
+    client = _FakeGitHubClient()
+    store = _FakeCommentStore()
+    result = make_result(
+        findings=[
+            Finding(
+                file="app.py", line=3, category="syntax", severity=Severity.CRITICAL,
+                message="File does not parse", fix="", confidence=ConfidenceTier.MEDIUM,
+            )
+        ]
+    )
+
+    publish_review(result, pr_number=7, github_client=client, comment_store=store)
+
+    body = client.posted_comments[0][2]
+    assert "Suggested fix" not in body
+    assert "No fix was generated" in body
+
+
+def test_comment_body_reason_for_high_confidence_reflects_auto_apply_flag():
+    client = _FakeGitHubClient()
+    store = _FakeCommentStore()
+    result = make_result(
+        findings=[
+            Finding(
+                file="app.py", line=2, category="syntax", severity=Severity.CRITICAL,
+                message="missing colon", fix="if x:", confidence=ConfidenceTier.HIGH,
+            )
+        ]
+    )
+
+    publish_review(result, pr_number=7, github_client=client, comment_store=store, auto_apply=False)
+    body_without = client.posted_comments[0][2]
+    assert "--auto-apply" in body_without
+
+    client2 = _FakeGitHubClient()
+    store2 = _FakeCommentStore()
+    publish_review(
+        result, pr_number=8, github_client=client2, comment_store=store2, auto_apply=True
+    )
+    body_with = client2.posted_comments[0][2]
+    assert "conflicted" in body_with
 
 
 def test_degraded_review_never_produces_a_success_check_run():
