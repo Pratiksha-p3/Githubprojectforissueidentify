@@ -217,6 +217,31 @@ def test_auto_apply_pushes_the_fix_and_reports_it_as_auto_fixed(monkeypatch, cap
     assert "Needs manual review:     0" in out
 
 
+def test_auto_applied_finding_gets_no_suggestion_comment_in_the_same_run(monkeypatch):
+    """A line that --auto-apply already fixed and pushed must never ALSO
+    get a redundant "Apply suggestion" comment in the same run -- that
+    would be posting a suggestion for a change that's already been made.
+    Guaranteed structurally: after auto-apply, review_pr() re-reviews
+    the NEW commit before calling post_fix_suggestions(), so combined
+    .findings (what gets posted) only ever contains what's still
+    actually present, never what auto-apply already resolved."""
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, auto_apply=True, github_client=client
+    )
+
+    assert client.review_comments == []
+
+
 def test_auto_apply_re_reviews_after_pushing_so_the_posted_comment_is_accurate(monkeypatch):
     monkeypatch.setattr(
         review_pr,
