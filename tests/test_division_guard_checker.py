@@ -36,8 +36,46 @@ def test_skips_when_guarded_by_try_except():
     assert detect_unguarded_division(code, "app.py") == []
 
 
-def test_ignores_division_by_call_expression_not_a_bare_name():
+def test_flags_division_by_len_of_a_parameter():
+    """The far more common real shape: an average-style division by a
+    sequence parameter's length, e.g. `total / len(numbers)` -- raises
+    ZeroDivisionError for an empty sequence, same underlying bug as
+    dividing by a bare zero-valued parameter."""
     code = "def average(numbers):\n    return sum(numbers) / len(numbers)\n"
+    findings = detect_unguarded_division(code, "app.py")
+    assert len(findings) == 1
+    assert "numbers" in findings[0].message
+    assert "len(numbers) == 0" in findings[0].fix
+
+
+def test_skips_len_shape_when_guarded_by_truthy_check():
+    """An empty sequence is falsy, so `if numbers:` / `if not numbers:`
+    guards the len()==0 condition just as validly as an explicit
+    len() comparison."""
+    code = (
+        "def average(numbers):\n"
+        "    if not numbers:\n"
+        "        return 0\n"
+        "    return sum(numbers) / len(numbers)\n"
+    )
+    assert detect_unguarded_division(code, "app.py") == []
+
+
+def test_skips_len_shape_when_guarded_by_len_comparison():
+    code = (
+        "def average(numbers):\n"
+        "    if len(numbers) == 0:\n"
+        "        return 0\n"
+        "    return sum(numbers) / len(numbers)\n"
+    )
+    assert detect_unguarded_division(code, "app.py") == []
+
+
+def test_ignores_division_by_an_unrelated_call_expression():
+    """Only the len(<param>) shape is covered -- any other call
+    expression as the divisor is a different, harder-to-guard shape and
+    stays out of scope, same reasoning as before."""
+    code = "def average(numbers):\n    return sum(numbers) / compute_count(numbers)\n"
     assert detect_unguarded_division(code, "app.py") == []
 
 
