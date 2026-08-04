@@ -43,3 +43,92 @@ def test_ignores_dynamic_key():
 def test_ignores_non_parameter_dict():
     code = "def handler():\n    d = {'x': 1}\n    return d['x']\n"
     assert detect_unguarded_dict_access(code, "app.py") == []
+
+
+def test_flags_unguarded_key_access_on_a_direct_json_call_result():
+    code = (
+        "def handler(response):\n"
+        "    data = response.json()\n"
+        "    return data['user_id']\n"
+    )
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert len(findings) == 1
+    assert "response doesn't include it" in findings[0].message
+
+
+def test_flags_unguarded_key_access_via_a_same_file_json_wrapper_function():
+    """The real-world shape this was built for: a local helper that
+    wraps the actual .json() call, then a caller elsewhere in the file
+    treats its result as an ordinary dict with no guard -- confirmed
+    against a real bug (`data = fetch_data(url); data["address"]["city"]`
+    raised KeyError in practice)."""
+    code = (
+        "def fetch_data(url):\n"
+        "    response = requests.get(url, timeout=10)\n"
+        "    return response.json()\n\n"
+        "def main():\n"
+        "    data = fetch_data('http://x')\n"
+        "    print(data['address']['city'])\n"
+    )
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert len(findings) == 1
+    assert findings[0].line == 6  # anchored at the assignment, not the def line
+    assert "data = fetch_data" in findings[0].fix
+
+
+def test_json_derived_local_fix_applies_after_the_assignment_not_the_def_line():
+    """A .json()-derived local doesn't exist until its assignment runs --
+    inserting its guard at the top of the function (like a parameter's)
+    would reference the name before it's bound."""
+    code = (
+        "def handler(response):\n"
+        "    x = 1\n"
+        "    data = response.json()\n"
+        "    return data['key']\n"
+    )
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert findings[0].line == 3
+    assert findings[0].fix.startswith("    data = response.json()")
+
+
+def test_json_derived_local_fix_spans_a_multi_line_assignment_correctly():
+    """Regression: a multi-line assignment (`data = fetch_data(\\n
+    url\\n)`) previously got its guard spliced in after just the FIRST
+    line, truncating the call mid-expression -- produced invalid Python
+    that src/core/grounding.py's is_valid_fix() correctly rejected, but
+    that meant the whole finding silently vanished instead of being
+    fixed. The fix must span the assignment's full range."""
+    import ast
+
+    code = (
+        "def fetch_data(url):\n"
+        "    response = requests.get(url, timeout=10)\n"
+        "    return response.json()\n\n"
+        "def main():\n"
+        "    data = fetch_data(\n"
+        '        "http://x"\n'
+        "    )\n"
+        "    print(data['address'])\n"
+    )
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.line == 6
+    assert finding.end_line == 8
+
+    lines = code.splitlines()
+    lines[finding.line - 1 : finding.end_line] = finding.fix.splitlines()
+    patched = "\n".join(lines)
+    ast.parse(patched)  # must not raise
+    assert "fetch_data(" in patched and '"http://x"' in patched
+
+
+def test_skips_json_derived_local_when_guarded():
+    code = (
+        "def handler(response):\n"
+        "    data = response.json()\n"
+        "    if 'user_id' not in data:\n"
+        "        raise KeyError('missing')\n"
+        "    return data['user_id']\n"
+    )
+    assert detect_unguarded_dict_access(code, "app.py") == []
