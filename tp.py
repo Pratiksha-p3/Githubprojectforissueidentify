@@ -25,7 +25,7 @@ class EmployeeManager:
 
         return cursor.fetchone()
 
-    def add_employee(self, name, salary)
+    def add_employee(self, name, salary):
 
         cursor = self.db.cursor()
 
@@ -73,7 +73,7 @@ def calculate_bonus(salary, rating):
     if rating > 5:
         return 0
 
-      bonus = salary * 0.20
+    bonus = salary * 0.20
 
     return salary + bonus
 
