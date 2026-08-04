@@ -27,7 +27,7 @@ class FileProcessor:
 
         return path
 
-    def extract_archive(self, archive_path)
+    def extract_archive(self, archive_path):
 
         zip_ref = zipfile.ZipFile(
             archive_path,
@@ -54,7 +54,7 @@ def calculate_storage_usage(files):
 
     total_size = 0
 
-     for file_path in files:
+    for file_path in files:
 
         total_size += os.path.getsize(
             file_path
