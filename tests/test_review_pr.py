@@ -76,6 +76,27 @@ def test_dry_run_prints_auto_fix_summary(capsys):
     assert "needs manual investigation" in out
 
 
+def test_high_confidence_finding_without_auto_apply_still_counts_as_manual_review(capsys):
+    """Regression test for a real gap: a HIGH-confidence finding (e.g.
+    the missing-colon syntax-error fix) that ISN'T actually applied this
+    run (because --auto-apply wasn't passed) used to be counted in
+    NEITHER bucket -- not "auto-fixed" (nothing was applied) and not
+    "needs manual review" (confidence-based logic excluded HIGH). Every
+    finding still present after the run must land in exactly one of the
+    two counts, with no gap."""
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def f(rating):\n    if rating >= 4\n        return 1\n    return 0\n"},
+    )
+
+    review_pr.review_pr("acme/widgets", 4, include_llm=False, github_client=client)
+
+    out = capsys.readouterr().out
+    assert "Auto-fixed:              0" in out
+    assert "Needs manual review:     1" in out  # not 0 -- this is the bug being tested
+    assert "--auto-apply" in out
+
+
 def test_dry_run_prints_the_suggested_fix_for_findings_that_have_one(capsys):
     client = _FakeGitHubClient(
         files=[{"filename": "a.py", "status": "modified"}],

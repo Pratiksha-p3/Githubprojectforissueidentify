@@ -32,15 +32,21 @@ need a human to click Apply rather than happening on its own" is visible
 right on GitHub, not just in this CLI's own output. Findings with no fix
 (e.g. a syntax error) are skipped since there's nothing to suggest.
 
-Two different counts get reported, deliberately not conflated:
-"Auto-fixed" (src/core/confidence.py's is_safe_to_auto_apply() gate --
-currently always 0, since no checker or LLM finding source in this
-project produces HIGH confidence) versus "Fix suggestions posted to
-GitHub" (how many inline suggestion comments this run actually
-published -- each still needs a human to click "Apply suggestion").
-The second number can be non-zero; conflating it with the first would
-misrepresent something a human still has to act on as something the
-system did on its own.
+Every finding lands in exactly one of two counts, with no gap between
+them: "Auto-fixed" (findings this run actually resolved and pushed --
+see --auto-apply below) and "Needs manual review" (literally every
+other finding still in the combined result once the run is done,
+`len(combined.findings)` -- not filtered by confidence tier). A HIGH-
+confidence finding that's auto-fixable but wasn't actually applied this
+run (because --auto-apply wasn't passed) still counts as "needs manual
+review" here, with its own reason explaining that re-running with
+--auto-apply is what would resolve it (_review_reason()) -- it must
+never silently fall into neither bucket. A separate, third number,
+"Fix suggestions posted to GitHub", counts how many inline suggestion
+comments this run actually published when --post is used; each of
+those still needs a human to click "Apply suggestion" regardless of
+confidence tier, since --post alone (without --auto-apply) never
+commits anything on its own.
 
 `--multi-agent` swaps the single runtime/logic LLM pass for
 src/agents/coordinator.py's four specialized agents (adds security,
@@ -78,7 +84,7 @@ import sys
 
 import requests
 
-from src.core.confidence import manual_review_reason, summarize_auto_fix_status
+from src.core.confidence import manual_review_reason
 from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
@@ -187,11 +193,11 @@ def review_pr(
     print(f"  Reason:   {reason}")
     print(f"{'=' * 60}")
 
-    fix_status = summarize_auto_fix_status(combined.findings)
     print(f"  Auto-fixed:              {auto_fixed_count}")
-    print(f"  Needs manual review:     {fix_status['manual_review_count']}")
-    for detail in fix_status["manual_review_details"]:
-        print(f"    - {detail['file']}:{detail['line']} ({detail['source']}) — {detail['reason']}")
+    print(f"  Needs manual review:     {len(combined.findings)}")
+    for finding in combined.findings:
+        reason = _review_reason(finding, auto_apply)
+        print(f"    - {finding.file}:{finding.line} ({finding.source}) — {reason}")
     print(f"{'=' * 60}")
 
     if post:
@@ -224,6 +230,31 @@ def review_pr(
         print("\n(dry run -- nothing posted to GitHub; re-run with --post to publish)")
 
     return 0 if decision != GateDecision.BLOCK else 1
+
+
+def _review_reason(f: Finding, auto_apply: bool) -> str:
+    """Every finding still in `combined.findings` by the time the
+    summary prints needs a reason -- including a HIGH-confidence finding
+    that was never actually applied because --auto-apply wasn't passed
+    this run. src/core/confidence.py's manual_review_reason() only
+    covers the "confidence tier itself is the reason" case (MEDIUM/LOW,
+    or no fix at all); this fills the gap so nothing prints with an
+    empty/missing reason."""
+    reason = manual_review_reason(f)
+    if reason:
+        return reason
+    if auto_apply:
+        # Reached --auto-apply but still unresolved -- must have hit a
+        # same-line conflict in apply_fixes_to_file(), the only way a
+        # HIGH-confidence fixable finding survives re-review.
+        return (
+            "High confidence, but not applied this run -- another finding "
+            "on the same line conflicted with it."
+        )
+    return (
+        "High confidence and auto-fixable -- re-run with --auto-apply to "
+        "have this committed automatically."
+    )
 
 
 def apply_fixes_to_file(
