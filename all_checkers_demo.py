@@ -46,7 +46,7 @@ def find_user(cursor, user_id):
 
 
 def load_settings(raw_yaml):
-    return yaml.load(raw_yaml)
+    return yaml.safe_load(raw_yaml)
 
 
 def run_backup(user_supplied_path):
