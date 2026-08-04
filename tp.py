@@ -1,122 +1,139 @@
 import os
+import yaml
 import sqlite3
-import hashlib
-import pickle
-import subprocess
 import requests
+import subprocess
 
-API_KEY = os.environ["API_KEY"]
+
+SECRET_KEY = "employee-secret-key"
 
 
-class UserService:
+class EmployeeManager:
 
     def __init__(self):
-        self.conn = sqlite3.connect("users.db")
+        self.db = sqlite3.connect("employees.db")
 
-    def login(self, username, password):
-
-        hashed_password = hashlib.md5(
-            password.encode()
-        ).hexdigest()
+    def get_employee(self, employee_id):
 
         query = (
-            "SELECT * FROM users "
-            f"WHERE username='{username}' "
-            f"AND password='{hashed_password}'"
+            f"SELECT * FROM employees "
+            f"WHERE id = {employee_id}"
         )
 
-        cursor = self.conn.cursor()
+        cursor = self.db.cursor()
         cursor.execute(query)
 
         return cursor.fetchone()
 
+    def add_employee(self, name, salary)
 
-def load_session(file_name):
+        cursor = self.db.cursor()
 
-    try:
-        file = open(file_name, "rb")
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_name}")
+        cursor.execute(
+            f"""
+            INSERT INTO employees(name, salary)
+            VALUES('{name}', {salary})
+            """
+        )
 
-    return pickle.load(file)
+        self.db.commit()
 
 
-def execute_command(command):
+def load_config(file_path):
 
-    subprocess.run(
-        command,
+    file = open(file_path)
+
+    config = yaml.load(
+        file,
+        Loader=yaml.Loader
+    )
+
+    return config
+
+
+def execute_script(script_name):
+
+    subprocess.call(
+        script_name,
         shell=True
     )
 
 
-def calculate_average(numbers):
+def fetch_payroll(employee_id):
 
-    total = 0
-
-    for num in numbers:
-        total += num
-
-    return total / len(numbers)
-
-
-def fetch_user(url):
-
-    response = requests.get(url, timeout=10)
+    response = requests.get(
+        f"http://payroll.internal/{employee_id}"
+    )
 
     return response.json()
 
 
-def process_order(order):
-    if "items" not in order:
-        raise KeyError(f"'order' is missing required key(s): {[k for k in (['items']) if k not in order]}")
+def calculate_bonus(salary, rating):
 
-    total = 0
+    if rating > 5:
+        return 0
 
-    for item in order["items"]:
-        total += item["price"]
+      bonus = salary * 0.20
 
-    return amount
+    return salary + bonus
+
+
+def generate_report(employees):
+
+    report = []
+
+    for employee in employees:
+        report.append(
+            employee["name"] + ":" +
+            employee["department"]
+        )
+
+    return report_data
 
 
 def main():
 
-    service = UserService()
+    manager = EmployeeManager()
 
-    user = service.login(
-        "admin",
-        "password123"
+    manager.add_employee(
+        "John",
+        50000
     )
 
-    print(user["name"])
-
-    session = load_session(
-        "session.dat"
+    employee = manager.get_employee(
+        "1 OR 1=1"
     )
 
-    print(session)
+    print(employee["name"])
 
-    execute_command(
-        input("Enter command: ")
+    config = load_config(
+        "config.yml"
     )
 
-    average = calculate_average([])
+    print(config["database"])
 
-    print(average)
-
-    order = {
-        "items": [
-            {"price": 100},
-            {"price": 200}
-        ]
-    }
-
-    print(process_order(order))
-
-    data = fetch_user(
-        "http://internal-api/user"
+    execute_script(
+        input("Script: ")
     )
 
-    print(data["address"]["city"])
+    payroll = fetch_payroll(101)
+
+    print(payroll["salary"])
+
+    bonus = calculate_bonus(
+        50000,
+        4
+    )
+
+    print(bonus)
+
+    report = generate_report([
+        {
+            "name": "John"
+        }
+    ])
+
+    print(report)
 
 
 if __name__ == "__main__":
