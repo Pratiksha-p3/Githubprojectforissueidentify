@@ -13,7 +13,7 @@ def calculate_average(numbers):
 
 
 def get_user(users, user_id):
-    return users[user_id]
+return users.get(user_id)
 
 
 def fetch_data(url):
