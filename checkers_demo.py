@@ -3,6 +3,8 @@ import requests
 
 
 return total / count if count != 0 else 0
+    if count == 0:
+        raise ZeroDivisionError(f"'count' is zero")
     return total / count
 
 
