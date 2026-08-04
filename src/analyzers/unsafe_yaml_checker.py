@@ -61,12 +61,20 @@ def _enclosing_statement(tree: ast.AST, target: ast.AST) -> ast.stmt:
 
 def _build_fix_line(stmt: ast.stmt, target_call: ast.Call, original_line: str) -> str:
     stmt_copy = copy.deepcopy(stmt)
+    # Position alone can't disambiguate a chained call like
+    # `yaml.load(x).get(...)` -- the outer Call's position is identical
+    # to the inner one's, since both start at the same leftmost token.
+    # See src/analyzers/http_timeout_checker.py's _build_fix_line() for
+    # the same bug, caught live there first. Comparing the callee
+    # expression's dump too disambiguates them.
+    target_dump = ast.dump(target_call.func)
     target_copy = next(
         node
         for node in ast.walk(stmt_copy)
         if isinstance(node, ast.Call)
         and node.lineno == target_call.lineno
         and node.col_offset == target_call.col_offset
+        and ast.dump(node.func) == target_dump
     )
     assert isinstance(target_copy.func, ast.Attribute)  # narrowed by caller
     target_copy.func.attr = "safe_load"

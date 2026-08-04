@@ -60,6 +60,20 @@ def test_fix_is_syntactically_valid_and_semantically_equivalent_when_applied():
     assert "response = requests.get" in patched  # target name preserved
 
 
+def test_fix_targets_the_inner_call_not_an_outer_chained_call():
+    """Regression: `requests.get(url).json()` has an OUTER Call (the
+    whole chained expression) whose (lineno, col_offset) is IDENTICAL to
+    the INNER Call's (`requests.get(url)`) -- both start at the same
+    leftmost token. Matching by position alone picked the outer call and
+    produced `requests.get(url).json(timeout=10)`, a syntactically valid
+    but semantically wrong fix (json() doesn't take a timeout kwarg, and
+    the actual missing-timeout bug on get() stays unfixed). Confirmed
+    live before this test was written."""
+    code = "import requests\n\ndef fetch(url):\n    return requests.get(url).json()\n"
+    findings = detect_unguarded_http_calls(code, "app.py")
+    assert findings[0].fix == "    return requests.get(url, timeout=10).json()"
+
+
 def test_skips_when_timeout_already_present():
     code = "import requests\n\ndef fetch(url):\n    return requests.get(url, timeout=5)\n"
     assert detect_unguarded_http_calls(code, "app.py") == []

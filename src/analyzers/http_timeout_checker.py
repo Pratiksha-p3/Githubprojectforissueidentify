@@ -61,15 +61,25 @@ def _enclosing_statement(tree: ast.AST, target: ast.AST) -> ast.stmt:
 
 def _build_fix_line(stmt: ast.stmt, target_call: ast.Call, original_line: str) -> str:
     stmt_copy = copy.deepcopy(stmt)
-    # Identity doesn't survive deepcopy, but (lineno, col_offset) does --
-    # a reliable way to find the same Call node in the copy, since two
-    # calls can't share an exact source position within one statement.
+    # Identity doesn't survive deepcopy, so re-find the same Call node in
+    # the copy by (lineno, col_offset) -- but position ALONE is not
+    # enough: a chained call like `requests.get(url).json()` has an
+    # OUTER Call (the whole expression) whose position is identical to
+    # the INNER Call's (`requests.get(url)`), since both start at the
+    # same leftmost token ("requests"). Matching on position only picked
+    # the outer call here and appended timeout= to .json(...) instead of
+    # .get(...) -- confirmed live by testing this exact shape. Comparing
+    # the callee expression's dump too disambiguates: the outer call's
+    # func is `requests.get(url).json`, the inner's is `requests.get`,
+    # never equal even when their positions collide.
+    target_dump = ast.dump(target_call.func)
     target_copy = next(
         node
         for node in ast.walk(stmt_copy)
         if isinstance(node, ast.Call)
         and node.lineno == target_call.lineno
         and node.col_offset == target_call.col_offset
+        and ast.dump(node.func) == target_dump
     )
     target_copy.keywords.append(
         ast.keyword(arg="timeout", value=ast.Constant(value=_DEFAULT_TIMEOUT_SECONDS))
