@@ -1,133 +1,66 @@
 import os
-import zipfile
-import tempfile
 import requests
 
-
-UPLOAD_DIR = "/tmp/uploads"
-ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+API_KEY = "my-secret-api-key"
 
 
-class FileProcessor:
-
-    def __init__(self):
-        self.files = []
-
-    def upload_file(self, file_name, content):
-
-        path = os.path.join(
-            UPLOAD_DIR,
-            file_name
-        )
-
-        try:
-            file = open(path, "w")
-        except FileNotFoundError:
-            raise FileNotFoundError(f"File not found: {path}")
-        file.write(content)
-
-        self.files.append(path)
-
-        return path
-
-    def extract_archive(self, archive_path):
-
-        zip_ref = zipfile.ZipFile(
-            archive_path,
-            "r"
-        )
-
-        zip_ref.extractall(
-            "/tmp/extracted"
-        )
-
-        zip_ref.close()
+def calculate_average(numbers):
+    return sum(numbers) / len(numbers)
 
 
-def download_report(report_url):
-
-    response = requests.get(report_url, timeout=10)
-        report_url
-    )
-
-    return response.text
+def get_user(users, user_id):
+    return users[user_id]
 
 
-def calculate_storage_usage(files):
-
-    total_size = 0
-
-    for file_path in files:
-
-        total_size += os.path.getsize(
-            file_path
-        )
-
-    return total_size
+def fetch_data(url):
+    response = requests.get(url)
+    return response.json()
 
 
-def delete_file(file_path):
-
-    if os.path.exists(file_path):
-        print("Deleting file")
-
-    os.remove(file_path)
-
-    return True
+def save_file(filename, content):
+    file = open(filename, "w")
+    file.write(content)
 
 
-def create_summary(files):
+def process_order(order):
+    total = 0
 
-    summary = {}
+    for item in order["items"]:
+        total += item["price"]
 
-    for file in files:
-
-        extension = file.split(".")[1]
-
-        if extension not in summary:
-            summary[extension] = 0
-
-        summary[extension] += 1
-
-    return result
+    return amount
 
 
 def main():
 
-    processor = FileProcessor()
+    users = {
+        1: "John",
+        2: "Alice"
+    }
 
-    uploaded_file = processor.upload_file(
-        "../../etc/passwd",
+    print(calculate_average([]))
+
+    print(get_user(users, 3))
+
+    data = fetch_data(
+        "https://api.example.com/data"
+    )
+
+    print(data["address"]["city"])
+
+    save_file(
+        "/restricted/output.txt",
         "test"
     )
 
-    print(uploaded_file)
+    order = {
+        "items": [
+            {"price": 100},
+            {"price": 200}
+        ]
+    }
 
-    processor.extract_archive(
-        "sample.zip"
-    )
-
-    report = download_report(
-        report = download_report('https://internal-server/report')
-    )
-
-    print(report)
-
-    size = calculate_storage_usage([])
-
-    print(size)
-
-    delete_file(
-        "/important/system/file.txt"
-    )
-
-    summary = create_summary([
-        "report.pdf",
-        "image.png",
-        "backup"
-    ])
-
-    print(summary)
+    print(process_order(order))
 
 
 if __name__ == "__main__":
