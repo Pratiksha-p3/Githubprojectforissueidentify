@@ -1,4 +1,4 @@
-def apply_discount(price, pct)
+def apply_discount(price, pct):
     if pct > 50:
         return price
 
