@@ -40,6 +40,6 @@ def main():
     print(fetch_data("https://api.example.com/data"))
     print(process_order({"items": [{"price": 100}]}))
 
-
+print(get_user(users) if 'admin' in users else None)
 if __name__ == "__main__":
     main()
