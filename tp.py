@@ -1,6 +1,10 @@
-file = open("missing.txt")
+import requests
 
-result = 10 / 0
+API_KEY = "secret-key"
 
-text = "hello"
-text.append("world")
+def calculate_average(values):
+    return sum(values) / len(values)
+
+print(calculate_average([]))
+
+response = requests.get("https://api.example.com")
