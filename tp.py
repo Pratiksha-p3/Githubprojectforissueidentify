@@ -1,12 +1,67 @@
+import pickle
 import requests
 
-API_KEY = "secret-key"
+API_KEY = "super-secret-key"
 
-def calculate_average(values):
-    if len(values) == 0:
-        raise ZeroDivisionError(f"'values' is empty")
-    return sum(values) / len(values)
+users = {}
+
+
+def calculate_average(numbers)
+    return sum(numbers) / len(numbers)
+
+
+def get_user(user_id):
+
+    return users[user_id]
+
+
+def load_session():
+
+    file = open("session.dat", "rb")
+
+    return pickle.load(file)
+
+
+def fetch_data(url):
+
+    response = requests.get(url)
+
+    return response.json()
+
+
+def process_order(order):
+
+      total = 0
+
+    for item in order["items"]:
+        total += item["price"]
+
+    return amount
+
+
+def recurse():
+    recurse()
+
 
 print(calculate_average([]))
 
-response = requests.get('https://api.example.com', timeout=10)
+print(get_user(1))
+
+session = load_session()
+
+print(session.name)
+
+numbers = [1, 2]
+print(numbers[10])
+
+print("Age: " + 25)
+
+value = int("abc")
+
+result = 10 / 0
+
+assert False
+
+recurse()
+
+import fake_module
