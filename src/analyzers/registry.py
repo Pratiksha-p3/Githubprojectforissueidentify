@@ -37,6 +37,7 @@ from src.analyzers.none_attribute_checker import detect_unguarded_none_attribute
 from src.analyzers.path_traversal_checker import detect_path_traversal
 from src.analyzers.resource_leak_checker import detect_unclosed_file_handles
 from src.analyzers.sql_injection_checker import detect_sql_injection
+from src.analyzers.type_mismatch_checker import detect_type_mismatched_addition
 from src.analyzers.undefined_name_checker import detect_undefined_names
 from src.analyzers.unsafe_yaml_checker import detect_unsafe_yaml_load
 from src.analyzers.unstored_constructor_param_checker import (
@@ -70,6 +71,7 @@ CHECKERS: tuple[Checker, ...] = (
     detect_zip_slip,
     detect_undefined_names,
     detect_unused_imports,
+    detect_type_mismatched_addition,
 )
 
 
