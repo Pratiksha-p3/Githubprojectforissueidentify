@@ -132,3 +132,54 @@ def test_skips_json_derived_local_when_guarded():
         "    return data['user_id']\n"
     )
     assert detect_unguarded_dict_access(code, "app.py") == []
+
+
+def test_flags_a_direct_dict_literal_missing_a_key():
+    code = "print({'a': 1, 'b': 2}['c'])\n"
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert len(findings) == 1
+    assert findings[0].fix == ""  # detection only -- correct fix isn't derivable
+    assert findings[0].severity.value == "critical"
+    assert "'c'" in findings[0].message
+
+
+def test_skips_a_direct_dict_literal_with_a_present_key():
+    code = "print({'a': 1, 'b': 2}['a'])\n"
+    assert detect_unguarded_dict_access(code, "app.py") == []
+
+
+def test_flags_a_single_assignment_variable_missing_a_key():
+    """The shape this was actually built for: `d = {"a": 1}` followed by
+    `d["missing"]` elsewhere -- indexing through a variable, not the
+    literal directly."""
+    code = "d = {'a': 1}\nprint(d['missing'])\n"
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert len(findings) == 1
+    assert "'d'" in findings[0].message
+    assert "'missing'" in findings[0].message
+
+
+def test_skips_a_tracked_variable_with_a_present_key():
+    code = "d = {'a': 1}\nprint(d['a'])\n"
+    assert detect_unguarded_dict_access(code, "app.py") == []
+
+
+def test_ignores_a_variable_reassigned_elsewhere():
+    """Deliberately conservative: a name assigned more than once anywhere
+    is dropped entirely rather than risk pairing a stale key set with a
+    later, differently-sourced use."""
+    code = "d = {'a': 1}\nd = get_dict()\nprint(d['missing'])\n"
+    assert detect_unguarded_dict_access(code, "app.py") == []
+
+
+def test_ignores_a_dict_literal_with_a_dynamic_key():
+    code = "extra = {}\nprint({**extra, 'a': 1}['b'])\n"
+    assert detect_unguarded_dict_access(code, "app.py") == []
+
+
+def test_ignores_a_variable_key_on_a_literal():
+    """A variable key can't be statically verified missing or present --
+    it depends on what value the variable holds at that point, which
+    this project has no dataflow analysis to determine."""
+    code = "key = 'x'\nprint({'a': 1}[key])\n"
+    assert detect_unguarded_dict_access(code, "app.py") == []

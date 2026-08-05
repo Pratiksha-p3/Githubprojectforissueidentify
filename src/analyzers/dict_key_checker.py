@@ -1,36 +1,50 @@
 """
 src/analyzers/dict_key_checker.py
 
-Detects dict[literal_key] access with no existence guard, on a dict whose
-exact contents can't be verified statically. Two sources of "unknowable
-contents" are covered, both for the same underlying reason -- a
-FUNCTION PARAMETER (the caller could pass anything), and a local
-variable assigned from a `<expr>.json()` call (an HTTP response body's
-shape isn't knowable at authoring time either -- confirmed against a
-real bug: `data = fetch_data(url); data["address"]["city"]` raised
-KeyError in practice, and was invisible to this checker until this
-second source was added, since `data` is a local, not a parameter).
-Every unguarded access to the same variable is consolidated into one
-finding + fix instead of one duplicate finding per key access.
+Covers two KeyError shapes, deliberately kept separate because their
+certainty is completely different -- same split
+src/analyzers/index_guard_checker.py makes for IndexError, for the same
+reason:
 
-Deliberately narrow scope, to keep false positives low:
-  - A dict built locally from a literal or `dict(...)`/comprehension
-    has knowable contents and is never flagged -- only a parameter or a
-    `.json()`-derived local, whose contents this project has no way to
-    verify.
+detect_unguarded_dict_access() -- dict[literal_key] access with no
+existence guard, on a dict whose exact contents can't be verified
+statically: a FUNCTION PARAMETER (the caller could pass anything), or a
+local variable assigned from a `<expr>.json()` call (an HTTP response
+body's shape isn't knowable at authoring time either -- confirmed
+against a real bug: `data = fetch_data(url); data["address"]["city"]`
+raised KeyError in practice, and was invisible to this checker until
+this second source was added, since `data` is a local, not a
+parameter). This is a "might happen depending on what's passed in or
+what the response contains" finding (WARNING, MEDIUM confidence, a
+suggested guard as the fix). Every unguarded access to the same
+variable is consolidated into one finding + fix instead of one
+duplicate finding per key access.
   - Only literal string keys (`d["x"]`), not `d[some_variable]` -- a
     dynamic key can't be checked against without more context anyway.
   - Skips a key already guarded by `if "x" in d`, `"x" not in d`, a
     `.get(...)` call visible anywhere on the same dict, or a surrounding
     try/except KeyError.
 
-The fix's insertion point differs by source: a parameter exists from the
-top of the function, so its guard goes right after the `def` line (as
-before). A `.json()`-derived local doesn't exist until its assignment
-executes -- inserting the guard at the top of the function would
-reference the name before it's bound (NameError/UnboundLocalError
-instead of the intended guard), so its guard goes immediately after
-that assignment statement instead.
+_missing_key_findings() -- `{"a": 1}["b"]` (or a variable assigned to a
+dict literal exactly once, never reassigned): a LITERAL dict indexed
+with a literal key that ISN'T one of its own keys. Unlike the
+parameter/`.json()` case, there's no "might" here -- the literal's keys
+are an AST-verifiable fact, so this is CRITICAL, not WARNING, and
+doesn't need any guard-detection at all. Skipped entirely (not "assumed
+missing") for any dict literal containing a dynamic key or a `**`
+unpacking entry -- the actual key set isn't fully knowable then, and
+guessing wrong here would be a false "always fails" claim on a key that
+might well be present at runtime. Still no fix: even though the finding
+is certain, the correct resolution isn't derivable from the literal
+alone, same stance as index_guard_checker's equivalent.
+
+The fix's insertion point for detect_unguarded_dict_access() differs by
+source: a parameter exists from the top of the function, so its guard
+goes right after the `def` line (as before). A `.json()`-derived local
+doesn't exist until its assignment executes -- inserting the guard at
+the top of the function would reference the name before it's bound
+(NameError/UnboundLocalError instead of the intended guard), so its
+guard goes immediately after that assignment statement instead.
 """
 from __future__ import annotations
 
@@ -130,6 +144,97 @@ def _json_derived_locals(
     return result
 
 
+def _dict_literal_keys(node: ast.Dict) -> set[str] | None:
+    """The dict literal's own string keys, or None if any key isn't a
+    known literal string -- a dynamic key (`{compute(): 1}`) or a `**`
+    unpacking entry (`{**other, "a": 1}`) means the actual key set isn't
+    fully knowable, so the whole literal is treated as unverifiable
+    rather than guessed at (same "no fix is better than a wrong claim"
+    stance as everywhere else in this project)."""
+    keys: set[str] = set()
+    for key_node in node.keys:
+        if key_node is None or not (
+            isinstance(key_node, ast.Constant) and isinstance(key_node.value, str)
+        ):
+            return None
+        keys.add(key_node.value)
+    return keys
+
+
+def _single_assignment_dict_literal_keys(tree: ast.AST) -> dict[str, set[str]]:
+    """Maps variable name -> known keys, for every name assigned to a
+    dict literal EXACTLY ONCE anywhere in the file, and never reassigned
+    to anything else -- same conservative "no real dataflow analysis"
+    scope as src/analyzers/index_guard_checker.py's equivalent (a name
+    reassigned anywhere, even in an unrelated function, is dropped
+    entirely rather than risk pairing a stale key set with a later,
+    differently-sourced use)."""
+    assignments: dict[str, list[ast.expr]] = {}
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Assign) and len(node.targets) == 1):
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        assignments.setdefault(target.id, []).append(node.value)
+
+    result: dict[str, set[str]] = {}
+    for name, values in assignments.items():
+        if len(values) != 1 or not isinstance(values[0], ast.Dict):
+            continue
+        keys = _dict_literal_keys(values[0])
+        if keys is not None:
+            result[name] = keys
+    return result
+
+
+def _missing_key_findings(tree: ast.AST, filename: str, lines: list[str]) -> list[Finding]:
+    tracked_vars = _single_assignment_dict_literal_keys(tree)
+
+    findings: list[Finding] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Subscript):
+            continue
+
+        if isinstance(node.value, ast.Dict):
+            known_keys = _dict_literal_keys(node.value)
+            described = "This dict literal"
+        elif isinstance(node.value, ast.Name) and node.value.id in tracked_vars:
+            known_keys = tracked_vars[node.value.id]
+            described = f"'{node.value.id}'"
+        else:
+            continue
+        if known_keys is None:
+            continue
+
+        key_node = node.slice
+        if not (isinstance(key_node, ast.Constant) and isinstance(key_node.value, str)):
+            continue
+        key = key_node.value
+        if key in known_keys:
+            continue
+        if not (0 < node.lineno <= len(lines)):
+            continue
+
+        findings.append(
+            Finding(
+                file=filename,
+                line=node.lineno,
+                category="runtime",
+                severity=Severity.CRITICAL,
+                message=(
+                    f"{described} does not have the key '{key}' — guaranteed "
+                    f"KeyError every time this line runs, not just a possible one."
+                ),
+                bad_code=lines[node.lineno - 1].strip(),
+                fix="",
+                confidence=ConfidenceTier.MEDIUM,
+                source="dict_key_checker",
+            )
+        )
+    return findings
+
+
 def detect_unguarded_dict_access(code: str, filename: str) -> list[Finding]:
     try:
         tree = ast.parse(code)
@@ -139,7 +244,7 @@ def detect_unguarded_dict_access(code: str, filename: str) -> list[Finding]:
     parent_map = build_parent_map(tree)
     json_returning_funcs = _json_returning_function_names(tree)
 
-    findings: list[Finding] = []
+    findings: list[Finding] = list(_missing_key_findings(tree, filename, lines))
     seen_funcs: set[int] = set()
 
     for func in ast.walk(tree):
