@@ -1,5 +1,5 @@
 
-def greet()
-print(message)
+def greet():
+    print(message)
 
-message = "Hello"
+    message = "Hello"
