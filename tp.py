@@ -64,4 +64,3 @@ assert False
 
 recurse()
 
-import fake_module
