@@ -21,16 +21,24 @@ per file against the same commit would just overwrite the same comment
 repeatedly, leaving only the last file's findings visible instead of a
 combined summary of the whole PR.
 
-`--post` also posts one inline review comment per finding that has a
-non-empty `fix`, using GitHub's ```suggestion fenced-block syntax
-(src/integrations/github_client.py's create_review_comment()) — this is
-what turns a Finding's fix from prose in a summary comment into an
-actual one-click "Apply suggestion" button on the PR's Files Changed
-tab. Each such comment also includes its confidence tier and
+`--post` also posts one inline review comment per finding, anchored to
+its exact line on the PR's Files Changed tab — not just buried in the
+summary comment. A finding with a non-empty `fix` gets GitHub's
+```suggestion fenced-block syntax (post_fix_suggestions(), using
+src/integrations/github_client.py's create_review_comment()), which is
+what turns a Finding's fix from prose into an actual one-click "Apply
+suggestion" button. A finding with NO fix (e.g. sql_injection_checker,
+undefined_name_checker — detection-only by design, see each checker's
+own docstring for why) gets a plain comment instead (post_no_fix_comments()):
+same line, same message, same reason, just no suggestion block, since
+there's nothing to suggest. Both include
 src/core/confidence.py's manual_review_reason() text, so "why does this
-need a human to click Apply rather than happening on its own" is visible
-right on GitHub, not just in this CLI's own output. Findings with no fix
-(e.g. a syntax error) are skipped since there's nothing to suggest.
+still need a human" is visible right on GitHub, not just in this CLI's
+own output. Both are idempotent the same way: re-running `--post` skips
+any (path, line) that already has a comment from a previous run (see
+each function's own docstring) — critical, since posting a duplicate
+and having a human apply/act on more than one copy is exactly how real
+file corruption happened before this was fixed.
 
 Every finding lands in exactly one of two counts, with no gap between
 them: "Auto-fixed" (findings this run actually resolved and pushed --
@@ -225,10 +233,16 @@ def review_pr(
         suggestion_count = post_fix_suggestions(
             client, repo, pr_number, head_sha, combined.findings
         )
+        no_fix_comment_count = post_no_fix_comments(
+            client, repo, pr_number, head_sha, combined.findings
+        )
         print(f"{'=' * 60}")
         print(f"  Fix suggestions posted to GitHub: {suggestion_count}")
         print("  (each still needs a human to click \"Apply suggestion\" -- see")
         print("   the reason posted alongside each one on the PR itself)")
+        print(f"  Comments posted for findings with no fix: {no_fix_comment_count}")
+        print("  (pointed at the exact line -- no suggestion to apply, see the")
+        print("   reason posted alongside each one on the PR itself)")
         print(f"{'=' * 60}")
     else:
         print("\n(dry run -- nothing posted to GitHub; re-run with --post to publish)")
@@ -349,6 +363,39 @@ def post_fix_suggestions(
             f"**[{f.severity.value.upper()}] {f.message}**\n\n"
             f"```suggestion\n{f.fix}\n```\n\n{note}"
         )
+        client.create_review_comment(
+            repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
+            start_line=start if end > start else None,
+        )
+        posted += 1
+    return posted
+
+
+def post_no_fix_comments(
+    client: GitHubClient, repo: str, pr_number: int, commit_sha: str, findings: list[Finding]
+) -> int:
+    """Posts an inline comment (no ```suggestion block -- there's nothing
+    to suggest) for every finding that has NO fix, anchored to its exact
+    line on the Files Changed tab. Before this, a detection-only finding
+    (undefined_name_checker, sql_injection_checker, command_injection_checker,
+    ...) only ever showed up buried in the main summary comment -- never
+    pointed at directly in the diff the way a real human reviewer's
+    comment would. Same idempotency guarantee as post_fix_suggestions():
+    skips a (path, line) that already has a comment from a previous run."""
+    existing = {
+        (c["path"], c["line"]) for c in client.list_review_comments(repo, pr_number)
+    }
+
+    posted = 0
+    for f in findings:
+        if f.fix.strip():
+            continue  # has a fix -- post_fix_suggestions() already covers it
+        start, end = _span(f)
+        if (f.file, end) in existing:
+            continue
+        reason = manual_review_reason(f)
+        note = f"*Why this needs manual investigation:* {reason}" if reason else ""
+        body = f"**[{f.severity.value.upper()}] {f.message}**\n\n{note}".rstrip()
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
             start_line=start if end > start else None,

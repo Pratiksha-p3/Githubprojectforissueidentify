@@ -491,7 +491,12 @@ def test_post_summary_reports_the_suggestion_count_distinctly_from_auto_fixed(
     assert "Fix suggestions posted to GitHub: 1" in out
 
 
-def test_findings_with_no_fix_get_no_suggestion_comment(monkeypatch):
+def test_findings_with_no_fix_get_a_plain_comment_not_a_suggestion(monkeypatch):
+    """A finding with no fix (e.g. this syntax error shape, or a
+    detection-only checker like sql_injection_checker) can't get a
+    ```suggestion``` block -- there's nothing to suggest -- but it must
+    still get pointed at directly on the PR, not just buried in the
+    summary comment."""
     monkeypatch.setattr(
         review_pr,
         "publish_review",
@@ -504,8 +509,10 @@ def test_findings_with_no_fix_get_no_suggestion_comment(monkeypatch):
 
     review_pr.review_pr("acme/widgets", 4, include_llm=False, post=True, github_client=client)
 
-    # The syntax-error Finding has no fix -- nothing to suggest.
-    assert client.review_comments == []
+    assert len(client.review_comments) == 1
+    comment = client.review_comments[0]
+    assert "```suggestion" not in comment["body"]
+    assert "does not parse" in comment["body"]
 
 
 def test_dry_run_never_posts_suggestion_comments(monkeypatch):
@@ -605,6 +612,68 @@ def test_post_fix_suggestions_still_posts_for_a_different_line():
 
     assert count == 1
     assert len(client.review_comments) == 2
+
+
+def test_post_no_fix_comments_returns_the_count_posted():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    findings = [
+        Finding(
+            file="a.py", line=5, category="runtime", severity=Severity.WARNING,
+            message="has a fix", fix="fixed code", confidence=ConfidenceTier.MEDIUM,
+            source="x",
+        ),
+        Finding(
+            file="a.py", line=9, category="security", severity=Severity.CRITICAL,
+            message="SQL injection risk", fix="", confidence=ConfidenceTier.MEDIUM,
+            source="sql_injection_checker",
+        ),
+    ]
+
+    count = review_pr.post_no_fix_comments(client, "acme/widgets", 4, "abc123", findings)
+
+    assert count == 1  # only the no-fix finding -- the other one is post_fix_suggestions()'s job
+    assert len(client.review_comments) == 1
+    assert client.review_comments[0]["line"] == 9
+    assert "```suggestion" not in client.review_comments[0]["body"]
+    assert "SQL injection risk" in client.review_comments[0]["body"]
+
+
+def test_post_no_fix_comments_skips_a_line_that_already_has_a_comment():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    client.review_comments.append(
+        {"path": "a.py", "line": 9, "body": "already posted from a prior run"}
+    )
+    finding = Finding(
+        file="a.py", line=9, category="security", severity=Severity.CRITICAL,
+        message="SQL injection risk", fix="", confidence=ConfidenceTier.MEDIUM,
+        source="sql_injection_checker",
+    )
+
+    count = review_pr.post_no_fix_comments(client, "acme/widgets", 4, "abc123", [finding])
+
+    assert count == 0
+    assert len(client.review_comments) == 1  # still just the pre-existing one
+
+
+def test_post_no_fix_comments_includes_the_reason():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    finding = Finding(
+        file="a.py", line=9, category="runtime", severity=Severity.CRITICAL,
+        message="undefined name 'amount'", fix="", confidence=ConfidenceTier.MEDIUM,
+        source="undefined_name_checker",
+    )
+
+    review_pr.post_no_fix_comments(client, "acme/widgets", 4, "abc123", [finding])
+
+    body = client.review_comments[0]["body"]
+    assert "undefined name 'amount'" in body
+    assert "manual investigation" in body
 
 
 def test_post_fix_suggestions_sends_start_line_for_a_multi_line_fix():
