@@ -1,4 +1,5 @@
 import json
 import threading
 
-print(user_name)
+numbers = [1, 2, 3]
+print(numbers[5])
