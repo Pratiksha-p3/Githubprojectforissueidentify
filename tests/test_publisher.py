@@ -122,6 +122,29 @@ def test_comment_body_includes_the_fix_suggestion_and_reason_right_after_the_fin
     assert finding_idx < fix_idx < reason_idx < reason_text_idx
 
 
+def test_comment_body_includes_remediation_guidance_for_a_detection_only_finding():
+    """A detection-only finding has no fix by design -- without
+    remediation guidance, "why this is still here" is the only
+    actionable text a human reading the summary comment has at all."""
+    client = _FakeGitHubClient()
+    store = _FakeCommentStore()
+    result = make_result(
+        findings=[
+            Finding(
+                file="app.py", line=12, category="security", severity=Severity.CRITICAL,
+                message="SQL query is built via string interpolation", fix="",
+                confidence=ConfidenceTier.MEDIUM, source="sql_injection_checker",
+            )
+        ]
+    )
+
+    publish_review(result, pr_number=7, github_client=client, comment_store=store)
+
+    body = client.posted_comments[0][2]
+    assert "How to resolve it" in body
+    assert "parameterized" in body.lower()
+
+
 def test_comment_body_omits_fix_block_when_finding_has_no_fix():
     client = _FakeGitHubClient()
     store = _FakeCommentStore()

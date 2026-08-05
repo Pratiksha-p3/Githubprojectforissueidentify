@@ -766,6 +766,43 @@ def test_post_no_fix_comments_includes_the_reason():
     assert "manual investigation" in body
 
 
+def test_post_no_fix_comments_includes_remediation_guidance_when_available():
+    """The whole point: a detection-only finding (no fix by design) must
+    give a human something actionable beyond "why this needs review" --
+    src/core/remediation_guide.py's general resolution guidance for the
+    finding's bug category."""
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    finding = Finding(
+        file="a.py", line=9, category="security", severity=Severity.CRITICAL,
+        message="SQL query is built via string interpolation", fix="",
+        confidence=ConfidenceTier.MEDIUM, source="sql_injection_checker",
+    )
+
+    review_pr.post_no_fix_comments(client, "acme/widgets", 4, "abc123", [finding])
+
+    body = client.review_comments[0]["body"]
+    assert "How to resolve it" in body
+    assert "parameterized" in body.lower()
+
+
+def test_post_fix_suggestions_includes_remediation_guidance_when_available():
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    finding = Finding(
+        file="a.py", line=5, category="runtime", severity=Severity.WARNING,
+        message="msg", fix="fixed code", confidence=ConfidenceTier.MEDIUM,
+        source="division_guard_checker",
+    )
+
+    review_pr.post_fix_suggestions(client, "acme/widgets", 4, "abc123", [finding])
+
+    body = client.review_comments[0]["body"]
+    assert "Why this matters" in body
+
+
 def test_post_fix_suggestions_sends_start_line_for_a_multi_line_fix():
     from src.core.models import ConfidenceTier, Finding, Severity
 

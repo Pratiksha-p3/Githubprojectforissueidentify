@@ -96,6 +96,7 @@ from src.core.confidence import manual_review_reason, review_reason
 from src.core.models import Finding, ReviewResult, ReviewStatus
 from src.core.orchestrator import review_code
 from src.core.pr_gate import GateDecision, decide, gate_reason
+from src.core.remediation_guide import get_remediation_for_finding
 from src.integrations.github_client import GitHubClient
 from src.integrations.publisher import publish_review
 
@@ -373,6 +374,9 @@ def post_fix_suggestions(
         # instead, which GitHub would apply as "replace with one blank
         # line", not a true deletion.
         suggestion = "```suggestion\n```" if f.fix_is_deletion else f"```suggestion\n{f.fix}\n```"
+        remediation = get_remediation_for_finding(f.source, f.message)
+        if remediation:
+            note += f"\n\n*Why this matters:* {remediation}"
         body = f"**[{f.severity.value.upper()}] {f.message}**\n\n{suggestion}\n\n{note}"
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
@@ -392,7 +396,13 @@ def post_no_fix_comments(
     ...) only ever showed up buried in the main summary comment -- never
     pointed at directly in the diff the way a real human reviewer's
     comment would. Same idempotency guarantee as post_fix_suggestions():
-    skips a (path, line) that already has a comment from a previous run."""
+    skips a (path, line) that already has a comment from a previous run.
+
+    Also includes src/core/remediation_guide.py's general guidance for
+    the finding's bug category when one exists -- a detection-only
+    finding has no code suggestion by definition, so without this, "why
+    this needs manual investigation" was the only thing a human had to
+    act on, not "how to actually resolve it"."""
     existing = {
         (c["path"], c["line"]) for c in client.list_review_comments(repo, pr_number)
     }
@@ -405,8 +415,13 @@ def post_no_fix_comments(
         if (f.file, end) in existing:
             continue
         reason = manual_review_reason(f)
-        note = f"*Why this needs manual investigation:* {reason}" if reason else ""
-        body = f"**[{f.severity.value.upper()}] {f.message}**\n\n{note}".rstrip()
+        parts = []
+        if reason:
+            parts.append(f"*Why this needs manual investigation:* {reason}")
+        remediation = get_remediation_for_finding(f.source, f.message)
+        if remediation:
+            parts.append(f"*How to resolve it:* {remediation}")
+        body = f"**[{f.severity.value.upper()}] {f.message}**\n\n" + "\n\n".join(parts)
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
             start_line=start if end > start else None,

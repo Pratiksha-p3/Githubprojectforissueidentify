@@ -16,12 +16,19 @@ this same fix/reason pairing shows up, anchored to the diff line itself
 rather than embedded in prose here). Someone reading only the PR's
 Conversation tab should be able to see "what's wrong, what to change it
 to, and why I still have to do it myself" without switching tabs.
+
+Also includes src/core/remediation_guide.py's general "how to resolve
+it" guidance for the finding's bug category when one exists -- most
+useful for a detection-only finding (no fix by design, e.g.
+sql_injection_checker), where without it "why this is still here" was
+the only actionable text at all.
 """
 from __future__ import annotations
 
 from src.core.confidence import review_reason
 from src.core.models import Finding, ReviewResult
 from src.core.pr_gate import GateDecision, decide, gate_reason
+from src.core.remediation_guide import get_remediation_for_finding
 from src.integrations.github_client import GitHubClient
 from src.storage.comment_store import CommentStore
 
@@ -101,4 +108,7 @@ def _finding_block(finding: Finding, *, auto_apply: bool) -> list[str]:
         block.extend(f"  {fix_line}" for fix_line in finding.fix.splitlines())
         block.append("  ```")
     block.append(f"  _Why this is still here:_ {review_reason(finding, auto_apply=auto_apply)}")
+    remediation = get_remediation_for_finding(finding.source, finding.message)
+    if remediation:
+        block.append(f"  _How to resolve it:_ {remediation}")
     return block

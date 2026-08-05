@@ -37,6 +37,14 @@ REMEDIATION_GUIDE: dict[str, str] = {
         "should have provided it, or fix the scope it's used in (defined in "
         "one function/module but referenced from another)."
     ),
+    "UnboundLocalError": (
+        "Move the assignment before the first read, or rename the local so "
+        "it no longer shadows the name you actually meant to reference. This "
+        "happens because Python treats a name as local to a function's ENTIRE "
+        "body the moment it's assigned anywhere in that function, even below "
+        "the line that reads it -- the earlier read isn't finding a truly "
+        "undefined name, just a local that hasn't been given a value yet."
+    ),
     "TypeError": (
         "Convert or validate the argument's type before the operation/call, "
         "or fix the call site to pass the type/arity the function actually "
@@ -282,3 +290,52 @@ def get_remediation(name: str) -> str | None:
         if key.lower() == name.lower():
             return guidance
     return None
+
+
+# Maps a checker's Finding.source -> the catalog key that describes the
+# general category of bug it detects -- used to attach real remediation
+# guidance to a posted GitHub comment (src/cli/review_pr.py's
+# post_no_fix_comments()/post_fix_suggestions(),
+# src/integrations/publisher.py's summary comment), not just the
+# checker's own per-finding message. undefined_name_checker is
+# deliberately absent here -- it reports two different exceptions
+# (NameError vs UnboundLocalError) distinguished only in the finding's
+# own message text, so it's special-cased in
+# get_remediation_for_finding() below instead of a fixed mapping.
+_CHECKER_SOURCE_TO_CATEGORY: dict[str, str] = {
+    "dict_key_checker": "KeyError",
+    "division_guard_checker": "ZeroDivisionError",
+    "file_exists_checker": "FileNotFoundError",
+    "unstored_constructor_param_checker": "AttributeError",
+    "http_timeout_checker": "TimeoutError",
+    "hardcoded_secret_checker": "Hardcoded Credentials",
+    "sql_injection_checker": "SQL Injection",
+    "command_injection_checker": "Command Injection",
+    "unsafe_yaml_checker": "Insecure Deserialization",
+    "resource_leak_checker": "Resource Leak",
+    "index_guard_checker": "IndexError",
+    "none_attribute_checker": "AttributeError",
+    "weak_crypto_checker": "Weak Cryptography",
+    "insecure_deserialization_checker": "Insecure Deserialization",
+    "path_traversal_checker": "Path Traversal",
+    "zip_slip_checker": "Zip Slip",
+    "unused_import_checker": "Unused Import",
+    "type_mismatch_checker": "TypeError",
+    "invalid_method_checker": "AttributeError",
+}
+
+
+def get_remediation_for_finding(source: str, message: str) -> str | None:
+    """Looks up remediation guidance for a finding by its checker
+    source (Finding.source) -- None if that source has no catalog entry
+    (e.g. an LLM-sourced finding, or a checker whose bug class doesn't
+    map cleanly onto one category). `message` is only consulted for
+    undefined_name_checker, whose own message text already says which
+    of the two exceptions applies."""
+    if source == "undefined_name_checker":
+        key = "UnboundLocalError" if "UnboundLocalError" in message else "NameError"
+        return get_remediation(key)
+    category = _CHECKER_SOURCE_TO_CATEGORY.get(source)
+    if category is None:
+        return None
+    return get_remediation(category)
