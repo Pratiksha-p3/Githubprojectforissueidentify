@@ -70,8 +70,15 @@ def test_flags_a_direct_literal_indexed_out_of_bounds():
     code = "print([1, 2, 3][5])\n"
     findings = detect_unguarded_index_access(code, "app.py")
     assert len(findings) == 1
-    assert findings[0].fix == ""  # detection only -- correct fix isn't derivable
+    assert "raise IndexError" in findings[0].fix
     assert "3 item" in findings[0].message
+
+    import ast
+
+    lines = code.splitlines()
+    end = findings[0].end_line or findings[0].line
+    lines[findings[0].line - 1 : end] = findings[0].fix.splitlines()
+    ast.parse("\n".join(lines))  # must not raise
 
 
 def test_flags_a_single_assignment_variable_indexed_out_of_bounds():

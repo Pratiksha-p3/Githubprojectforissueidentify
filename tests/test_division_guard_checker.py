@@ -91,12 +91,21 @@ def test_ignores_syntax_error_gracefully():
 def test_flags_division_by_a_literal_zero():
     """Different certainty entirely from the parameter shapes above: the
     denominator's value is an AST-verifiable fact, not caller-controlled
-    -- CRITICAL, no fix (same stance as index_guard_checker's literal
-    out-of-bounds shape)."""
+    -- CRITICAL. Unlike index_guard_checker's literal out-of-bounds
+    shape, this DOES get a fix -- an unconditional raise is safe here
+    without guessing what the divisor should have been."""
     findings = detect_unguarded_division("result = 10 / 0\n", "app.py")
     assert len(findings) == 1
     assert findings[0].severity.value == "critical"
-    assert findings[0].fix == ""
+    assert "raise ZeroDivisionError" in findings[0].fix
+    assert "result = 10 / 0" in findings[0].fix
+
+    import ast
+
+    lines = ["result = 10 / 0"]
+    end = findings[0].end_line or findings[0].line
+    lines[findings[0].line - 1 : end] = findings[0].fix.splitlines()
+    ast.parse("\n".join(lines))  # must not raise
 
 
 def test_flags_division_by_a_literal_zero_float():

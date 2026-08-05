@@ -138,9 +138,33 @@ def test_flags_a_direct_dict_literal_missing_a_key():
     code = "print({'a': 1, 'b': 2}['c'])\n"
     findings = detect_unguarded_dict_access(code, "app.py")
     assert len(findings) == 1
-    assert findings[0].fix == ""  # detection only -- correct fix isn't derivable
+    assert "raise KeyError" in findings[0].fix
     assert findings[0].severity.value == "critical"
     assert "'c'" in findings[0].message
+
+    import ast
+
+    lines = code.splitlines()
+    end = findings[0].end_line or findings[0].line
+    lines[findings[0].line - 1 : end] = findings[0].fix.splitlines()
+    ast.parse("\n".join(lines))  # must not raise
+
+
+def test_missing_key_fix_safely_escapes_a_key_containing_a_quote():
+    """The key's own text is embedded via repr(), not a hand-picked quote
+    character -- a key containing a single quote must not break the
+    generated raise statement's own syntax (confirmed live as a real bug
+    in value_error_checker.py's equivalent fix before repr() was used)."""
+    code = "print({'a': 1}[\"it's\"])\n"
+    findings = detect_unguarded_dict_access(code, "app.py")
+    assert len(findings) == 1
+
+    import ast
+
+    lines = code.splitlines()
+    end = findings[0].end_line or findings[0].line
+    lines[findings[0].line - 1 : end] = findings[0].fix.splitlines()
+    ast.parse("\n".join(lines))  # must not raise
 
 
 def test_skips_a_direct_dict_literal_with_a_present_key():

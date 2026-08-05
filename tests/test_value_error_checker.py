@@ -4,8 +4,32 @@ from src.analyzers.value_error_checker import detect_guaranteed_value_errors
 def test_flags_int_on_a_non_numeric_string_literal():
     findings = detect_guaranteed_value_errors('int("abc")\n', "app.py")
     assert len(findings) == 1
-    assert findings[0].fix == ""  # detection only -- correct fix isn't derivable
+    assert "raise ValueError" in findings[0].fix
     assert findings[0].severity.value == "critical"
+
+    import ast
+
+    lines = ['int("abc")']
+    end = findings[0].end_line or findings[0].line
+    lines[findings[0].line - 1 : end] = findings[0].fix.splitlines()
+    ast.parse("\n".join(lines))  # must not raise
+
+
+def test_fix_stays_valid_even_when_the_literal_contains_a_double_quote():
+    """Regression: the generated fix must NOT embed the literal's raw
+    text via hand-picked quote characters -- confirmed live that doing
+    so broke the generated statement's own syntax the moment the value
+    itself contained a `"`."""
+    code = 'int(\'ab"c\')\n'
+    findings = detect_guaranteed_value_errors(code, "app.py")
+    assert len(findings) == 1
+
+    import ast
+
+    lines = code.splitlines()
+    end = findings[0].end_line or findings[0].line
+    lines[findings[0].line - 1 : end] = findings[0].fix.splitlines()
+    ast.parse("\n".join(lines))  # must not raise
 
 
 def test_skips_int_on_a_genuinely_numeric_string_literal():

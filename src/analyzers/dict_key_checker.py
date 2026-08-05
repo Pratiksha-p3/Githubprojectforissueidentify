@@ -34,9 +34,17 @@ doesn't need any guard-detection at all. Skipped entirely (not "assumed
 missing") for any dict literal containing a dynamic key or a `**`
 unpacking entry -- the actual key set isn't fully knowable then, and
 guessing wrong here would be a false "always fails" claim on a key that
-might well be present at runtime. Still no fix: even though the finding
-is certain, the correct resolution isn't derivable from the literal
-alone, same stance as index_guard_checker's equivalent.
+might well be present at runtime. The correct RESOLUTION still isn't
+derivable from the literal alone -- but an unconditional
+`raise KeyError(...)` inserted right before the statement doesn't need
+to know that, same reasoning as
+src/analyzers/division_guard_checker.py's literal-zero shape: the
+access was already guaranteed to fail exactly this way. The missing
+key's own text is embedded via repr(), not hand-matched quote
+characters -- confirmed live (in value_error_checker.py) that naively
+wrapping arbitrary string content in a hand-picked quote character
+breaks the generated statement's own syntax the moment that exact quote
+character shows up inside the value itself.
 
 The fix's insertion point for detect_unguarded_dict_access() differs by
 source: a parameter exists from the top of the function, so its guard
@@ -55,6 +63,7 @@ from src.analyzers._ast_utils import (
     exception_names,
     line_indent,
     owning_function,
+    owning_statement_line,
     param_names,
 )
 from src.core.models import ConfidenceTier, Finding, Severity
@@ -188,10 +197,13 @@ def _single_assignment_dict_literal_keys(tree: ast.AST) -> dict[str, set[str]]:
     return result
 
 
-def _missing_key_findings(tree: ast.AST, filename: str, lines: list[str]) -> list[Finding]:
+def _missing_key_findings(
+    tree: ast.AST, filename: str, lines: list[str], parent_map: dict[int, ast.AST]
+) -> list[Finding]:
     tracked_vars = _single_assignment_dict_literal_keys(tree)
 
     findings: list[Finding] = []
+    seen_lines: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Subscript):
             continue
@@ -213,21 +225,30 @@ def _missing_key_findings(tree: ast.AST, filename: str, lines: list[str]) -> lis
         key = key_node.value
         if key in known_keys:
             continue
-        if not (0 < node.lineno <= len(lines)):
+
+        stmt_line = owning_statement_line(parent_map, node)
+        if not (0 < stmt_line <= len(lines)):
             continue
+        if stmt_line in seen_lines:
+            continue
+        seen_lines.add(stmt_line)
+
+        stmt_text = lines[stmt_line - 1]
+        indent = line_indent(stmt_text)
+        fix_code = f"{indent}raise KeyError({key!r})\n{stmt_text}"
 
         findings.append(
             Finding(
                 file=filename,
-                line=node.lineno,
+                line=stmt_line,
                 category="runtime",
                 severity=Severity.CRITICAL,
                 message=(
                     f"{described} does not have the key '{key}' — guaranteed "
                     f"KeyError every time this line runs, not just a possible one."
                 ),
-                bad_code=lines[node.lineno - 1].strip(),
-                fix="",
+                bad_code=stmt_text.strip(),
+                fix=fix_code,
                 confidence=ConfidenceTier.MEDIUM,
                 source="dict_key_checker",
             )
@@ -244,7 +265,7 @@ def detect_unguarded_dict_access(code: str, filename: str) -> list[Finding]:
     parent_map = build_parent_map(tree)
     json_returning_funcs = _json_returning_function_names(tree)
 
-    findings: list[Finding] = list(_missing_key_findings(tree, filename, lines))
+    findings: list[Finding] = list(_missing_key_findings(tree, filename, lines, parent_map))
     seen_funcs: set[int] = set()
 
     for func in ast.walk(tree):

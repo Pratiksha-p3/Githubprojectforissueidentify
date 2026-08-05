@@ -24,12 +24,15 @@ equivalent): a LITERAL list/tuple indexed with a literal integer outside
 its own known length. Unlike the parameter case, there's no "might" here
 -- the literal's length is an AST-verifiable fact, so this is CRITICAL,
 not WARNING, and doesn't need any guard-detection at all (there's no
-caller whose input could make the literal itself longer). Still no fix:
-even though the FINDING is certain, the correct resolution (a typo in
-the index? a missing element? dead code that should be deleted?) isn't
-derivable from the literal alone -- detection only, same stance
-src/analyzers/sql_injection_checker.py already takes for a different
-reason.
+caller whose input could make the literal itself longer). The correct
+RESOLUTION (a typo in the index? a missing element? dead code that
+should be deleted?) still isn't derivable from the literal alone -- but
+an unconditional `raise IndexError(...)` inserted right before the
+statement doesn't need to know that: the subscript was already
+guaranteed to fail exactly this way, so making the failure explicit
+(with the actual length and index in the message) is safe regardless of
+what the "correct" fix eventually turns out to be, same reasoning as
+src/analyzers/division_guard_checker.py's literal-zero shape.
 """
 from __future__ import annotations
 
@@ -40,6 +43,7 @@ from src.analyzers._ast_utils import (
     exception_names,
     line_indent,
     owning_function,
+    owning_statement_line,
     param_names,
 )
 from src.core.models import ConfidenceTier, Finding, Severity
@@ -131,11 +135,12 @@ def _int_index_value(node: ast.expr) -> int | None:
 
 
 def _literal_out_of_bounds_findings(
-    tree: ast.AST, filename: str, lines: list[str]
+    tree: ast.AST, filename: str, lines: list[str], parent_map: dict[int, ast.AST]
 ) -> list[Finding]:
     tracked_vars = _single_assignment_literal_lengths(tree)
 
     findings: list[Finding] = []
+    seen_lines: set[int] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Subscript):
             continue
@@ -157,21 +162,34 @@ def _literal_out_of_bounds_findings(
         # always an IndexError, regardless of what's in the literal.
         if -length <= index < length:
             continue
-        if not (0 < node.lineno <= len(lines)):
+
+        stmt_line = owning_statement_line(parent_map, node)
+        if not (0 < stmt_line <= len(lines)):
             continue
+        if stmt_line in seen_lines:
+            continue
+        seen_lines.add(stmt_line)
+
+        stmt_text = lines[stmt_line - 1]
+        indent = line_indent(stmt_text)
+        fix_code = (
+            f'{indent}raise IndexError(f"{described}, but is indexed at '
+            f'[{index}] -- this always fails")\n'
+            f"{stmt_text}"
+        )
 
         findings.append(
             Finding(
                 file=filename,
-                line=node.lineno,
+                line=stmt_line,
                 category="runtime",
                 severity=Severity.CRITICAL,
                 message=(
                     f"{described}, but is indexed at [{index}] — guaranteed "
                     f"IndexError every time this line runs, not just a possible one."
                 ),
-                bad_code=lines[node.lineno - 1].strip(),
-                fix="",
+                bad_code=stmt_text.strip(),
+                fix=fix_code,
                 confidence=ConfidenceTier.MEDIUM,
                 source="index_guard_checker",
             )
@@ -187,7 +205,9 @@ def detect_unguarded_index_access(code: str, filename: str) -> list[Finding]:
     lines = code.splitlines()
     parent_map = build_parent_map(tree)
 
-    findings: list[Finding] = list(_literal_out_of_bounds_findings(tree, filename, lines))
+    findings: list[Finding] = list(
+        _literal_out_of_bounds_findings(tree, filename, lines, parent_map)
+    )
     seen_funcs: set[int] = set()
 
     for func in ast.walk(tree):

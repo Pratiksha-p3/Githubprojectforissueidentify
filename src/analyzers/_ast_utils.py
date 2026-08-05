@@ -60,3 +60,18 @@ def exception_names(handler_type: ast.expr | None) -> list[str]:
 
 def line_indent(line: str) -> str:
     return " " * (len(line) - len(line.lstrip()))
+
+
+def owning_statement_line(parent_map: dict[int, ast.AST], node: ast.AST) -> int:
+    """Walk up to the nearest enclosing statement so a fix guard gets
+    inserted before a whole statement, not spliced mid-expression --
+    needed because the flagged node (a BinOp, Call, or Subscript) can be
+    nested inside a larger expression (`x = 10 / 0 + 5`, `print(d["b"])`),
+    not always a bare statement on its own."""
+    current: ast.AST = node
+    while current is not None and not isinstance(current, ast.stmt):
+        parent = parent_map.get(id(current))
+        if parent is None:
+            break
+        current = parent
+    return getattr(current, "lineno", getattr(node, "lineno", 0))

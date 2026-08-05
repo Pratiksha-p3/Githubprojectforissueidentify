@@ -23,15 +23,21 @@ counts as valid (e.g. "ff" is valid for base 16), and that second
 argument isn't always a literal either, so it's left alone rather than
 guessed at.
 
-No fix is generated: the correct resolution (a different literal, a
-try/except around the real call, or this line shouldn't exist at all)
-depends on intent this project has no way to infer, same stance
-src/analyzers/invalid_method_checker.py already takes.
+The fix inserted is an unconditional `raise ValueError(...)` right
+before the statement, same reasoning as
+src/analyzers/division_guard_checker.py's literal-zero shape: the call
+is already guaranteed to fail exactly this way every time, so making
+that failure explicit doesn't require guessing what the "correct" value
+should have been -- it just replaces an opaque traceback with a clear
+one at the same point execution was always going to stop anyway. The
+original line is left in place afterward (dead code, but harmless) so
+the actual faulty call is still visible to whoever fixes it for real.
 """
 from __future__ import annotations
 
 import ast
 
+from src.analyzers._ast_utils import build_parent_map, line_indent, owning_statement_line
 from src.core.models import ConfidenceTier, Finding, Severity
 
 _CONVERTERS = {"int": int, "float": float}
@@ -72,8 +78,10 @@ def detect_guaranteed_value_errors(code: str, filename: str) -> list[Finding]:
         return []
     lines = code.splitlines()
     tracked = _single_assignment_string_literals(tree)
+    parent_map = build_parent_map(tree)
 
     findings: list[Finding] = []
+    seen_lines: set[int] = set()
     for node in ast.walk(tree):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
             continue
@@ -100,21 +108,40 @@ def detect_guaranteed_value_errors(code: str, filename: str) -> list[Finding]:
         except ValueError:
             pass
 
-        if not (0 < node.lineno <= len(lines)):
+        stmt_line = owning_statement_line(parent_map, node)
+        if not (0 < stmt_line <= len(lines)):
             continue
+        if stmt_line in seen_lines:
+            continue
+        seen_lines.add(stmt_line)
+
+        stmt_text = lines[stmt_line - 1]
+        indent = line_indent(stmt_text)
+        # The literal's raw text is deliberately left OUT of the generated
+        # code (only the human-readable `message` field below carries it):
+        # embedding arbitrary string content into a hand-quoted f-string
+        # risks the same quote character appearing in the value itself and
+        # breaking the generated statement's own syntax -- confirmed live
+        # with int("abc") -> described containing a `"` that collided with
+        # the outer f-string's own quotes.
+        fix_code = (
+            f'{indent}raise ValueError("{func_name}() argument on this line '
+            f'always fails to convert -- fix the value being converted")\n'
+            f"{stmt_text}"
+        )
 
         findings.append(
             Finding(
                 file=filename,
-                line=node.lineno,
+                line=stmt_line,
                 category="runtime",
                 severity=Severity.CRITICAL,
                 message=(
                     f"{func_name}({described}) — guaranteed ValueError every "
                     f"time this line runs, not just a possible one."
                 ),
-                bad_code=lines[node.lineno - 1].strip(),
-                fix="",
+                bad_code=stmt_text.strip(),
+                fix=fix_code,
                 confidence=ConfidenceTier.MEDIUM,
                 source="value_error_checker",
             )

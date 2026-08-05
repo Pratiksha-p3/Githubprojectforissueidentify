@@ -27,10 +27,17 @@ A third shape, _literal_zero_division_findings(), is a different kind of
 certainty entirely: `x / 0` (or a single-assignment variable that was
 literally assigned 0), where the denominator's value is an AST-verifiable
 fact, not something a caller controls. No "might happen depending on
-what's passed in" here, so this is CRITICAL, not WARNING, and -- same
-stance as index_guard_checker.py's literal-out-of-bounds shape -- no fix
-is generated: the correct resolution (typo? dead code? the wrong
-variable entirely?) isn't derivable from the literal alone.
+what's passed in" here, so this is CRITICAL, not WARNING. Unlike
+index_guard_checker.py's literal-out-of-bounds shape, this one DOES get
+a fix: since the division is unconditionally, always wrong, an
+unconditional `raise ZeroDivisionError(...)` inserted right before it is
+safe regardless of intent -- it doesn't guess what the divisor SHOULD
+have been (that's still not derivable), it just turns an opaque
+traceback into a clear, deliberate failure at the exact point already
+guaranteed to crash. The original line is left in place after the raise
+(dead code, but harmless -- Python doesn't error on unreachable code)
+so the diff stays minimal and the actual faulty expression is still
+visible for whoever fixes it for real.
 """
 from __future__ import annotations
 
@@ -41,6 +48,7 @@ from src.analyzers._ast_utils import (
     exception_names,
     line_indent,
     owning_function,
+    owning_statement_line,
     param_names,
 )
 from src.core.models import ConfidenceTier, Finding, Severity
@@ -88,18 +96,6 @@ def _already_guarded(func: ast.AST, param_name: str, *, is_len_shape: bool) -> b
     return False
 
 
-def _owning_statement_line(parent_map: dict[int, ast.AST], node: ast.AST) -> int:
-    """Walk up to the nearest enclosing statement so the fix guard is
-    inserted before a whole statement, not spliced mid-expression."""
-    current: ast.AST = node
-    while current is not None and not isinstance(current, ast.stmt):
-        parent = parent_map.get(id(current))
-        if parent is None:
-            break
-        current = parent
-    return getattr(current, "lineno", getattr(node, "lineno", 0))
-
-
 def _is_zero_literal(node: ast.expr) -> bool:
     return (
         isinstance(node, ast.Constant)
@@ -131,11 +127,12 @@ def _single_assignment_zero_literals(tree: ast.AST) -> set[str]:
 
 
 def _literal_zero_division_findings(
-    tree: ast.AST, filename: str, lines: list[str]
+    tree: ast.AST, filename: str, lines: list[str], parent_map: dict[int, ast.AST]
 ) -> list[Finding]:
     tracked = _single_assignment_zero_literals(tree)
 
     findings: list[Finding] = []
+    seen_lines: set[int] = set()
     for node in ast.walk(tree):
         if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
             continue
@@ -148,21 +145,34 @@ def _literal_zero_division_findings(
         else:
             continue
 
-        if not (0 < node.lineno <= len(lines)):
+        stmt_line = owning_statement_line(parent_map, node)
+        if not (0 < stmt_line <= len(lines)):
             continue
+        if stmt_line in seen_lines:
+            continue
+        seen_lines.add(stmt_line)
+
+        stmt_text = lines[stmt_line - 1]
+        indent = line_indent(stmt_text)
+        fix_code = (
+            f'{indent}raise ZeroDivisionError(f"division by {described} on this '
+            f'line always fails -- fix the divisor, this does not make the '
+            f'operation succeed")\n'
+            f"{stmt_text}"
+        )
 
         findings.append(
             Finding(
                 file=filename,
-                line=node.lineno,
+                line=stmt_line,
                 category="runtime",
                 severity=Severity.CRITICAL,
                 message=(
                     f"Division by {described} — guaranteed ZeroDivisionError "
                     f"every time this line runs, not just a possible one."
                 ),
-                bad_code=lines[node.lineno - 1].strip(),
-                fix="",
+                bad_code=stmt_text.strip(),
+                fix=fix_code,
                 confidence=ConfidenceTier.MEDIUM,
                 source="division_guard_checker",
             )
@@ -178,7 +188,9 @@ def detect_unguarded_division(code: str, filename: str) -> list[Finding]:
     lines = code.splitlines()
     parent_map = build_parent_map(tree)
 
-    findings: list[Finding] = list(_literal_zero_division_findings(tree, filename, lines))
+    findings: list[Finding] = list(
+        _literal_zero_division_findings(tree, filename, lines, parent_map)
+    )
     seen_lines: set[tuple[str, int]] = set()
 
     for node in ast.walk(tree):
@@ -211,7 +223,7 @@ def detect_unguarded_division(code: str, filename: str) -> list[Finding]:
         if _already_guarded(func, param_name, is_len_shape=is_len_shape):
             continue
 
-        stmt_line = _owning_statement_line(parent_map, node)
+        stmt_line = owning_statement_line(parent_map, node)
         if not (0 < stmt_line <= len(lines)):
             continue
         if (filename, stmt_line) in seen_lines:
