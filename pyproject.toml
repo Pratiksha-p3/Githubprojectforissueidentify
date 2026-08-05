@@ -19,6 +19,7 @@ dependencies = [
     "anthropic>=0.30",
     "sentence-transformers>=3.0",
     "reportlab>=4.0",
+    "pyflakes>=3.2",
 ]
 
 [project.scripts]
