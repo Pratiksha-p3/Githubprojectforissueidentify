@@ -69,3 +69,61 @@ def test_flags_multiple_undefined_names_separately():
     messages = " ".join(f.message for f in findings)
     assert "first" in messages
     assert "second" in messages
+
+
+def test_reports_unbound_local_error_when_the_name_is_assigned_later_in_the_same_function():
+    """A name read before its assignment, but assigned SOMEWHERE later in
+    the same function, is a local variable for the function's entire
+    body per Python's own scoping rules -- referencing it before that
+    assignment runs raises UnboundLocalError, not NameError. Confirmed
+    against real Python execution, not just this checker's own claim."""
+    import ast
+
+    code = 'def greet():\n    print(message)\n\n    message = "Hello"\n'
+    findings = detect_undefined_names(code, "app.py")
+    assert len(findings) == 1
+    assert "UnboundLocalError" in findings[0].message
+    assert "NameError" not in findings[0].message
+
+    ast.parse(code)  # sanity: this is valid syntax, the bug is purely at runtime
+    namespace: dict = {}
+    exec(compile(code, "app.py", "exec"), namespace)
+    try:
+        namespace["greet"]()
+        raise AssertionError("expected UnboundLocalError")
+    except UnboundLocalError:
+        pass
+
+
+def test_reports_plain_name_error_when_never_assigned_anywhere_in_the_function():
+    code = "def process_order(order):\n    total = 0\n    return amount\n"
+    findings = detect_undefined_names(code, "app.py")
+    assert "NameError" in findings[0].message
+    assert "UnboundLocalError" not in findings[0].message
+
+
+def test_a_nested_functions_own_assignment_does_not_make_the_outer_name_local():
+    """A name assigned inside a NESTED function/lambda/class introduces
+    its own separate scope -- it must not be treated as making the name
+    local in the OUTER function too. Confirmed against real Python
+    execution: this actually raises NameError, not UnboundLocalError."""
+    code = (
+        "def outer():\n"
+        "    print(x)\n"
+        "    def inner():\n"
+        "        x = 1\n"
+        "        return x\n"
+        "    return inner()\n"
+    )
+    findings = detect_undefined_names(code, "app.py")
+    assert len(findings) == 1
+    assert "NameError" in findings[0].message
+    assert "UnboundLocalError" not in findings[0].message
+
+    namespace: dict = {}
+    exec(compile(code, "app.py", "exec"), namespace)
+    try:
+        namespace["outer"]()
+        raise AssertionError("expected NameError")
+    except NameError:
+        pass
