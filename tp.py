@@ -1,5 +1,6 @@
-import json
 import threading
+import json
 
-numbers = [1, 2, 3]
-print(numbers[5])
+
+def greet(name):
+    return json.dumps({"message": f"hello {name}"})
