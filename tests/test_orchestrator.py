@@ -378,6 +378,46 @@ def test_unindent_mismatch_gets_a_medium_confidence_fix():
     ast.parse("\n".join(lines))  # must not raise
 
 
+def test_unindent_mismatch_fixes_an_over_indented_line_before_the_error():
+    """Regression, confirmed against a real PR file: the SyntaxError line
+    itself can be perfectly fine, with the actual mistake sitting on an
+    earlier sibling statement that was over-indented. CPython reports
+    "unindent does not match" on the FOLLOWING line (where the dedent
+    fails), not on the culprit -- the forward-only search in
+    _misaligned_indent_fix() can never find this because there's nothing
+    wrong at or after the reported line to reindent. `total = 0` here
+    sits one level too deep; `for` right after it is correctly indented
+    at the function's real body level."""
+    code = (
+        "def process_order(order):\n"
+        "\n"
+        "      total = 0\n"
+        "\n"
+        "    for item in order['items']:\n"
+        "        total += item['price']\n"
+        "\n"
+        "    return total\n"
+    )
+    result = orchestrator.review_code(
+        code, "app.py", repo="acme/widgets", commit_sha="abc123", include_llm=False,
+    )
+
+    assert result.status == ReviewStatus.FAILED
+    finding = result.findings[0]
+    assert finding.confidence == ConfidenceTier.MEDIUM
+    assert finding.fix != ""
+    assert finding.line == 3  # the actual culprit, not line 5 (where CPython reports it)
+
+    lines = code.splitlines()
+    end = finding.end_line or finding.line
+    lines[finding.line - 1 : end] = finding.fix.splitlines()
+    patched = "\n".join(lines)
+
+    namespace: dict = {}
+    exec(compile(patched, "app.py", "exec"), namespace)
+    assert namespace["process_order"]({"items": [{"price": 3}, {"price": 4}]}) == 7
+
+
 def test_missing_indent_fix_does_not_produce_an_infinite_loop():
     """Regression -- a real, serious bug: a too-small reindent span left
     a while-loop's decrement statement OUTSIDE the loop body. That's

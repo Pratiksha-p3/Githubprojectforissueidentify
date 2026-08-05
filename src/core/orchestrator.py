@@ -114,6 +114,23 @@ boundary) as _missing_indent_fix(), for the same reason. Also stays
 MEDIUM, never HIGH: "closest level, largest span that happens to parse"
 is a strong heuristic, not a certainty about what was intended.
 
+_misaligned_indent_backward_fix() covers a shape _misaligned_indent_fix()
+can't: where the SyntaxError line itself is actually fine, and an
+earlier sibling statement immediately above it was the one over-
+indented -- CPython reports the error where the dedent doesn't match
+(the line AFTER the mistake), not on the mistake itself. Confirmed live
+against a real PR file: `total = 0` written one level too deep,
+followed by a correctly-indented `for` loop; every forward-search
+candidate in _misaligned_indent_fix() failed to parse (because the
+REAL fix is behind the error line, not at or after it), so it reported
+the syntax error with no fix at all. This walks backward from the
+error line instead, collecting the contiguous run of lines immediately
+above it that share one indentation level deeper than the error line,
+and reindents that run down to match -- confirmed this produces the
+exact correct fix for the live case. Tried last, only after every
+forward-search option has failed, since "the line after the error is
+correct" is the less common shape.
+
 use_multi_agent (Stage 11, opt-in, default False) swaps the single
 runtime/logic LLM supplement for src/agents/coordinator.py's four
 specialized agents (runtime/logic, security, style, test_coverage).
@@ -365,24 +382,110 @@ def _misaligned_indent_fix(code: str, e: SyntaxError) -> tuple[str, int, str]:
     return "", 0, ""
 
 
-def _syntax_error_fix(code: str, e: SyntaxError) -> tuple[str, int, ConfidenceTier, str]:
+def _misaligned_indent_backward_fix(code: str, e: SyntaxError) -> tuple[str, int, int, str]:
+    """Covers the case _misaligned_indent_fix() can't: where the
+    SyntaxError line itself is fine, and an earlier sibling statement
+    immediately above it was the one over-indented, making the offending
+    line's dedent look invalid relative to a block level that was never
+    supposed to exist. Confirmed live: `total = 0` written one level too
+    deep, followed by a correctly-indented `for` loop -- CPython reports
+    the error on the `for` line (where the dedent doesn't match), but the
+    actual fix is reindenting `total = 0`, not the `for` line or anything
+    after it.
+
+    Only handles the "prior line is indented DEEPER than the error line"
+    direction -- that's the shape this error message actually produces
+    when the true culprit sits above, and it's the one confirmed against
+    a real case. Walks upward collecting a contiguous run of lines at
+    that same (too-deep) indentation, on the theory they're one statement
+    group written together, and reindents the whole run down to the
+    error line's own column.
+
+    Returns (fix, start_line, end_line, reason) -- unlike every other fix
+    here, start_line is NOT e.lineno, since the lines being replaced sit
+    before the reported error."""
+    if not e.lineno or not e.msg or e.msg not in _MISALIGNED_INDENT_MESSAGES:
+        return "", 0, 0, ""
+    lines = code.splitlines()
+    if not (0 < e.lineno <= len(lines)):
+        return "", 0, 0, ""
+    error_line = lines[e.lineno - 1]
+    if not error_line.strip():
+        return "", 0, 0, ""
+    first_indent = len(error_line) - len(error_line.lstrip())
+
+    start_idx = e.lineno - 2  # 0-indexed line immediately above the error
+    while start_idx >= 0 and not lines[start_idx].strip():
+        start_idx -= 1  # skip blank lines -- they carry no indentation fact
+    if start_idx < 0:
+        return "", 0, 0, ""
+    block_indent = len(lines[start_idx]) - len(lines[start_idx].lstrip())
+    if block_indent <= first_indent:
+        return "", 0, 0, ""
+
+    begin_idx = start_idx
+    while begin_idx > 0:
+        prev = lines[begin_idx - 1]
+        if not prev.strip() or len(prev) - len(prev.lstrip()) != block_indent:
+            break
+        begin_idx -= 1
+
+    offset = first_indent - block_indent
+    patched_lines = list(lines)
+    for idx in range(begin_idx, start_idx + 1):
+        line = patched_lines[idx]
+        new_indent = len(line) - len(line.lstrip()) + offset
+        if new_indent < 0:
+            return "", 0, 0, ""
+        patched_lines[idx] = " " * new_indent + line.lstrip()
+
+    try:
+        compile("\n".join(patched_lines), "<string>", "exec")
+    except SyntaxError:
+        return "", 0, 0, ""
+
+    fix = "\n".join(patched_lines[begin_idx : start_idx + 1])
+    span = "that line" if begin_idx == start_idx else f"lines {begin_idx + 1}-{start_idx + 1}"
+    reason = (
+        f"line {e.lineno} itself is fine -- {span} right above it sits at "
+        f"column {block_indent}, {abs(offset)} space(s) deeper than line "
+        f"{e.lineno}'s column {first_indent}; that's what actually makes the "
+        f"dedent invalid, so reindenting {span} to column {first_indent} "
+        f"(matching line {e.lineno}) is what makes the file parse again."
+    )
+    return fix, begin_idx + 1, start_idx + 1, reason
+
+
+def _syntax_error_fix(code: str, e: SyntaxError) -> tuple[str, int, int, ConfidenceTier, str]:
     """Tries each narrow, purpose-built SyntaxError fix in turn and
-    returns (fix, end_line, confidence, reason). The colon fix is
-    checked first because it's the only shape unambiguous enough to
-    safely chain the iterative collector below past it."""
+    returns (fix, start_line, end_line, confidence, reason). The colon
+    fix is checked first because it's the only shape unambiguous enough
+    to safely chain the iterative collector below past it."""
     colon_fix = _missing_colon_fix(code, e)
     if colon_fix:
-        return colon_fix, 0, ConfidenceTier.HIGH, ""
+        return colon_fix, e.lineno or 0, 0, ConfidenceTier.HIGH, ""
 
     indent_fix, indent_end_line, indent_reason = _missing_indent_fix(code, e)
     if indent_fix:
-        return indent_fix, indent_end_line, ConfidenceTier.MEDIUM, indent_reason
+        return indent_fix, e.lineno or 0, indent_end_line, ConfidenceTier.MEDIUM, indent_reason
 
     misaligned_fix, misaligned_end_line, misaligned_reason = _misaligned_indent_fix(code, e)
     if misaligned_fix:
-        return misaligned_fix, misaligned_end_line, ConfidenceTier.MEDIUM, misaligned_reason
+        return (
+            misaligned_fix,
+            e.lineno or 0,
+            misaligned_end_line,
+            ConfidenceTier.MEDIUM,
+            misaligned_reason,
+        )
 
-    return "", 0, ConfidenceTier.MEDIUM, ""
+    backward_fix, backward_start, backward_end, backward_reason = (
+        _misaligned_indent_backward_fix(code, e)
+    )
+    if backward_fix:
+        return backward_fix, backward_start, backward_end, ConfidenceTier.MEDIUM, backward_reason
+
+    return "", e.lineno or 0, 0, ConfidenceTier.MEDIUM, ""
 
 
 _MAX_SYNTAX_ERRORS_PER_REVIEW = 25  # safety cap, not a realistic file's actual count
@@ -398,7 +501,7 @@ def _collect_syntax_error_findings(code: str, filename: str) -> list[Finding]:
             compile(working_code, filename, "exec")
             break  # every error found so far was auto-fixed; file now parses
         except SyntaxError as e:
-            fix, end_line, confidence, reason = _syntax_error_fix(working_code, e)
+            fix, start_line, end_line, confidence, reason = _syntax_error_fix(working_code, e)
             bad_code = (
                 working_lines[e.lineno - 1].strip()
                 if e.lineno and 0 < e.lineno <= len(working_lines)
@@ -410,7 +513,7 @@ def _collect_syntax_error_findings(code: str, filename: str) -> list[Finding]:
             findings.append(
                 Finding(
                     file=filename,
-                    line=e.lineno or 1,
+                    line=start_line or e.lineno or 1,
                     end_line=end_line,
                     category="syntax",
                     severity=Severity.CRITICAL,

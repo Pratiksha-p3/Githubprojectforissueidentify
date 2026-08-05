@@ -22,6 +22,15 @@ convention:
     plain `if <param>:`/`if not <param>:` also counts -- an empty
     sequence is falsy, so that's an equally valid guard against the
     same zero-length condition.
+
+A third shape, _literal_zero_division_findings(), is a different kind of
+certainty entirely: `x / 0` (or a single-assignment variable that was
+literally assigned 0), where the denominator's value is an AST-verifiable
+fact, not something a caller controls. No "might happen depending on
+what's passed in" here, so this is CRITICAL, not WARNING, and -- same
+stance as index_guard_checker.py's literal-out-of-bounds shape -- no fix
+is generated: the correct resolution (typo? dead code? the wrong
+variable entirely?) isn't derivable from the literal alone.
 """
 from __future__ import annotations
 
@@ -91,6 +100,76 @@ def _owning_statement_line(parent_map: dict[int, ast.AST], node: ast.AST) -> int
     return getattr(current, "lineno", getattr(node, "lineno", 0))
 
 
+def _is_zero_literal(node: ast.expr) -> bool:
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, (int, float))
+        and not isinstance(node.value, bool)
+        and node.value == 0
+    )
+
+
+def _single_assignment_zero_literals(tree: ast.AST) -> set[str]:
+    """Names assigned the literal 0 (int or float) exactly once anywhere
+    in the file, and never reassigned to anything else -- same
+    conservative, no-real-dataflow tracking as
+    index_guard_checker.py's _single_assignment_literal_lengths()."""
+    assignments: dict[str, list[ast.expr]] = {}
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Assign) and len(node.targets) == 1):
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        assignments.setdefault(target.id, []).append(node.value)
+
+    return {
+        name
+        for name, values in assignments.items()
+        if len(values) == 1 and _is_zero_literal(values[0])
+    }
+
+
+def _literal_zero_division_findings(
+    tree: ast.AST, filename: str, lines: list[str]
+) -> list[Finding]:
+    tracked = _single_assignment_zero_literals(tree)
+
+    findings: list[Finding] = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+            continue
+
+        right = node.right
+        if _is_zero_literal(right):
+            described = "a literal 0"
+        elif isinstance(right, ast.Name) and right.id in tracked:
+            described = f"'{right.id}', which was assigned the literal 0"
+        else:
+            continue
+
+        if not (0 < node.lineno <= len(lines)):
+            continue
+
+        findings.append(
+            Finding(
+                file=filename,
+                line=node.lineno,
+                category="runtime",
+                severity=Severity.CRITICAL,
+                message=(
+                    f"Division by {described} — guaranteed ZeroDivisionError "
+                    f"every time this line runs, not just a possible one."
+                ),
+                bad_code=lines[node.lineno - 1].strip(),
+                fix="",
+                confidence=ConfidenceTier.MEDIUM,
+                source="division_guard_checker",
+            )
+        )
+    return findings
+
+
 def detect_unguarded_division(code: str, filename: str) -> list[Finding]:
     try:
         tree = ast.parse(code)
@@ -99,7 +178,7 @@ def detect_unguarded_division(code: str, filename: str) -> list[Finding]:
     lines = code.splitlines()
     parent_map = build_parent_map(tree)
 
-    findings: list[Finding] = []
+    findings: list[Finding] = list(_literal_zero_division_findings(tree, filename, lines))
     seen_lines: set[tuple[str, int]] = set()
 
     for node in ast.walk(tree):

@@ -322,6 +322,9 @@ _CHECKER_SOURCE_TO_CATEGORY: dict[str, str] = {
     "unused_import_checker": "Unused Import",
     "type_mismatch_checker": "TypeError",
     "invalid_method_checker": "AttributeError",
+    "value_error_checker": "ValueError",
+    "assertion_checker": "AssertionError",
+    "infinite_recursion_checker": "RecursionError",
 }
 
 

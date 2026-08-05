@@ -86,3 +86,42 @@ def test_ignores_division_by_non_parameter_local_variable():
 
 def test_ignores_syntax_error_gracefully():
     assert detect_unguarded_division("def broken(:\n", "app.py") == []
+
+
+def test_flags_division_by_a_literal_zero():
+    """Different certainty entirely from the parameter shapes above: the
+    denominator's value is an AST-verifiable fact, not caller-controlled
+    -- CRITICAL, no fix (same stance as index_guard_checker's literal
+    out-of-bounds shape)."""
+    findings = detect_unguarded_division("result = 10 / 0\n", "app.py")
+    assert len(findings) == 1
+    assert findings[0].severity.value == "critical"
+    assert findings[0].fix == ""
+
+
+def test_flags_division_by_a_literal_zero_float():
+    findings = detect_unguarded_division("result = 10 / 0.0\n", "app.py")
+    assert len(findings) == 1
+
+
+def test_flags_division_by_a_single_assignment_variable_holding_zero():
+    code = "zero = 0\nresult = 10 / zero\n"
+    findings = detect_unguarded_division(code, "app.py")
+    assert len(findings) == 1
+    assert "'zero'" in findings[0].message
+
+
+def test_ignores_a_zero_holding_variable_reassigned_elsewhere():
+    code = "zero = 0\nzero = get_thing()\nresult = 10 / zero\n"
+    assert detect_unguarded_division(code, "app.py") == []
+
+
+def test_ignores_division_by_a_nonzero_literal():
+    assert detect_unguarded_division("result = 10 / 5\n", "app.py") == []
+
+
+def test_literal_zero_division_does_not_require_an_enclosing_function():
+    """Unlike the parameter-based shapes, module-level code has no
+    enclosing function at all -- must not be silently skipped."""
+    findings = detect_unguarded_division("x = 1 / 0\n", "app.py")
+    assert len(findings) == 1

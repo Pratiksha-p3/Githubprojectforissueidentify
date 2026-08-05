@@ -184,6 +184,9 @@ def test_every_deterministic_checker_is_exercised_by_at_least_one_fixture():
         "unused_import_checker",
         "type_mismatch_checker",
         "invalid_method_checker",
+        "value_error_checker",
+        "assertion_checker",
+        "infinite_recursion_checker",
     }
     assert expected_sources <= sources_seen
     assert len(CHECKERS) == len(expected_sources), (

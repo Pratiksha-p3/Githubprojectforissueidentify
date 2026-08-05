@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from src.analyzers.assertion_checker import detect_guaranteed_assertion_failures
 from src.analyzers.command_injection_checker import detect_command_injection
 from src.analyzers.dict_key_checker import detect_unguarded_dict_access
 from src.analyzers.division_guard_checker import detect_unguarded_division
@@ -29,6 +30,7 @@ from src.analyzers.file_exists_checker import detect_unguarded_file_open
 from src.analyzers.hardcoded_secret_checker import detect_hardcoded_secrets
 from src.analyzers.http_timeout_checker import detect_unguarded_http_calls
 from src.analyzers.index_guard_checker import detect_unguarded_index_access
+from src.analyzers.infinite_recursion_checker import detect_unconditional_self_recursion
 from src.analyzers.insecure_deserialization_checker import (
     detect_insecure_deserialization,
 )
@@ -45,6 +47,7 @@ from src.analyzers.unstored_constructor_param_checker import (
     detect_unstored_constructor_params,
 )
 from src.analyzers.unused_import_checker import detect_unused_imports
+from src.analyzers.value_error_checker import detect_guaranteed_value_errors
 from src.analyzers.weak_crypto_checker import detect_weak_crypto
 from src.analyzers.zip_slip_checker import detect_zip_slip
 from src.core.grounding import is_trustworthy
@@ -74,6 +77,9 @@ CHECKERS: tuple[Checker, ...] = (
     detect_unused_imports,
     detect_type_mismatched_addition,
     detect_invalid_method_calls,
+    detect_guaranteed_value_errors,
+    detect_guaranteed_assertion_failures,
+    detect_unconditional_self_recursion,
 )
 
 
