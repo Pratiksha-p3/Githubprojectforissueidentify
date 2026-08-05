@@ -1,3 +1,5 @@
 
-user = {"name": "John"}
-print(user["age"])
+def greet()
+print(message)
+
+message = "Hello"
