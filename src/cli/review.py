@@ -83,7 +83,9 @@ def _print_human(
 
     for f in result.findings:
         print(f"  [{f.severity.value.upper()}] Line {f.line} — {f.message} (source: {f.source})")
-        if f.fix:
+        if f.fix_is_deletion:
+            print(f"    Suggested fix ({f.confidence.value} confidence): delete this line range")
+        elif f.fix:
             print(f"    Suggested fix ({f.confidence.value} confidence):")
             for line in f.fix.splitlines():
                 print(f"      {line}")

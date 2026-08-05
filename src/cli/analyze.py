@@ -44,7 +44,9 @@ def analyze_file(filepath: str, *, include_llm: bool = False) -> int:
         print(f"{icon} [{f.category.upper()}] Line {f.line} — {f.message}")
         if f.bad_code:
             print(f"  Detected: {f.bad_code}")
-        if f.fix:
+        if f.fix_is_deletion:
+            print(f"  Suggested fix ({f.confidence.value} confidence): delete this line range")
+        elif f.fix:
             print(f"  Suggested fix ({f.confidence.value} confidence):")
             for line in f.fix.splitlines():
                 print(f"    {line}")

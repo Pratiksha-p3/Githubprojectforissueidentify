@@ -217,6 +217,73 @@ def test_auto_apply_pushes_the_fix_and_reports_it_as_auto_fixed(monkeypatch, cap
     assert "Needs manual review:     0" in out
 
 
+def test_auto_apply_re_review_uses_the_pushs_own_sha_not_a_fresh_pr_fetch(monkeypatch):
+    """Regression, confirmed live on a real PR: GitHub's PR-metadata
+    endpoint (get_pull_request) can still return the PRE-push sha for a
+    brief window right after pushing (eventual consistency), even though
+    the branch's actual content is already updated. Re-fetching PR
+    metadata to find the new head_sha for the re-review re-fetched the
+    STALE file and reported the finding --auto-apply had just fixed as
+    still present. The push's own response already IS the new head --
+    must be used directly, never re-queried a second time."""
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+
+    class _CountingClient(_FakeGitHubClient):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self.get_pull_request_calls = 0
+
+        def get_pull_request(self, repo, pr_number):
+            self.get_pull_request_calls += 1
+            return super().get_pull_request(repo, pr_number)
+
+    client = _CountingClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "def divide(a, b):\n    return a / b\n"},
+    )
+
+    review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, auto_apply=True, github_client=client
+    )
+
+    # Exactly once -- the initial fetch to find head_sha at the very
+    # start. A second call after auto-apply is the actual regression:
+    # re-querying PR metadata that can still be stale, instead of using
+    # the push response's own (guaranteed fresh) sha.
+    assert client.get_pull_request_calls == 1
+
+
+def test_auto_apply_deletes_an_unused_import_end_to_end(monkeypatch, capsys):
+    """The whole point of fix_is_deletion: --auto-apply must be able to
+    actually remove a real unused import, not just report it. Runs the
+    real unused_import_checker (a real ruff subprocess), not a mock."""
+    monkeypatch.setattr(
+        review_pr,
+        "publish_review",
+        lambda *a, **k: {"comment_action": "created", "comment_id": 1, "check_run_id": 2},
+    )
+    client = _FakeGitHubClient(
+        files=[{"filename": "a.py", "status": "modified"}],
+        contents={"a.py": "import os\nimport sys\n\ndef f():\n    return sys.argv\n"},
+    )
+
+    review_pr.review_pr(
+        "acme/widgets", 4, include_llm=False, post=True, auto_apply=True, github_client=client
+    )
+
+    assert len(client.pushed_files) == 1
+    pushed_content = client.pushed_files[0]["content"]
+    assert "import os" not in pushed_content
+    assert "import sys" in pushed_content
+
+    out = capsys.readouterr().out
+    assert "Auto-fixed:              1" in out
+
+
 def test_auto_applied_finding_gets_no_suggestion_comment_in_the_same_run(monkeypatch):
     """A line that --auto-apply already fixed and pushed must never ALSO
     get a redundant "Apply suggestion" comment in the same run -- that
@@ -572,6 +639,29 @@ def test_post_fix_suggestions_returns_the_count_posted():
 
     assert count == 1
     assert len(client.review_comments) == 1
+
+
+def test_post_fix_suggestions_sends_an_empty_suggestion_block_for_a_deletion():
+    """A deletion fix (fix_is_deletion=True, fix="") must still get
+    posted as a real suggestion comment -- with an EMPTY suggestion
+    block (```suggestion\\n```` with no content line), which is how
+    GitHub represents "replace these lines with nothing". Inserting the
+    empty fix string as its own line would leave one blank line behind
+    instead of a true deletion."""
+    from src.core.models import ConfidenceTier, Finding, Severity
+
+    client = _FakeGitHubClient(files=[], contents={})
+    finding = Finding(
+        file="a.py", line=1, category="style", severity=Severity.INFO,
+        message="'os' imported but never used", fix="", fix_is_deletion=True,
+        confidence=ConfidenceTier.MEDIUM, source="unused_import_checker",
+    )
+
+    count = review_pr.post_fix_suggestions(client, "acme/widgets", 4, "abc123", [finding])
+
+    assert count == 1
+    body = client.review_comments[0]["body"]
+    assert "```suggestion\n```" in body
 
 
 def test_post_fix_suggestions_skips_a_line_that_already_has_a_comment():

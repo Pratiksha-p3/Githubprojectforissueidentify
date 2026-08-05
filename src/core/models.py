@@ -70,8 +70,24 @@ class Finding(BaseModel):
     message: str
     bad_code: str = ""
     fix: str = ""
+    # False means `fix == ""` is the ordinary "no fix was generated"
+    # sentinel every checker leaves at the default. True means `fix`
+    # (deliberately "") is itself the fix: delete lines[line..end_line]
+    # entirely, replacing them with nothing -- e.g.
+    # src/analyzers/unused_import_checker.py's whole-line deletions.
+    # Without this flag, an intentional "delete this" and "nothing to
+    # suggest" would collide on the same fix == "" value everywhere a
+    # Finding's fix is checked (apply_fixes_to_file, post_fix_suggestions,
+    # manual_review_reason, ...) -- use the has_fix property below rather
+    # than checking `fix` directly, so no call site has to know about
+    # this distinction itself.
+    fix_is_deletion: bool = False
     confidence: ConfidenceTier = ConfidenceTier.LOW
     source: str = "unknown"  # e.g. "dict_key_checker", "llm_supplement", "semgrep"
+
+    @property
+    def has_fix(self) -> bool:
+        return bool(self.fix.strip()) or self.fix_is_deletion
 
 
 class ReviewResult(BaseModel):

@@ -93,7 +93,9 @@ def _finding_block(finding: Finding, *, auto_apply: bool) -> list[str]:
     end = finding.end_line if finding.end_line >= finding.line else finding.line
     loc = f"{finding.line}" if end == finding.line else f"{finding.line}-{end}"
     block = [f"- `{finding.file}:{loc}` [{finding.severity.value}] {finding.message}"]
-    if finding.fix.strip():
+    if finding.fix_is_deletion:
+        block.append("  Suggested fix: delete this line range.")
+    elif finding.fix.strip():
         block.append("  Suggested fix:")
         block.append("  ```python")
         block.extend(f"  {fix_line}" for fix_line in finding.fix.splitlines())

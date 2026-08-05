@@ -39,7 +39,7 @@ def manual_review_reason(finding: Finding) -> str:
     checks, so the two can never drift out of sync with each other."""
     if is_safe_to_auto_apply(finding):
         return ""
-    if not finding.fix.strip():
+    if not finding.has_fix:
         return "No fix was generated for this finding — needs manual investigation."
     if finding.confidence == ConfidenceTier.MEDIUM:
         if finding.category == "syntax":

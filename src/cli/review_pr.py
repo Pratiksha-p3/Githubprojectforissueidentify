@@ -167,15 +167,22 @@ def review_pr(
             )
             auto_fixed_count += len(applied)
             new_sha = push_result["commit"]["sha"]
+            head_sha = new_sha  # each push's own response IS the new branch head
             print(f"  Auto-applied {len(applied)} fix(es) to {path} (commit {new_sha[:7]})")
 
         if auto_fixed_count:
-            # Re-review the NEW commit rather than trust stale
-            # pre-fix findings -- what gets posted below must reflect
-            # what's actually still there, the same "verify by actually
-            # checking" principle used throughout this project.
-            pr = client.get_pull_request(repo, pr_number)
-            head_sha = pr["head"]["sha"]
+            # Re-review the NEW commit rather than trust stale pre-fix
+            # findings -- what gets posted below must reflect what's
+            # actually still there, the same "verify by actually
+            # checking" principle used throughout this project. Uses
+            # head_sha as set from the last push's OWN response above,
+            # not a fresh client.get_pull_request() call -- confirmed
+            # live that GitHub's PR-metadata endpoint can still return
+            # the PRE-push sha for a brief window right after pushing
+            # (eventual consistency), even though the branch's actual
+            # content is already updated; re-fetching PR metadata here
+            # re-reviewed the stale file and reported the just-fixed
+            # finding as still present.
             print(f"\nRe-reviewing after auto-fix @ {head_sha[:7]}...\n")
             results = []
             for f in py_files:
@@ -279,8 +286,8 @@ def apply_fixes_to_file(
 
     Returns (patched_code, applied_findings, not_applied_findings).
     """
-    fixable = [f for f in findings if f.fix.strip()]
-    not_fixable = [f for f in findings if not f.fix.strip()]
+    fixable = [f for f in findings if f.has_fix]
+    not_fixable = [f for f in findings if not f.has_fix]
 
     lines = code.splitlines()
 
@@ -342,7 +349,7 @@ def post_fix_suggestions(
 
     posted = 0
     for f in findings:
-        if not f.fix.strip():
+        if not f.has_fix:
             continue
         start, end = _span(f)
         if (f.file, end) in existing:
@@ -359,10 +366,14 @@ def post_fix_suggestions(
                 f'without review. Click "Apply suggestion" now, or re-run with '
                 f"`--auto-apply` to have fixes like this committed automatically.*"
             )
-        body = (
-            f"**[{f.severity.value.upper()}] {f.message}**\n\n"
-            f"```suggestion\n{f.fix}\n```\n\n{note}"
-        )
+        # An empty suggestion block (```suggestion\n```` with NO content
+        # line in between) is how GitHub represents "replace these lines
+        # with nothing" -- deleting them. Adding f.fix (empty string) as
+        # its own line via an f-string would insert one blank line
+        # instead, which GitHub would apply as "replace with one blank
+        # line", not a true deletion.
+        suggestion = "```suggestion\n```" if f.fix_is_deletion else f"```suggestion\n{f.fix}\n```"
+        body = f"**[{f.severity.value.upper()}] {f.message}**\n\n{suggestion}\n\n{note}"
         client.create_review_comment(
             repo, pr_number, commit_id=commit_sha, path=f.file, line=end, body=body,
             start_line=start if end > start else None,
@@ -388,7 +399,7 @@ def post_no_fix_comments(
 
     posted = 0
     for f in findings:
-        if f.fix.strip():
+        if f.has_fix:
             continue  # has a fix -- post_fix_suggestions() already covers it
         start, end = _span(f)
         if (f.file, end) in existing:
@@ -410,7 +421,9 @@ def _print_file_result(path: str, result: ReviewResult) -> None:
         start, end = _span(f)
         line_label = f"Line {start}" if end == start else f"Lines {start}-{end}"
         print(f"    [{f.severity.value.upper()}] {line_label} — {f.message} (source: {f.source})")
-        if f.fix:
+        if f.fix_is_deletion:
+            print(f"      Suggested fix ({f.confidence.value} confidence): delete this line range")
+        elif f.fix:
             print(f"      Suggested fix ({f.confidence.value} confidence):")
             for line in f.fix.splitlines():
                 print(f"        {line}")

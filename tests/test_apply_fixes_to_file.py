@@ -2,7 +2,13 @@ from src.cli.review_pr import apply_fixes_to_file
 from src.core.models import ConfidenceTier, Finding, Severity
 
 
-def make_finding(line: int, fix: str = "", source: str = "checker", end_line: int = 0) -> Finding:
+def make_finding(
+    line: int,
+    fix: str = "",
+    source: str = "checker",
+    end_line: int = 0,
+    fix_is_deletion: bool = False,
+) -> Finding:
     return Finding(
         file="app.py",
         line=line,
@@ -11,6 +17,7 @@ def make_finding(line: int, fix: str = "", source: str = "checker", end_line: in
         severity=Severity.WARNING,
         message="msg",
         fix=fix,
+        fix_is_deletion=fix_is_deletion,
         confidence=ConfidenceTier.MEDIUM,
         source=source,
     )
@@ -128,6 +135,45 @@ def test_empty_findings_list_returns_code_unchanged():
     assert patched == code
     assert applied == []
     assert remaining == []
+
+
+def test_deletion_fix_removes_the_line_entirely():
+    """fix_is_deletion=True with fix="" means "delete this line", not
+    "no fix" -- must be treated as a real, applicable fix by
+    apply_fixes_to_file(), not silently skipped the way an ordinary
+    fix=="" finding is."""
+    code = "import os\nimport sys\n\ndef f():\n    return sys.argv\n"
+    finding = make_finding(1, fix="", fix_is_deletion=True)
+
+    patched, applied, remaining = apply_fixes_to_file(code, [finding])
+
+    assert applied == [finding]
+    assert remaining == []
+    assert patched == "import sys\n\ndef f():\n    return sys.argv\n"
+
+
+def test_deletion_fix_removes_a_multi_line_range():
+    code = "from typing import (\n    Optional,\n    List,\n)\n\n\ndef f():\n    return 1\n"
+    finding = make_finding(1, fix="", end_line=4, fix_is_deletion=True)
+
+    patched, applied, remaining = apply_fixes_to_file(code, [finding])
+
+    assert applied == [finding]
+    assert patched == "\n\ndef f():\n    return 1\n"
+
+
+def test_deletion_fix_still_conflicts_with_an_overlapping_fix():
+    code = "import os\nimport sys\n"
+    deletion = make_finding(1, fix="", fix_is_deletion=True)
+    other = make_finding(1, fix="import pathlib")
+
+    patched, applied, remaining = apply_fixes_to_file(code, [deletion, other])
+
+    assert patched == code  # unchanged -- neither conflicting fix applied
+    assert applied == []
+    assert sorted(remaining, key=lambda f: f.fix_is_deletion) == sorted(
+        [deletion, other], key=lambda f: f.fix_is_deletion
+    )
 
 
 def test_applies_a_multi_line_range_fix():

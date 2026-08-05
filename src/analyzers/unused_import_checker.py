@@ -14,28 +14,28 @@ since ruff is a compiled binary with no importable Python API) and reads
 back its own unused-import findings, the same rule that already gates
 this project's own CI.
 
-No fix is generated, even though ruff's own JSON output includes one
-(and marks it "safe"): ruff's fix deletes the WHOLE LINE, but this
-project's Finding model has no way to express "replace this line with
-NOTHING" -- Finding.fix == "" is the exact sentinel every other part of
-the codebase (apply_fixes_to_file, post_fix_suggestions,
-manual_review_reason, ...) already uses to mean "no fix was generated
-at all". Reusing it for "the fix is to delete this line" would silently
-collide with that meaning everywhere else a Finding's fix is checked.
-Rather than change that shared sentinel for one checker, this stays
-detection-only -- the message alone ("`os` imported but unused, line N")
-is already fully actionable for a human to act on directly, the same
-"detection over a risky auto-rewrite" choice
-src/analyzers/sql_injection_checker.py and others already make for a
-different reason (there, the correct fix needs context; here, the
-model just doesn't have a way to say "delete" yet).
+The fix is a real deletion of the whole import statement's line range,
+using Finding.fix_is_deletion (fix="" is the delete-these-lines marker,
+not "no fix" -- see that field's own docstring in src/core/models.py for
+why a plain fix="" can't mean this on its own) rather than reimplementing
+ruff's own edit, which it already reports (and marks "safe") in its JSON
+output.
+
+Multiple unused names from the SAME `from x import (a, b, c)` statement
+share ONE edit spanning the whole statement (confirmed live: ruff
+reports one F401 diagnostic per name, but all of them point at the same
+edit) -- reported here as diagnostics are grouped by their (start, end)
+span first, so removing `a` and `b` together doesn't produce two
+findings whose ranges overlap and conflict each other out in
+apply_fixes_to_file(); it produces one finding covering the whole
+statement, naming every unused import in it.
 
 Fails safe: if the `ruff` subprocess isn't available, times out, or
 returns anything unexpected, this returns [] rather than raising --
 same "a checker's own failure must never look like a clean pass at the
 orchestrator level" principle src/core/orchestrator.py's ReviewStatus
 exists to protect elsewhere; this specific checker's own failure simply
-means one fewer checker ran, not a analysis-wide false "no issues".
+means one fewer checker ran, not an analysis-wide false "no issues".
 """
 from __future__ import annotations
 
@@ -46,6 +46,37 @@ import sys
 from src.core.models import ConfidenceTier, Finding, Severity
 
 _TIMEOUT_SECONDS = 10
+
+
+def _edit_span(diag: dict) -> tuple[int, int] | None:
+    """The (start_line, end_line) 1-indexed inclusive line range ruff's
+    own fix would delete, derived from its edit's location/end_location
+    (both 1-indexed, end_location being EXCLUSIVE of its own column --
+    "row R, column 1" means "up to but not including row R", i.e. the
+    deletion actually covers through row R-1). Returns None if the fix
+    is missing or doesn't look like a whole-line deletion (an edit with
+    non-empty replacement content, or one that doesn't start/end at
+    column 1) -- safer to skip a fix than guess at a shape that isn't
+    the clean whole-line case this was built for."""
+    fix = diag.get("fix")
+    if not fix or not fix.get("edits"):
+        return None
+    edit = fix["edits"][0]
+    if edit.get("content", "") != "":
+        return None  # not a pure deletion
+
+    start = edit.get("location", {})
+    end = edit.get("end_location", {})
+    if start.get("column") != 1:
+        return None
+    start_row = start.get("row")
+    end_row = end.get("row")
+    end_col = end.get("column")
+    if not start_row or not end_row:
+        return None
+    if end_col == 1:
+        end_row -= 1  # exclusive boundary at the start of end_row
+    return start_row, end_row
 
 
 def detect_unused_imports(code: str, filename: str) -> list[Finding]:
@@ -73,7 +104,9 @@ def detect_unused_imports(code: str, filename: str) -> list[Finding]:
         return []
 
     lines = code.splitlines()
-    findings: list[Finding] = []
+    groups: dict[tuple[int, int], list[str]] = {}
+    no_fix: list[tuple[int, str]] = []
+
     for diag in diagnostics:
         if diag.get("code") != "F401":
             continue
@@ -83,6 +116,35 @@ def detect_unused_imports(code: str, filename: str) -> list[Finding]:
 
         message = diag.get("message", "")
         name = message.split("`")[1] if "`" in message else "?"
+
+        span = _edit_span(diag)
+        if span is None or not (0 < span[0] <= len(lines) and span[1] <= len(lines)):
+            no_fix.append((lineno, name))
+            continue
+        groups.setdefault(span, []).append(name)
+
+    findings: list[Finding] = []
+    for (start, end), names in groups.items():
+        names_display = ", ".join(f"'{n}'" for n in names)
+        findings.append(
+            Finding(
+                file=filename,
+                line=start,
+                end_line=end if end > start else 0,
+                category="style",
+                severity=Severity.INFO,
+                message=(
+                    f"{names_display} imported but never used anywhere in the "
+                    f"file — the whole import statement can be removed."
+                ),
+                bad_code=lines[start - 1].strip(),
+                fix="",
+                fix_is_deletion=True,
+                confidence=ConfidenceTier.MEDIUM,
+                source="unused_import_checker",
+            )
+        )
+    for lineno, name in no_fix:
         findings.append(
             Finding(
                 file=filename,
