@@ -31,7 +31,7 @@ def fetch_data(url):
 
 def process_order(order):
 
-      total = 0
+    total = 0
 
     for item in order["items"]:
         total += item["price"]
