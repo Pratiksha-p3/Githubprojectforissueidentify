@@ -1,7 +1,7 @@
 
-    print(message)
-    message = "Hello"
-    # or define message before using it
-    print(message)
+user = {"name": "John"}
+numbers = [1, 2, 3]
 
-    message = "Hello"
+print("Age: " + 25)
+print(numbers[10])
+print(user["age"])
