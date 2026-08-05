@@ -6,7 +6,7 @@ API_KEY = "super-secret-key"
 users = {}
 
 
-def calculate_average(numbers)
+def calculate_average(numbers):
     return sum(numbers) / len(numbers)
 
 
