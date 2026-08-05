@@ -7,4 +7,4 @@ def process_order(order):
     for item in order["items"]:
         total += item["price"]
 
-    return amount  # noqa: F821 -- intentional bug this fixture exists to catch
+    return amount

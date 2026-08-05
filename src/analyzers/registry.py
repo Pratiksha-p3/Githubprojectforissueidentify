@@ -42,6 +42,7 @@ from src.analyzers.unsafe_yaml_checker import detect_unsafe_yaml_load
 from src.analyzers.unstored_constructor_param_checker import (
     detect_unstored_constructor_params,
 )
+from src.analyzers.unused_import_checker import detect_unused_imports
 from src.analyzers.weak_crypto_checker import detect_weak_crypto
 from src.analyzers.zip_slip_checker import detect_zip_slip
 from src.core.grounding import is_trustworthy
@@ -68,6 +69,7 @@ CHECKERS: tuple[Checker, ...] = (
     detect_path_traversal,
     detect_zip_slip,
     detect_undefined_names,
+    detect_unused_imports,
 )
 
 

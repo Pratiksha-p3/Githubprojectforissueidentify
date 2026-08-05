@@ -116,6 +116,11 @@ def test_undefined_name_bug_is_caught():
     assert any(f.source == "undefined_name_checker" for f in findings)
 
 
+def test_unused_import_bug_is_caught():
+    findings = _run("unused_import_bug.py")
+    assert any(f.source == "unused_import_checker" for f in findings)
+
+
 def test_obfuscated_dict_key_bug_is_still_caught():
     findings = _run("dict_key_bug_obfuscated.py")
     assert any(f.source == "dict_key_checker" for f in findings)
@@ -166,6 +171,7 @@ def test_every_deterministic_checker_is_exercised_by_at_least_one_fixture():
         "path_traversal_checker",
         "zip_slip_checker",
         "undefined_name_checker",
+        "unused_import_checker",
     }
     assert expected_sources <= sources_seen
     assert len(CHECKERS) == len(expected_sources), (

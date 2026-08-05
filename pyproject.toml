@@ -20,6 +20,7 @@ dependencies = [
     "sentence-transformers>=3.0",
     "reportlab>=4.0",
     "pyflakes>=3.2",
+    "ruff>=0.5",
 ]
 
 [project.scripts]
@@ -29,7 +30,6 @@ review-cli = "src.cli.main:main"
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
-    "ruff>=0.5",
     "mypy>=1.10",
     "fakeredis>=2.23",
     "httpx>=0.27",
@@ -58,6 +58,11 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Golden fixtures are deliberately broken code (each one exists to be
+# caught by a specific checker, e.g. an unused import or an undefined
+# name) -- excluded so this project's own lint gate doesn't flag the
+# same intentional bugs the fixtures are testing for.
+exclude = ["tests/golden_vuln_repo"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
