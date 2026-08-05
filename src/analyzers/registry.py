@@ -33,6 +33,7 @@ from src.analyzers.insecure_deserialization_checker import (
     detect_insecure_deserialization,
 )
 from src.analyzers.insecure_http_checker import detect_insecure_http_urls
+from src.analyzers.invalid_method_checker import detect_invalid_method_calls
 from src.analyzers.none_attribute_checker import detect_unguarded_none_attribute_access
 from src.analyzers.path_traversal_checker import detect_path_traversal
 from src.analyzers.resource_leak_checker import detect_unclosed_file_handles
@@ -72,6 +73,7 @@ CHECKERS: tuple[Checker, ...] = (
     detect_undefined_names,
     detect_unused_imports,
     detect_type_mismatched_addition,
+    detect_invalid_method_calls,
 )
 
 

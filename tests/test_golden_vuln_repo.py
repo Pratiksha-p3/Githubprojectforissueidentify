@@ -126,6 +126,11 @@ def test_type_mismatch_bug_is_caught():
     assert any(f.source == "type_mismatch_checker" for f in findings)
 
 
+def test_invalid_method_bug_is_caught():
+    findings = _run("invalid_method_bug.py")
+    assert any(f.source == "invalid_method_checker" for f in findings)
+
+
 def test_obfuscated_dict_key_bug_is_still_caught():
     findings = _run("dict_key_bug_obfuscated.py")
     assert any(f.source == "dict_key_checker" for f in findings)
@@ -178,6 +183,7 @@ def test_every_deterministic_checker_is_exercised_by_at_least_one_fixture():
         "undefined_name_checker",
         "unused_import_checker",
         "type_mismatch_checker",
+        "invalid_method_checker",
     }
     assert expected_sources <= sources_seen
     assert len(CHECKERS) == len(expected_sources), (
