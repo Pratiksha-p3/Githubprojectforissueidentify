@@ -1,5 +1,4 @@
 import json
 
-    return json.dumps({"message": f"hello {name}"}, ensure_ascii=False)
-def greet(name):
-    return json.dumps({"message": f"hello {name}"})
+numbers = [1, 2, 3]
+print(numbers[5])
