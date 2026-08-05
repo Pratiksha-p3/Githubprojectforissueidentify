@@ -1,7 +1,6 @@
+file = open("missing.txt")
 
-user = {"name": "John"}
-numbers = [1, 2, 3]
+result = 10 / 0
 
-print("Age: " + 25)
-print(numbers[10])
-print(user["age"])
+text = "hello"
+text.append("world")
